@@ -1,0 +1,18 @@
+#: Index Page header title
+msgid "title"
+msgstr "Network Implementation and Test Automation"
+
+#: Page title will be shown in the browser tab
+msgid "login_page_title"
+msgstr "NITA"
+
+#: Login Page window header title
+msgid "login_page_header"
+msgstr "NITA"
+
+#: Campus Type and Campus Network names, 's' will be automatically appended in all the places through out the application. So dont add plural words
+msgid "network_type_heading"
+msgstr "Network Type"
+
+msgid "network_heading"
+msgstr "Network"

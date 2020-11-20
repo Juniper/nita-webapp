@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+<head>
+	{% load staticfiles %}
+	<script src="{% static "components/jquery-timer/js/jquery.timer.js" %}"></script>
+	<script src="{% static "global/js/noob.js" %}"></script>
+	<style>
+		.selected {
+		    background: #e9e9e9 !important;
+		}
+
+		.pointer {
+			cursor: pointer;
+		}
+
+	</style>
+</head>
+
+<body>
+    {% load django_tables2 %}
+    <div>
+    	<div class="row">
+    		<div class="col-md-10">
+		        <div id="selector-pane" class="form-group pull-right col-md-6" style="margin-bottom: 0; padding-right:21px">
+		        <!--        <label for="action-selector" class="col-md-3 control-label" style="padding-top:5px"> Select Action </label> -->
+		        	<div class="col-md-6"/>
+		            <div class="col-md-4" style="padding-top:4px">
+		                <select class="form-control" name="action-selector" id="action-selector" style="padding: 0 12px;height:28px;font-size: 13px;">
+		                {% if actions|length <= 0 %}
+		                <script>
+		                $('#trigger-action').prop('disabled',true);
+		                </script>
+		                {% endif %}
+		                    {% for action_obj in actions %}
+		                        <option value={{ action_obj.id }}>{{ action_obj.name }}</option>
+		                    {% endfor %}
+		                </select>
+		             </div>
+		             <div class="col-md-2" style="padding-top:5px;padding-left:15px">
+		                <button id="trigger-action" type="submit" onclick="triggerAction()"  class="btn btn-info btn-sm pull-center">Trigger Action</button>
+		             </div>
+		        </div>
+		        <div id="action-main-pane" class="col-md-12">
+		            <h3 style="padding-left: 12px;padding-bottom:5px">Action History</h3>
+		            <div id="action-history-pane" style="overflow-y:auto;">
+		            </div>
+
+		             <div id="trigger-action-modal" class="modal fade" role="dialog">
+		             	<div id="triggerActionSizeDiv" class="modal-dialog modal-sm" >
+		                    <div class="modal-content">
+		                        <div class="modal-header">
+		                            <button type="button" class="close" data-dismiss="modal" >&times</button>
+		                            <h3 class="modal-title">Trigger Action</h3>
+		                        </div>
+		                        <div class="modal-body">
+		                            <p id="action-status-text"> </p>
+		                        </div>
+		                        <div class="modal-footer">
+		                            <button type="button" class="btn btn-default" data-dismiss="modal">Ok</button>
+		                        </div>
+		                    </div>
+		                </div>
+		              </div>
+			    </div>
+    		</div>
+    		<div class="col-md-3"/>
+    	</div>
+    	<div id="console-pane_holder">
+
+    		 <div class="col-md-2">
+	             <h3 style="padding-left: 6px">Console Log </h3>
+	         </div>
+	         <div class="col-md-3" style="padding-top:11px;padding-bottom:4px;">
+	         	<a id="auto_refresh" class="pointer" onClick="toggleAutoRefresh()">Auto refresh <span id="auto_refresh_badge" class="badge progress-bar-danger">Disabled</span></a><br>
+	         </div>
+	         <div class="col-md-7"/>
+	         <div id ="console-pane" class="col-md-12">
+	         	<input type="hidden" id="history_id" value=""/>
+	         	<pre id="console-pane-pre" style="width:100%;height:100%;overflow:auto">
+	         	</pre>
+	         </div>
+	</div>
+</body>
+</html>

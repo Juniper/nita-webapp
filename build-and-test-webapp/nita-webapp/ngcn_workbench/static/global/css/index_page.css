@@ -1,0 +1,58 @@
+  .navbar {
+            margin-bottom: 0;
+            border-radius: 0;
+            background-color: #205384;
+          }
+          
+  .navbar.navbar-inverse .container-fluid .collapse.navbar-collapse .navbar-heading {
+    margin-bottom: 0;
+    border-radius: 0;
+    color: #FFFFFF;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 20px;
+  }
+  
+  /* Set height of the grid so .sidenav can be 100% (adjust as needed) */
+  .row.content {height: 600px}
+  
+  /* Set gray background color and 100% height */
+  .sidenav {
+    padding-left: 8px;
+    padding-top: 10px;
+    background-color: #f1f1f1;
+    height: 100%;
+  }
+  
+  .mainpane {
+    height: 100%;
+  }
+
+  .navbar-nav > li > a {
+    padding-top:9px !important; padding-bottom:5px !important;
+  }
+  
+  .navbar {
+    min-height:40px !important
+  }
+
+  body {
+    overflow: hidden;
+  }
+  
+  .notifier {
+    z-index: 1500;
+    padding: 15px ! important; 
+    margin: 1px 0px 0px 0px !important;
+    font-size: 14px;
+    position: absolute;
+  }
+  
+  .list-font {
+		font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; !important
+  }
+  
+  .fa-custom {
+    font-size: 1.2em !important;
+    padding-right: 2px;
+    vertical-align: -5% !important;
+}

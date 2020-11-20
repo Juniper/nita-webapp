@@ -1,0 +1,12 @@
+Package: nita-webapp
+Version: 20.10-1
+Section: base
+Priority: optional
+Architecture: all
+Depends: docker-ce
+Maintainer: Ashley Burston <aburston@juniper.net>, Hugo Ribeiro <hribeiro@juniper.net>
+Description: Network Implementation and Test Automation
+ docker-compose based cli/web application for doing provisioning
+ and testing of network hardware and software.
+ Copyright Juniper Networks 2020
+ See https://support.juniper.net/support/legal/scriptlicense/

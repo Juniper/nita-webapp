@@ -1,0 +1,7 @@
+label {
+    color: #666;
+}
+
+.aligned label {
+	width: 180px !important
+}

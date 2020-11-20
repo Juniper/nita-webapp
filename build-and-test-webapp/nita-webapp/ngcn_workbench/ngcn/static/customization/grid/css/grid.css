@@ -1,0 +1,12 @@
+.slick-cell.selected {
+    background-color: #DBE2E9;
+}
+
+.slick-header-column {
+    background: #eaeaea none repeat scroll 0 0;
+    color:#666
+}
+
+.slick-cell.highlighted {
+    background: #d9eaff none repeat scroll 0 0;
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+{% load i18n %}
+<title>{% trans "network_heading" %}</title>
+<head>
+{% load staticfiles %}
+
+<script src="{% static "global/js/ui_1.11.4_jquery-ui.js" %}"></script>
+
+<script src="{% static "global/js/jquery.event.drag-2.2.js" %}"></script>
+<script src="{% static "components/slick-grid/js/slick.core.js" %}"></script>
+<script src="{% static "components/slick-grid/js/plugins/slick.cellrangedecorator.js" %}"></script>
+<script src="{% static "components/slick-grid/js/plugins/slick.cellrangeselector.js" %}"></script>
+<script src="{% static "components/slick-grid/js/plugins/slick.cellselectionmodel.js" %}"></script>
+<script src="{% static "components/slick-grid/js/plugins/slick.autotooltips.js" %}"></script>
+<script src="{% static "components/slick-grid/js/slick.formatters.js" %}"></script>
+<script src="{% static "components/slick-grid/js/slick.editors.js" %}"></script>
+<script src="{% static "components/slick-grid/js/slick.grid.js" %}"></script>
+<script>
+    function getCookie(name) {
+	    var cookieValue = null;
+	    if (document.cookie && document.cookie != '') {
+		    var cookies = document.cookie.split(';');
+		    for (var i = 0; i < cookies.length; i++) {
+			    var cookie = jQuery.trim(cookies[i]);
+			    // Does this cookie string begin with the name we want?
+			    if (cookie.substring(0, name.length + 1) == (name + '=')) {
+				    cookieValue = decodeURIComponent(cookie
+						    .substring(name.length + 1));
+				    break;
+			    }
+		    }
+	    }
+	    return cookieValue;
+    }
+    var csrftoken = getCookie('csrftoken');
+    jQuery(document).ready(function($) {
+        $('[data-toggle="tab"]').click(function(e) {
+            var $this = $(this),
+                loadurl = $this.attr('href'),
+                targ = $this.attr('data-target');
+
+            $.get(loadurl, function(data) {
+                $(targ).html(data);
+            });
+
+            $this.tab('show');
+            return false;
+        });
+        $('#summary_header').click();
+    });
+</script>
+</head>
+<body>
+
+	<div class="network-wrapper" style="padding-left:5px;padding-top:2px">
+	<ul id="main-tabs-list" class="nav nav-tabs ">
+		<li><a id="summary_header" data-target="#summary" href ="/campus_network/{{ campus_network_id }}/summary/" data-toggle="tab">Summary</a></li>
+		<li><a id="configuration_header" data-target="#configuration" href ="/campus_network/{{ campus_network_id }}/configuration_view/" data-toggle="tab">Configuration</a></li>
+		<li><a id="noob_header" data-target="#action-tab" href ="/campus_network/{{ campus_network_id }}/action_category/1/" data-toggle="tab">Noob</a></li>
+		<li><a id="build_header" data-target="#action-tab" href ="/campus_network/{{ campus_network_id }}/action_category/2/" data-toggle="tab" >Build</a></li>
+		<li><a id="test_header" data-target="#action-tab" href ="/campus_network/{{ campus_network_id }}/action_category/3/" data-toggle="tab">Test</a></li>
+		<li><a id="history_header" data-target="#action-history" href ="/campus_network/{{ campus_network_id }}/action_history/" data-toggle="tab">Action History</a></li>
+	</ul>
+	</div>
+<div id="tabs"  class="tab-content">
+<div id="summary" class="tab-pane active col-md-10">
+
+</div>
+<div id="configuration" class="tab-pane" >
+
+</div>
+<div id="action-tab" class="tab-pane">
+</div>
+<div id="action-history" class="tab-pane">
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+<head>
+{% load staticfiles %}
+<script>
+jQuery(document).ready(function($) {
+	    setTimeout(
+      		  function()
+      		  {
+      			if ( global_action_history_table != null && typeof global_action_history_table != undefined ) {
+      				global_action_history_table.destroy();
+  			  	}
+      			  global_action_history_table = $('#all-action-history-table').DataTable({
+      				  "paging":   true,
+      				  "ordering": false,
+      				  "info":     false,
+      				  "bFilter": false,
+      				  "bInfo": false,
+    				  "bLengthChange": false
+
+      			  });
+      		  }, 100);
+
+    });
+ </script>
+</head>
+<body>
+	{% load django_tables2 %}
+	<h3 style="padding-left: 7px;padding-bottom: 6px">Action History</h3>
+	{% load django_tables2 %}
+	{% if table  %}
+	<div class="row">
+		<div class="col-md-10" id="action-history" style="padding-left:6px"> {% render_table table %}</div>
+		<div class="col-md-2"/>
+	</div>
+	{% endif %}
+</body>
+</html>

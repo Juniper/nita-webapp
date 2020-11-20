@@ -1,0 +1,13 @@
+
+.login #header h1 a {
+    color: #fff;
+    font-weight: bold;
+}
+
+.login #header  {
+   background-color:#205384;
+}
+
+.login #container {
+	border: 1px solid #205384;
+}

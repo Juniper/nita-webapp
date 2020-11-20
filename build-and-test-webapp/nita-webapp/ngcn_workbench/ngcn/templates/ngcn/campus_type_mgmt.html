@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+<head>
+	{% load staticfiles %}
+	{% load i18n %}
+	<script src="{% static "global/js/campus_type_mgmt.js" %}"></script>
+	<script src="{% static "components/data-table/js/jquery.dataTables.js" %}"></script>
+
+	<style>
+		.selected {
+		    background: #e9e9e9 !important;
+		}
+
+		.module {
+		    margin-bottom: 0px !important;
+		}
+
+		.btn-default {
+		    border-color: #fff;
+		}
+	</style>
+</head>
+<body>
+    <div class="col-md-10">
+	    <h3>{% trans "network_type_heading" %} Management</h3>
+
+	    <div id="campus_type_container" class="row content" style="padding-left:10px">
+             <div id="campus_type_main_pane" >
+             	<div class="text-right">
+				    <button id="add_campus" type="button" class="btn btn-default btn-xs" onclick="addCampusType()">
+			      		<span class="fa fa-plus fa-custom"></span> Add
+			   		 </button>
+					<!-- <button id="edit_campus" type="button" class="btn btn-default btn-xs" onclick="editCampusTypebySelection()">
+				         <span class="fa fa-pencil-square-o fa-custom"></span> Edit
+				    </button> -->
+					<button id="del_campus" type="button" class="btn btn-default btn-xs" onclick="deleteCampusType()">
+					     <span class="fa fa-trash fa-custom"></span> Delete
+				    </button>
+				</div>
+				<div style="padding-top:5px">
+					{% load django_tables2 %}
+	  				{% if table  %}
+					{% render_table table %}
+					{% endif %}
+				</div>
+             </div>
+             <div id="campus_type_adjucent_pane" class="col-md-4"/>
+        </div>
+        <form id="campus-type-form" class="campus_type_form"" role="form">
+	        <div id="add-campus-type-modal" class="modal fade" role="dialog">
+	          	<div class="modal-dialog modal-lg form-horizontal"  style="width:700px">
+
+	                 <div class="modal-content">
+
+	                     <div class="modal-header">
+	                         <button type="button" class="close" data-dismiss="modal" >&times</button>
+	                         <h3 id="add_campus_type_header" class="modal-title">Add {% trans "network_type_heading" %}</h3>
+	                     </div>
+	                     <div id="campus_type_forms" class="modal-body">
+	                        <div id="campus_type_forms_inner_div"/>
+	                        <p id="error_div" style="display:hidden; padding-left:15px; margin-bottom:0px; padding-left:15px">
+	                        	<!--  <label style="padding-left:10px; color:#C6243F !important;"><b>Error :</b></label>
+	                        	</br>-->
+	                        	<label id="error_content_div" style="padding-left:15px; color:#C6243F !important;" class="errorlist"/>
+	                        </p>
+	                      </div>
+	                     <div class="modal-footer">
+	                     	<div class="row" style="padding-left:20px;padding-right:28px">
+								<div class="col-md-6 text-left">
+									<button type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
+								</div>
+								<div class="col-md-6 text-right">
+									<button id="save-campus-btn" type="submit" class="btn btn-success btn-sm">Save</button>
+								</div>
+							</div>
+	                     </div>
+	                 </div>
+	             </div>
+	         </div>
+         </form>
+
+         <form class="delete_campus_type_form">
+	        <div id="delete-campus-type-modal" class="modal fade" role="dialog">
+	          	<div class="modal-dialog modal-md form-horizontal" >
+	                 <div class="modal-content">
+	                     <div class="modal-header">
+	                         <button type="button" class="close" data-dismiss="modal" >&times</button>
+	                         <h3 class="modal-title">Delete {% trans "network_type_heading" %}</h3>
+	                     </div>
+
+	                      <div id="delete_campus_type_forms" class="modal-body">
+	               		     Are you sure to delete the selected {% trans "network_type_heading" %} ?
+	                     </div>
+	                     <div class="modal-footer">
+	                     	<div class="row" style="padding-left:20px;padding-right:28px">
+								<div class="col-md-6 text-left">
+									<button id="campus-type-delete-cancel" type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
+								</div>
+								<div class="col-md-6 text-right">
+									<button id="campus-type-delete" type="button" onclick="deleteCampusTypes()" data-dismiss="modal" class="btn btn-danger btn-sm">Delete</button>
+								</div>
+							</div>
+	                     </div>
+	                 </div>
+	             </div>
+	         </div>
+         </form>
+
+	 </div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+.btn-info {
+    background-color: #5bc0de;
+    border-color: #46b8da;
+    color: #fff;
+}
+
+.btn-info.focus, .btn-info:focus {
+    background-color: #31b0d5;
+    border-color: #1b6d85;
+    color: #fff;
+}
+
+.btn-info:hover {
+    background-color: #31b0d5;
+    border-color: #269abc;
+    color: #fff;
+}
+
+.btn-info.active, .btn-info:active, .open > .dropdown-toggle.btn-info {
+    background-color: #31b0d5;
+    border-color: #269abc;
+    color: #fff;
+}
+
+.btn-warning {
+    background-color: #f0ad4e;
+    border-color: #eea236;
+    color: #fff;
+}
+.btn-warning.focus, .btn-warning:focus {
+    background-color: #ec971f;
+    border-color: #985f0d;
+    color: #fff;
+}
+.btn-warning:hover {
+    background-color: #ec971f;
+    border-color: #d58512;
+    color: #fff;
+}
+.btn-warning.active, .btn-warning:active, .open > .dropdown-toggle.btn-warning {
+    background-color: #ec971f;
+    border-color: #d58512;
+    color: #fff;
+}
+
+.btn-danger {
+    background-color: #d9534f;
+    border-color: #d43f3a;
+    color: #fff;
+}
+.btn-danger.focus, .btn-danger:focus {
+    background-color: #c9302c;
+    border-color: #761c19;
+    color: #fff;
+}
+.btn-danger:hover {
+    background-color: #c9302c;
+    border-color: #ac2925;
+    color: #fff;
+}
+.btn-danger.active, .btn-danger:active, .open > .dropdown-toggle.btn-danger {
+    background-color: #c9302c;
+    border-color: #ac2925;
+    color: #fff;
+}
+
+.btn-success {
+    background-color: #5cb85c;
+    border-color: #4cae4c;
+    color: #fff;
+}
+.btn-success.focus, .btn-success:focus {
+    background-color: #449d44;
+    border-color: #255625;
+    color: #fff;
+}
+.btn-success:hover {
+    background-color: #449d44;
+    border-color: #398439;
+    color: #fff;
+}
+.btn-success.active, .btn-success:active, .open > .dropdown-toggle.btn-success {
+    background-color: #449d44;
+    border-color: #398439;
+    color: #fff;
+}
+
+.btn-default {
+    background-color: #fff;
+    border-color: #ccc;
+    color: #333;
+}
+.btn-default.focus, .btn-default:focus {
+    background-color: #e6e6e6;
+    border-color: #8c8c8c;
+    color: #333;
+}
+.btn-default:hover {
+    background-color: #e6e6e6;
+    border-color: #adadad;
+    color: #333;
+}
+.btn-default.active, .btn-default:active, .open > .dropdown-toggle.btn-default {
+    background-color: #e6e6e6;
+    border-color: #adadad;
+    color: #333;
+}
+#login-btn {
+    background-color: #5bc0de;
+    border-color: #46b8da;
+    color: #fff;
+}
+#login-btn.focus, #login-btn:focus {
+    background-color: #31b0d5;
+    border-color: #1b6d85;
+    color: #fff;
+}
+#login-btn:hover {
+    background-color: #31b0d5;
+    border-color: #269abc;
+    color: #fff;
+}
+#login-btn.active, #login-btn:active, .open > .dropdown-toggle.#login-btn {
+    background-color: #31b0d5;
+    border-color: #269abc;
+    color: #fff;
+}
+

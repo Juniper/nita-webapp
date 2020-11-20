@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><project>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+  <actions/>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>file_name</name>
+          <description>File name</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>operation</name>
+          <description>Operation</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.FileParameterDefinition>
+          <name>app.zip</name>
+          <description>Zip file</description>
+        </hudson.model.FileParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>roles_list</name>
+          <description>Roles list</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>resources_list</name>
+          <description>Resources list</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/project</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+PATH=$PATH:/var/jenkins_scripts/
+export PATH
+
+echo operation=\"${operation}\"
+echo file_name=\"${file_name}\"
+
+result_file='/tmp/nita-webapp/validation_result.txt'
+
+print_error() { echo "$@" ; exit 1;}
+
+echo "Network Type Validator..."
+
+if [ "$operation" = "add" ]; then
+    echo "Network Type Addition..."
+    if [ "$file_name" != "--default--" ]; then
+        mv app.zip $file_name
+    	chmod 775 $file_name
+    else
+        print_error  "Invalid file name"
+    fi
+
+elif [ "$operation" = "delete" ]; then
+	echo "Network Type Deletion..."
+    if [ -f "$file_name" ] &amp;&amp; [ "$file_name" != "--default--" ]; then
+		rm -rf $file_name
+	else
+	    echo "Application does not exist"
+    fi
+fi
+      </command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

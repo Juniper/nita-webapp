@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+<head>
+{% load staticfiles %}
+{% load i18n %}
+<script src="{% static "global/js/campus_network_mgmt.js" %}"/>
+
+
+<script>
+jQuery(document).ready(function($) {
+setTimeout(
+		  function()
+		  {
+			  if ( campus_network_summary_table != null && typeof campus_network_summary_table != undefined ) {
+				  campus_network_summary_table.destroy();
+			  	}
+			 	 campus_network_summary_table = $('#Action').DataTable({
+				  "paging":   true,
+				  "ordering": false,
+				  "info":     false,
+				  "bFilter": false,
+				  "bInfo": false,
+				  "pageLength": 5,
+				  "bLengthChange": false,
+				  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+			  });
+		  }, 100);
+});
+</script>
+</head>
+<body>
+	<div>
+
+		<div class="col-md-12" style="padding-left:0px; padding-top:3px">
+		<div class="col-md-5" style="padding-left:0px">
+			{% load django_tables2 %}
+			{% if form  %}
+			<table>
+				<tr>
+					<td><label>Name : </label></td>
+					<td>{{ form.name }}</td>
+				</tr>
+				<tr>
+					<td><label>Description : </label></td>
+					<td>{{ form.description }}<td>
+				</tr>
+				<tr>
+					<td><label>Associated {% trans "network_type_heading" %} : </label></td>
+					<td>{{ form.ct_name }}<td>
+				</tr>
+				<tr>
+					<td><label>Status : </label></td>
+					<td>{{ form.status }}</td>
+				</tr>
+			</table>
+			{% endif %}
+			</div>
+			<div style="text-align: left; padding:10px 2px 23px 0;" class="col-md-3">
+				<button id="edit-network-btn" type="button" class="btn btn-default btn-sm" onclick="editCampusNetworkbyId({{ campus_network_id }})"> <span class="fa fa-pencil-square-o fa-custom"></span> Edit</button>
+				<button id="del_network-btn" type="button" class="btn btn-default btn-sm" onclick="deleteCampusNetwork()"><span class="fa fa-trash fa-custom"></span> Delete</button>
+	     	</div>
+		</div>
+		 <div class="col-md-12">
+			{% if action_list_table %}
+				<h3 style="padding-top:5px">Actions</h3>
+				<div id="action-list" style="padding-top:5px"> {% render_table  action_list_table %}</div>
+			{% endif %}
+		</div>
+	 </div>
+	        <form id="campus_network_form" action="/campusnetwork/add/" method="post" role="form">
+	        <div id="add-campus-network-modal" class="modal fade" role="dialog">
+	          	<div class="modal-dialog modal-md form-horizontal" >
+	                 <div class="modal-content">
+	                     <div class="modal-header">
+	                         <button type="button" class="close" data-dismiss="modal" >&times</button>
+	                         <h3 id="add_campus_network_header" class="modal-title">Add {% trans "network_heading" %}</h3>
+	                     </div>
+
+	                     <div id="campus_network_forms" class="modal-body">
+
+	                     </div>
+	                     <div class="modal-footer">
+	                     	<div class="row" style="padding-left:20px;padding-right:28px">
+								<div class="col-md-6 text-left">
+									<button type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
+								</div>
+								<div class="col-md-6 text-right">
+									<button type="submit" class="btn btn-success btn-sm">Save</button>
+								</div>
+							</div>
+	                     </div>
+	                 </div>
+	             </div>
+	         </div>
+         </form>
+         <form class="delete_campus_network_form">
+	        <div id="delete-campus-network-modal" class="modal fade" role="dialog">
+	          	<div class="modal-dialog modal-md form-horizontal" >
+	                 <div class="modal-content">
+	                     <div class="modal-header">
+	                         <button type="button" class="close" data-dismiss="modal" >&times</button>
+	                         <h3 class="modal-title">Delete {% trans "network_heading" %}</h3>
+	                     </div>
+
+	                     <div id="delete_campus_network_forms" class="modal-body">
+	               		     Are you sure to delete the selected {% trans "network_heading" %} ?
+	                     </div>
+	                     <div class="modal-footer">
+	                     	<div class="row" style="padding-left:20px;padding-right:28px">
+								<div class="col-md-6 text-left">
+									<button id="campus-network-delete-cancel" type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
+								</div>
+								<div class="col-md-6 text-right">
+									<button id="campus-network-delete" type="button" data-dismiss="modal" onclick="deleteCampusNetworksbyId({{ campus_network_id }})" class="btn btn-danger btn-sm">Delete</button>
+								</div>
+							</div>
+	                     </div>
+	                 </div>
+	             </div>
+	         </div>
+         </form>
+
+</body>
+</html>

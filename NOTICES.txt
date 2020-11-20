@@ -1,0 +1,145 @@
+NOTICES FOR THIRD-PARTY CODE/DEPENDENCIES
+
+Name: Python (Python Software Foundation).
+URL: https://www.python.org
+License: https://docs.python.org/3/license.html
+
+Name: PIP (Python Packaging Authority (PyPA)).
+URL: https://pip.pypa.io/en/stable/
+License: MIT License (MIT)
+
+Name: PyYAML (YAML parser and emitter for Python).
+URL: https://pypi.org/project/PyYAML/
+License: MIT License (MIT)
+
+Name: Jinja2 (A very fast and expressive template engine).
+URL: https://pypi.org/project/Jinja2/
+License: OSI Approved :: BSD License
+
+Name: mysqlclient (Python interface to MySQL)
+URL: https://pypi.org/project/mysqlclient/
+License: GNU General Public License (GPL) (GPL)
+
+Name: Django (A high-level Python Web framework that encourages rapid development and clean, pragmatic design.)
+URL: https://pypi.org/project/Django/
+License: BSD License (BSD-3-Clause)
+
+Name: djangorestframework (Web APIs for Django, made easy.)
+URL: https://pypi.org/project/djangorestframework/
+License: BSD License (BSD)
+
+Name: python-jenkins (Python bindings for the remote Jenkins API)
+URL: https://pypi.org/project/python-jenkins/
+License: BSD License (BSD)
+
+Name: django-tables2 (Table/data-grid framework for Django)
+URL: https://pypi.org/project/django-tables2/
+License: BSD License (Simplified BSD)
+
+Name: django-datatable-view (This package is used in conjunction with the jQuery plugin (http://http://datatables.net/), and supports state-saving detection with (http://datatables.net/plug-ins/api).
+URL: https://pypi.org/project/django-datatable-view/
+License: Apache Software License (Apache License (2.0))
+
+Name: docutils (Docutils -- Python Documentation Utilities)
+URL: https://pypi.org/project/docutils/
+License: BSD License, GNU General Public License (GPL), Python Software Foundation License, Public Domain (public domain, Python, 2-Clause BSD, GPL 3 (see COPYING.txt))
+
+Name: openpyxl (A Python library to read/write Excel 2010 xlsx/xlsm files)
+URL: https://pypi.org/project/openpyxl/
+License: MIT License (MIT)
+
+Name: django-formset-js (Extend Django formsets with JavaScript)
+URL: https://pypi.org/project/django-formset-js/
+License: BSD License (BSD)
+
+Name: jenkinsapi (A Python API for accessing resources on a Jenkins continuous-integration server.)
+URL: https://pypi.org/project/jenkinsapi/
+License: MIT License (MIT)
+
+Name: PyMySQL (Pure Python MySQL Driver)
+URL: https://pypi.org/project/PyMySQL/
+License: MIT License ("MIT")
+
+Name: xlrd (Library for developers to extract data from Microsoft Excel (tm) spreadsheet files)
+URL: https://pypi.org/project/xlrd/
+License: BSD License (BSD)
+
+Name: xlwt (Library to create spreadsheet files compatible with MS Excel 97/2000/XP/2003 XLS files, on any platform, with Python 2.6, 2.7, 3.3+)
+URL: https://pypi.org/project/xlwt/
+License: BSD License (BSD)
+
+Name: ddt (Data-Driven/Decorated Tests)
+URL: https://pypi.org/project/ddt/
+License: MIT License
+
+Name: configparser (Updated configparser from Python 3.8 for Python 2.6+.)
+URL: https://pypi.org/project/configparser/
+License: MIT License
+
+Name: certifi (Python package for providing Mozilla's CA Bundle.)
+URL: https://pypi.org/project/certifi/
+License: Mozilla Public License 2.0 (MPL 2.0) (MPL-2.0)
+
+Name: requests (Python HTTP for Humans.)
+URL: https://pypi.org/project/requests/
+License: Apache Software License (Apache 2.0)
+
+Name: jdcal (Julian dates from proleptic Gregorian and Julian calendars.)
+URL: https://pypi.org/project/jdcal/
+License: BSD License (BSD)
+
+Name: Python Docker Image (Python is an interpreted, interactive, object-oriented, open-source programming language.)
+URL: https://hub.docker.com/_/python
+License: https://github.com/docker-library/repo-info/blob/master/repos/python/local/slim-buster.md
+
+Name: MariaDB (MariaDB is a community-developed fork of MySQL intended to remain free under the GNU GPL.)
+URL: https://mariadb.com/
+License: https://mariadb.com/kb/en/licensing-faq/
+
+Name: MariaDB Docker Image (MariaDB is a community-developed fork of MySQL intended to remain free under the GNU GPL.)
+URL: https://hub.docker.com/_/mariadb
+License: https://github.com/docker-library/repo-info/blob/master/repos/mariadb/local/10.4.md
+
+Name: nginx
+URL: http://nginx.org/
+License: http://nginx.org/LICENSE
+
+Name: nginx Docker Image
+URL: https://hub.docker.com/_/nginx
+License: https://github.com/docker-library/repo-info/blob/master/repos/nginx/local/1.18.md
+
+Name: DataTables
+URL: http://www.datatables.net/
+License: MIT license - http://datatables.net/license
+
+Name: Font Awesome
+URL: http://fontawesome.io
+License: http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
+
+Name: Bootstrap
+URL: http://getbootstrap.com
+License: MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+
+Name: jQuery UI
+URL: http://jqueryui.com
+License: MIT license http://jquery.org/license
+
+Name: JqTree
+URL: http://mbraak.github.io/jqTree/
+License: Apache License, Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+
+Name: jQuery Validation Plugin
+URL: http://jqueryvalidation.org/
+License: MIT license
+
+Name: SlickGrid
+URL: http://github.com/mleibman/slickgrid
+License: MIT license
+
+Name: jquery-bootstrap-scrolling-tabs
+URL: https://github.com/mikejacobson/jquery-bootstrap-scrolling-tabs
+License: MIT License, http://www.opensource.org/licenses/MIT
+
+Name: jquery.timer.js
+URL: http://jchavannes.com/jquery-timer
+License: MIT License

@@ -1,0 +1,23 @@
+.navbar {
+    background: #205384;
+    border-color: #205384;
+}
+
+#main-navbar-heading {
+    color: #fff;
+}
+
+h3 {
+    color: #666;
+}
+
+
+/* logout */
+.navbar-inverse .navbar-nav > li > a {
+    color: #9d9d9d;
+}
+
+.navbar-inverse .navbar-nav > li > a:focus, .navbar-inverse .navbar-nav > li > a:hover {
+    background-color: transparent;
+    color: #fff;
+}

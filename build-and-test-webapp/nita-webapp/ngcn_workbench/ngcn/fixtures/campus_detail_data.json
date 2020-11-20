@@ -1,0 +1,3 @@
+[{"model": "ngcn.actioncategory", "pk": 1, "fields": {"category_name": "NOOB"}}
+, {"model": "ngcn.actioncategory", "pk": 2, "fields": {"category_name": "Build"}}
+, {"model": "ngcn.actioncategory", "pk": 3, "fields": {"category_name": "Test"}}] 

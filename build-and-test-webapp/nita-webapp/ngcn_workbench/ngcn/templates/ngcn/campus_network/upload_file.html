@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+<head>
+{% load staticfiles %}
+{% load i18n %}
+<script src="{% static "global/js/loadsheet.js" %}"></script>
+<script src="{% static "components/scrollable-header/js/scrolling-tabs.js" %}"></script>
+<script>
+jQuery(document).ready(function($) {
+	$.ajax({
+		beforeSend : function(xhr, settings) {
+			xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		},
+		type : "GET",
+		url : "/campus_network/{{ campus_network_id }}/upload_file/",
+		enctype: "multipart/form-data",
+	        	cache: false,
+          	contentType: false,
+	        processData: false,
+		data : $("#new_form").serialize(), // serializes the form's elements.
+		success : function(data) {
+			//createGrid(data);
+			if(data != null && data != undefined && data!='' && data["workbook"] != null && data["workbook"] != undefined && data["workbook"].length > 2)
+			{
+		        var workbook = JSON.parse(data["workbook"]);
+		        createGrid(workbook);
+		        $('#tabs-list').scrollingTabs();
+		        document.getElementById("loading_overlay").style.display = "none";
+			}
+			else if($('#configuration').data("reload"))
+			{
+				 console.log($('#configuration').data("reload"));
+			   // $('#fetch-config-modal').modal('show');
+			           	$('#configuration').data("reload",false);
+			   document.getElementById("loading_overlay").style.display = "none";
+			   console.log("Reload complete");
+	//		   $('#grid')[0].innerHTML="DATA NOT FOUND";
+			}
+			else {
+				$('#grid')[0].innerHTML='<h1><p align="center"> No configuration data found</p></h1>';
+				disableGridButtons();
+				 console.log("inside");
+				 console.log($('#configuration').data("reload"));
+				// $('#fetch-config-modal').modal('show');
+				 document.getElementById("loading_overlay").style.display = "none";
+			}
+            //document.getElementById("main_div").style.display = "block";
+		},
+		error : function() {
+			console.log('No data found');
+		    document.getElementById("loading_overlay").style.display = "none";
+		}
+	});
+
+$("#upload_file_form").submit(function(event) {
+
+	event.preventDefault();
+	var formData = new FormData($("#upload_file_form")[0]);
+  	console.log(formData);
+	var url = "/campus_network/{{ campus_network_id }}/upload_file/"; // the script where you handle the form input.
+   	$.ajax({
+           	beforeSend: function(xhr, settings) {
+           		xhr.setRequestHeader("X-CSRFToken", csrftoken);
+         	},
+           	type: "POST",
+           	url: url,
+			enctype: "multipart/form-data",
+ 	        cache: false,
+          	contentType: false,
+	        processData: false,
+          	data: formData, // serializes the form's elements.
+ 	        success: function(data)
+           	{
+ 	        	if (data['status']=="success"){
+ 	        	$('#grid')[0].innerHTML="";
+ 	        	enableGridButtons();
+	 	        var workbook = JSON.parse(data["workbook"]);
+				createGrid(workbook);
+				$('#tabs-list').scrollingTabs();
+				$('#upload-modal').modal('toggle');
+				$('#upload-status').hide();
+				message = "Configuration has been uploaded successfully"
+            	showNotification(1, message);
+ 	        	}
+ 	        	else {
+ 	            	showNotification(4, data['message']);
+ 	        	}
+           	},
+ 			error: function(){
+				$('#upload-status').text("Please Select a valid xlsx/xls file");
+				$('#upload-status').show();
+ 			}
+      });
+});
+
+
+$("#export-config-data").click(function(event) {
+	var url = "/campus_network/{{ campus_network_id }}/create_excel_data/"; // the script where you handle the form input.
+	event.preventDefault();
+	document.getElementById("loading_overlay").style.display = "unset";
+	$("#loading_overlay_backdrop").css("display","unset");
+   	$.ajax({
+           	beforeSend: function(xhr, settings) {
+           		xhr.setRequestHeader("X-CSRFToken", csrftoken);
+         	},
+           	type: "POST",
+           	url: url,
+ 	        success: function(data)
+           	{
+ 	        	if(data != null && typeof data != "undefined" && data != "Failure")
+ 	        	{
+	 	        	$('#download-file-modal').modal('show');
+	 	        	document.getElementById("loading_overlay").style.display = "none";
+	 	        	$("#loading_overlay_backdrop").css("display","none");
+ 	        	}
+ 	        	else
+ 	        	{
+ 	        		document.getElementById("loading_overlay").style.display = "none";
+	 	        	$("#loading_overlay_backdrop").css("display","none");
+ 	 				message = "Error while exporting the configuration data"
+	               	showNotification(4, message);
+					console.log("Error while downloading the file")
+ 	        	}
+           	},
+ 			error: function(){
+ 				message = "Error while exporting the configuration data"
+               	showNotification(4, message);
+				console.log("Error while downloading the file")
+ 			}
+      });
+});
+
+$("#save-config-data").click(function(event) {
+	grid_list = $('[class^="slickgrid_"]').get();
+	workbook = {}
+	sheet_list = []
+	sheet = {}
+	grid_list.forEach(function(grid){
+	sheet = {}
+	sheet["name"] = $(grid).data("name");
+	gridInstance = $(grid).data("gridInstance");
+	sheet[sheet["name"]] = gridInstance.getData();
+	sheet_list.push(sheet);
+	});
+	workbook["data"] = sheet_list;
+	$.ajax({
+		beforeSend: function(xhr, settings) {
+        	xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		},
+		data:JSON.stringify(workbook),
+		type: "POST",
+		contentType: 'application/json',
+        	url: "/campus_network/{{ campus_network_id }}/save_data/",
+           	success: function(data)
+            {
+           		removeCssStyles();
+            	console.log("Configuration saved Successfully");
+            	message = "Configuration has been saved successfully"
+            	showNotification(1, message);
+            },
+            error: function(){
+            	message = "Error while saving the configuration"
+               	showNotification(1, message);
+            	console.log("Configuration cleared Successfully");
+            }
+	});
+});
+
+function removeCssStyles() {
+	grid_list = $('[class^="slickgrid_"]').get();
+	grid_list.forEach(function(grid){
+		gridInstance = $(grid).data("gridInstance");
+		for (var key in gridInstance.initialValues){
+			gridInstance.removeCellCssStyles('highlighted.'+key);
+		}
+		gridInstance.initialValues = {};
+	});
+}
+
+});
+
+ function enableGridButtons() {
+		$('#save-config-data').prop('disabled', false)
+		$('#delete-config-data').prop('disabled',false)
+		$('#export-config-data').prop('disabled', false)
+	}
+ function disableGridButtons()
+	{
+		$('#save-config-data').prop('disabled', true)
+		$('#delete-config-data').prop('disabled', true)
+		$('#export-config-data').prop('disabled', true)
+	}
+
+function clearGridData(){
+	$('#configuration').data("reload",true);
+	$.ajax({
+		beforeSend: function(xhr, settings) {
+        	xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		},
+		type: "GET",
+       	url: "/campus_network/{{ campus_network_id }}/clear_data/",
+       	success: function(data){
+        	$('#configuration').load($('li.active a[data-toggle="tab"]').attr('href'));
+      		$('div').removeClass('modal-backdrop');
+
+        	$('#configuration').data("reload",false);
+        	message = "Configuration has been deleted successfully"
+           	showNotification(1, message);
+        },
+        error: function(){
+        	$('#delete-config-text').text("Configuration  not cleared successfully");
+       		//$('#delete-config-modal').modal('show');
+       		message = "Error while deleting the configuration"
+          	showNotification(4, message);
+        	console.log("Configuration not cleared Successfully");
+       }
+	});
+}
+function getCookie(name) {
+	var cookieValue = null;
+	if (document.cookie && document.cookie != '') {
+		var cookies = document.cookie.split(';');
+		for (var i = 0; i < cookies.length; i++) {
+			var cookie = jQuery.trim(cookies[i]);
+			// Does this cookie string begin with the name we want?
+			if (cookie.substring(0, name.length + 1) == (name + '=')) {
+				cookieValue = decodeURIComponent(cookie
+						.substring(name.length + 1));
+				break;
+			}
+		}
+	}
+	return cookieValue;
+}
+var csrftoken = getCookie('csrftoken');
+var temp = true;
+$('#main-tabs-list').on('show.bs.tab', 'a[data-toggle="tab"]', function (e) {
+	if(e.relatedTarget.id == "configuration_header" && temp) {
+		if(isUnsavedData()) {
+				e.preventDefault();
+	 			$('#save-warning-modal').modal('show');
+	 			$('#save-warning-confirm').click(function(event){
+	 				if (this.id == 'save-warning-confirm') {
+	 					temp = false;
+	 				  $('.nav-tabs a#'+e.target.id).tab('show');
+	 				 loadTable();
+	 			    }
+	 			});
+			}
+		}
+});
+
+$('#file_upload').change(function(){
+var ext = $('#file_upload').val().split('.').pop();
+if($.inArray(ext,['xls','xlsx']) == -1){
+	$('#upload-status').show();
+}
+else{
+	$('#upload-status').hide();
+}
+});
+</script>
+</head>
+<body onload="displayInfo()">
+    <div id="loading_overlay" class="loader-over-lay col-md-12"/>
+    <div id="loading_overlay_backdrop" class="modal-backdrop fade in col-md-12" style="display:none;"></div>
+        <div style="text-align: right;padding: 3px 19px 3px 0;" class="col-md-12">
+        	<button id="save-config-data" type="submit"  class="btn btn-info btn-sm " >Save</button>
+        	<button id="delete-config-data" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#delete-config-modal">Delete</button>
+            <button id="import-config-data" type="button" class="btn btn-info btn-sm " data-toggle="modal" data-target="#upload-modal">Import</button>
+            <button id="export-config-data" type="button" class="btn btn-info btn-sm " >Export</button>
+        </div>
+		<form id="export" method="get" action="/campus_network/{{ campus_network_id }}/download_config_data/">
+		</form>
+        <div id="upload-modal" class="modal fade" role="dialog">
+            <div class="modal-dialog modal-md" >
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" >&times</button>
+                        <h3 class="modal-title">Upload Excel File</h3>
+                    </div>
+                    <div class="modal-body">
+                        <form id="upload_file_form" method="post" action="javascript:;"  enctype="multipart/form-data">
+	                        {% csrf_token %}
+	                        <input id="file_upload" class="file_upload_class" type="file" accept=".xls, .xlsx" name="up_file">
+                        </form>
+                        <div id="upload-status" class="alert alert-danger" style="display: none;" >
+  								Please Select a valid xlsx/xls file
+						</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id = "import" type="submit" form="upload_file_form" class="btn btn-info btn-sm" >Import</button>
+                        <button type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="upload-status-modal" class="modal fade" role="dialog">
+         	<div class="modal-dialog modal-sm" >
+                <div class="modal-content">
+	                <div class="modal-header">
+		                <button type="button" class="close" data-dismiss="modal" >&times</button>
+		                <h3 class="modal-title">Import Configuration</h3>
+	                </div>
+	                <div id="importConfigText" class="modal-body">
+		                <p> Configuration imported successfully</p>
+	                </div>
+	                <div  class="modal-footer">
+		                <button type="button" class="btn btn-info btn-sm" data-dismiss="modal">OK</button>
+	                </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="delete-config-modal" class="modal fade" role="dialog">
+         	<div class="modal-dialog modal-md" >
+                <div class="modal-content">
+	                <div class="modal-header">
+		                <button type="button" class="close" data-dismiss="modal" >&times</button>
+		                <h3 class="modal-title">Clear Configuration</h3>
+	                </div>
+	                <div id="delete-config-modal-body" class="modal-body">
+		                <p id="delete-config-text">Are you sure to delete the configuration data ?</p>
+	                </div>
+	                <div class="modal-footer">
+	                	<div style="padding-left:20px;padding-right:28px" class="row">
+	                	<div class="col-md-6 text-left">
+		                	<button type="button" class="btn btn-info btn-sm"  data-dismiss="modal">Cancel</button>
+		                </div>
+	                	<div class="col-md-6 text-right">
+		                	<button id="delete-config-data-confirm" type="button" class="btn btn-danger btn-sm"  onclick="clearGridData()" data-dismiss="modal">Delete</button>
+		                </div>
+
+		                </div>
+	                </div>
+                </div>
+            </div>
+        </div>
+        <!--
+        <div id="fetch-config-modal" class="modal fade" role="dialog">
+         	<div class="modal-dialog modal-md" >
+                <div class="modal-content">
+	                <div class="modal-header">
+		                <button type="button" class="close" data-dismiss="modal" >&times</button>
+		                <h3 class="modal-title">No Data Available</h3>
+	                </div>
+	                <div class="modal-body">
+		                <p id="fetch-config-text"> No configuration found for this Campus Network. Please import Configuration.</p>
+	                </div>
+	                <div class="modal-footer">
+		                <button type="button" class="btn btn-info btn-sm" data-dismiss="modal">OK</button>
+	                </div>
+                </div>
+            </div>
+        </div>
+        -->
+        <div id="save-warning-modal" class="modal fade" role="dialog">
+			<div class="modal-dialog modal-md" >
+                <div class="modal-content">
+		        	<div class="modal-header">
+				          <button type="button" class="close" data-dismiss="modal" >&times</button>
+				          <h3 class="modal-title">Warning</h3>
+	                </div>
+	                <div class="modal-body">
+		                <p id="save-warning-text">All the unsaved changes will be lost. Do you wish to continue ?</p>
+                	</div>
+	                <div class="modal-footer">
+	                	<div style="padding-left:20px;padding-right:28px" class="row">
+	        	        	<div class="col-md-6 text-left">
+			                	<button 'id=save-warning-cancel' type="button" class="btn btn-info btn-sm"  data-dismiss="modal">Cancel</button>
+			                </div>
+	        	        	<div class="col-md-6 text-right">
+			                	<button id="save-warning-confirm" type="button" class="btn btn-danger btn-sm"  data-dismiss="modal">Yes</button>
+			                </div>
+
+		                </div>
+                	</div>
+            	</div>
+	        </div>
+		</div>
+
+		<div id="download-file-modal" class="modal fade" role="dialog">
+			<div class="modal-dialog modal-md" style="width:420px">
+                <div class="modal-content">
+		        	<div class="modal-header">
+				          <button type="button" class="close" data-dismiss="modal" >&times</button>
+				          <h3 class="modal-title">Download Excel File</h3>
+	                </div>
+	                <div class="modal-body">
+	                	<div>
+		                	<a href="/campus_network/{{ campus_network_id }}/download_config_data/">Click here</a> to download the excel file
+		                </div>
+                	</div>
+	                <div class="modal-footer">
+	                	<div style="padding-left:20px;padding-right:28px" class="row">
+	        	        	<div class="col-md-12 text-right">
+			                	<button 'id=save-warning-cancel' type="button" class="btn btn-info btn-sm"  data-dismiss="modal">Cancel</button>
+			                </div>
+		                </div>
+                	</div>
+            	</div>
+	        </div>
+		</div>
+        <div id="grid" class="col-md-12"  >
+
+        </div>
+        <!--  <div id="no-data">
+        <h1><p align="center"> No configuration data found</p></h1>
+        </div>-->
+</body>
+</html>

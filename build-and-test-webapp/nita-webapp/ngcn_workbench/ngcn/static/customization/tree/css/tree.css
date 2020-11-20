@@ -1,0 +1,17 @@
+.sidenav {
+    background-color: #f1f1f1;
+}
+
+ ul.jqtree-tree li.jqtree-selected > .jqtree-element,
+  ul.jqtree-tree li.jqtree-selected > .jqtree-element:hover{
+    background: rgba(0, 0, 0, 0) -moz-linear-gradient(center top , #bee0f5, #89afca);
+    border-radius:3px;
+    opacity:0.8;
+    text-shadow:none
+ }
+ul.jqtree-tree li.jqtree-selected > .jqtree-element> .jqtree-title {
+    color: #000;
+}
+ul.jqtree-tree .jqtree-title{
+    color: #1c4257;
+}

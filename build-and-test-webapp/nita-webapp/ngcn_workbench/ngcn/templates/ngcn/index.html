@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html lang="en">
+    <head>
+    {% load i18n %}
+    <title>NITA</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {% load staticfiles %}
+    {% load json_filters %}
+    <link rel="stylesheet" type="text/css" href="{% static "global/css/bootstrap.css" %}">
+    <link rel="stylesheet" type="text/css" href="{% static "global/css/index_page.css" %}">
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/base.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "global/css/admin_base.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/data-table/css/dataTables.bootstrap.min.override.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/tree/css/jqtree.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "components/scrollable-header/css/scrolling-tabs.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/loader/css/loader.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/slick-grid/css/smoothness_jquery-ui.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/slick-grid/css/jquery-ui.theme.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/slick-grid/css/slick-default-theme.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/slick-grid/css/slick.grid.css" %}" />
+	<link rel="stylesheet" type="text/css" href="{% static "components/font-awesome-4.6.3/css/font-awesome.min.css" %}" />
+
+	<link rel="stylesheet" type="text/css" href="{% static "customization/buttons/css/buttons.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/forms/css/forms.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/grid/css/grid.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/header/css/header.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/loader/css/loader.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/table/css/table.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/tabs/css/tabs.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/tree/css/tree.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/widgets/css/widgets.css" %}">
+	<link rel="stylesheet" type="text/css" href="{% static "customization/general/css/general.css" %}">
+   <!-- <link rel="stylesheet" type="text/css" href="{% static "css/customized.css" %}">-->
+
+
+    <script src="{% static "global/js/jquery-2.0.3.min.js" %}"></script>
+    <script src="{% static "global/js/bootstrap.min.js" %}"></script>
+    <script src="{% static "global/js/index_page.js" %}"></script>
+    <script src="{% static "global/js/notifier.js" %}"></script>
+
+    <script>
+    campus_type_i18n='{% trans "network_type_heading" %}';
+    campus_network_i18n='{% trans "network_heading" %}';
+    </script>
+    </head>
+    <body>
+
+        <nav class="navbar navbar-inverse">
+        <div class="container-fluid" style="padding-left:0px">
+            <div id="header-pane" class="collapse navbar-collapse">
+	            <ul class="nav navbar-nav navbar-left">
+                    <li>
+                    	<img style="padding-top:4px" src="/static/customization/header/images/header_icon.png">
+                    </li>
+					<li>
+                    	<a id="main-navbar-heading" style="padding-top: 0px; padding-left: 5px;" class="navbar-heading">{% trans "title" %}</a>
+                    </li>
+                </ul>
+                </ul>
+                <ul id="notifier" class="notifier nav navbar-nav alert alert-success fade">
+                  <li class="text-center list-font" style="font-size: 14px !important;">
+			          <button type="button" class="close" onclick="fadeOutNotifier()">&nbsp;×</button>
+			           <font id="notifier-text"></font>
+		          </li>
+	            </ul>
+                <ul class="nav navbar-nav navbar-right" id="logout">
+                    <li><a href="/logout/"><span class="fa fa-sign-out fa-lg"></span> Logout</a></li>
+                </ul>
+            </div>
+        </div>
+        </nav>
+
+        <div class="container-fluid">
+            <div id="pane_container" class="row content">
+                <div id="left_tree_pane" class="col-md-2 text-left sidenav" style="overflow-y:auto">
+                </div>
+                <div id="main_pane" class="col-md-10 text-left mainpane" style="overflow-y:auto">
+                    <h4>{% trans "network_type_heading" %}s</h4>
+                </div>
+            </div>
+        </div>
+		<div id="loading_overlay_backdrop" class="modal-backdrop fade in" style="display:none; z-index:1050;overflow-y:auto">
+        	<h3 style="position:absolute;top:21%;color:white" class="loader-message">Please wait...</h3>
+        </div>
+        <div id="loading_overlay" style="display:none;">
+	    	<div id="loading_overlay_inner" class="loader-over-lay" style="border-color:white #d3d3d3 #d3d3d3; position:absolute; top:25%;"/>
+       	</div>
+    </body>
+</html>

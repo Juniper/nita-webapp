@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?><project>
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+  <actions/>
+  <description>Manages the Network templates associated to each Networks via Jenkins</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+	      <hudson.model.TextParameterDefinition>
+          <name>operation</name>
+          <description>One of these: create, update or delete a Campus network</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>src</name>
+          <description>Network type source files</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>network_name</name>
+          <description>Network name</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.TextParameterDefinition>
+	      <hudson.model.TextParameterDefinition>
+          <name>hosts</name>
+          <description>Ansible inventory (hosts file)</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.TextParameterDefinition>
+ 	      <hudson.model.TextParameterDefinition>
+          <name>network_desc</name>
+          <description>Network description</description>
+          <defaultValue>--default--</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/project</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+PATH=$PATH:/var/jenkins_scripts/
+export PATH
+
+echo operation=\&quot;${operation}\&quot; &quot;${src}&quot; &quot;${network_name}&quot; &quot;${hosts}&quot; &quot;${network_desc}&quot;
+echo src=\&quot;${src}\&quot;
+echo network_name=\&quot;${network_name}\&quot;
+echo hosts=\&quot;${hosts}\&quot;
+echo network_desc=\&quot;${network_desc}\&quot;
+
+print_error() { echo &quot;$@&quot; ; exit 1; }
+
+source_folder=${src%.*}
+dest_folder=${source_folder}-${network_name}
+project_yaml=&quot;${dest_folder}/project.yaml&quot;
+DEFAULT=&quot;--default--&quot;
+
+if [ &quot;${operation}&quot; = &quot;create&quot; ]; then
+    if [ -f &quot;${src}&quot; -a &quot;${src}&quot; != &quot;${DEFAULT}&quot; -a &quot;${network_name}&quot; != &quot;${DEFAULT}&quot; -a &quot;${project_yaml}&quot; != &quot;${DEFAULT}&quot; ]; then
+        echo &quot;extracting to $dest_folder...&quot;
+        ext_folder=&quot;${dest_folder%/*}&quot;
+        echo &quot;unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder; rm $dest_folder/host_vars/* $dest_folder/group_vars/*;&quot;
+        unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder; rm $dest_folder/host_vars/* $dest_folder/group_vars/*;
+        if [ -d $dest_folder/hosts ]; then rm $dest_folder/hosts; fi
+        echo &quot;creating hosts file...&quot;
+        echo &quot;${hosts}&quot; &gt; $dest_folder/hosts;
+        chmod 775 $dest_folder/hosts;
+        #echo &quot;overwriting project.yaml file...&quot;
+        #echo &quot;${project_yaml}&quot; &gt; $dest_folder/project.yaml;
+        echo &quot;adapting project.yaml file...&quot;
+        echo &quot;python3 /var/jenkins_scripts/adapt_project_yaml.py -n $network_name -d \&quot;$network_name created using the NITA webapp\&quot; -f $project_yaml&quot;
+        python3 -c &apos;
+import yaml
+import argparse
+
+parser = argparse.ArgumentParser(description=&quot;Process Project YAML file&quot;)
+parser.add_argument(&quot;-n&quot;, nargs=1, help=&quot;Network name&quot;)
+parser.add_argument(&quot;-d&quot;, nargs=1, help=&quot;Network description&quot;)
+parser.add_argument(&quot;-f&quot;, nargs=1, help=&quot;Network project YAML file path&quot;)
+
+args = parser.parse_args()
+
+# e.g project_yaml =&gt; /project/build-and-test-vdc-001
+network_name = args.n[0]
+network_desc = args.d[0]
+project_yaml = args.f[0]
+
+project_yaml_dst = project_yaml + &quot;.ext&quot;
+project_dict = {}
+
+# Create dictionary based on template project.yaml
+with open(project_yaml, &quot;r&quot;) as template:
+    try:
+        input = yaml.load(template)
+        project_dict = input.copy()
+
+        project_dict[&quot;name&quot;] = network_name
+        project_dict[&quot;description&quot;] = network_desc
+        jobs_list = project_dict[&quot;action&quot;]
+
+        action_suffix= &quot;(&quot; + network_name + &quot;)&quot;
+
+        for job in jobs_list:
+
+            job[&quot;name&quot;] = job[&quot;name&quot;] + action_suffix
+            job[&quot;jenkins_url&quot;] = job[&quot;jenkins_url&quot;] + &quot;-&quot; + network_name
+
+    except Exception as e:
+        print(&quot;Exception while processing Network project YAML...&quot;)
+        print(str(e))
+
+# Dump updated dictionary overwriting project.yaml
+with open(project_yaml, &quot;w&quot;) as new:
+    try:
+        yaml.dump(project_dict, new, default_flow_style=False)
+
+    except Exception as e:
+        print(&quot;Exception while processing Network project YAML...&quot;)
+        print(str(e))
+&apos; -n $network_name -d &quot;$network_name created using the NITA webapp&quot; -f $project_yaml
+
+        chmod 775 $project_yaml;
+        cd $dest_folder
+        echo &quot;installing jenkins jobs...&quot;
+        python3 -c &apos;
+import os
+import jinja2
+import yaml
+import tempfile
+import traceback
+from jinja2 import Template
+
+TEMPLATES_PATH = &quot;/usr/local/share/jenkins_templates&quot;
+ANSIBLE_JOBS_CONFIG = &quot;&quot;&quot;
+&lt;project&gt;
+  &lt;actions/&gt;
+  &lt;description&gt;{{ category }} environment creation automated with Ansible via Jenkins&lt;/description&gt;
+  &lt;displayName&gt;{{ name }}&lt;/displayName&gt;
+  &lt;keepDependencies&gt;false&lt;/keepDependencies&gt;
+  &lt;properties&gt;
+    &lt;hudson.model.ParametersDefinitionProperty&gt;
+      &lt;parameterDefinitions&gt;
+        &lt;hudson.model.StringParameterDefinition&gt;
+          &lt;name&gt;build_dir&lt;/name&gt;
+          &lt;description/&gt;
+          &lt;defaultValue&gt;None&lt;/defaultValue&gt;
+        &lt;/hudson.model.StringParameterDefinition&gt;
+        &lt;hudson.model.FileParameterDefinition&gt;
+          &lt;name&gt;data.json&lt;/name&gt;
+          &lt;description/&gt;
+        &lt;/hudson.model.FileParameterDefinition&gt;
+      &lt;/parameterDefinitions&gt;
+    &lt;/hudson.model.ParametersDefinitionProperty&gt;
+    &lt;org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty plugin=&quot;authorize-project@1.2.2&quot;&gt;
+      &lt;strategy class=&quot;org.jenkinsci.plugins.authorizeproject.strategy.SpecificUsersAuthorizationStrategy&quot;&gt;
+        &lt;userid&gt;NITA_USER&lt;/userid&gt;
+        &lt;noNeedReauthentication&gt;false&lt;/noNeedReauthentication&gt;
+      &lt;/strategy&gt;
+    &lt;/org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty&gt;
+  &lt;/properties&gt;
+  &lt;scm class=&quot;hudson.scm.NullSCM&quot;/&gt;
+  &lt;canRoam&gt;true&lt;/canRoam&gt;
+  &lt;disabled&gt;false&lt;/disabled&gt;
+  &lt;blockBuildWhenDownstreamBuilding&gt;false&lt;/blockBuildWhenDownstreamBuilding&gt;
+  &lt;blockBuildWhenUpstreamBuilding&gt;false&lt;/blockBuildWhenUpstreamBuilding&gt;
+  &lt;triggers/&gt;
+  &lt;concurrentBuild&gt;false&lt;/concurrentBuild&gt;
+  &lt;customWorkspace&gt;{{ configuration.custom_workspace }}&lt;/customWorkspace&gt;
+  &lt;builders&gt;
+    &lt;hudson.tasks.Shell&gt;
+      &lt;command&gt;{{ configuration.shell_command }}&lt;/command&gt;
+    &lt;/hudson.tasks.Shell&gt;
+  &lt;/builders&gt;
+  &lt;publishers/&gt;
+  &lt;buildWrappers&gt;
+    &lt;hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin=&quot;ansicolor@0.4.3&quot;&gt;
+      &lt;colorMapName&gt;gnome-terminal&lt;/colorMapName&gt;
+    &lt;/hudson.plugins.ansicolor.AnsiColorBuildWrapper&gt;
+  &lt;/buildWrappers&gt;
+&lt;/project&gt;
+&quot;&quot;&quot;
+TEST_JOBS_CONFIG = &quot;&quot;&quot;
+&lt;project&gt;
+  &lt;actions/&gt;
+  &lt;description&gt;&lt;/description&gt;
+  &lt;displayName&gt;{{ name }}&lt;/displayName&gt;
+  &lt;keepDependencies&gt;false&lt;/keepDependencies&gt;
+  &lt;properties&gt;
+    &lt;hudson.model.ParametersDefinitionProperty&gt;
+      &lt;parameterDefinitions&gt;
+        &lt;hudson.model.StringParameterDefinition&gt;
+          &lt;name&gt;build_dir&lt;/name&gt;
+          &lt;description/&gt;
+          &lt;defaultValue&gt;None&lt;/defaultValue&gt;
+        &lt;/hudson.model.StringParameterDefinition&gt;
+        &lt;hudson.model.FileParameterDefinition&gt;
+          &lt;name&gt;data.json&lt;/name&gt;
+          &lt;description/&gt;
+        &lt;/hudson.model.FileParameterDefinition&gt;
+      &lt;/parameterDefinitions&gt;
+    &lt;/hudson.model.ParametersDefinitionProperty&gt;
+    &lt;org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty plugin=&quot;authorize-project@1.2.2&quot;&gt;
+      &lt;strategy class=&quot;org.jenkinsci.plugins.authorizeproject.strategy.SpecificUsersAuthorizationStrategy&quot;&gt;
+        &lt;userid&gt;NITA_USER&lt;/userid&gt;
+        &lt;noNeedReauthentication&gt;false&lt;/noNeedReauthentication&gt;
+      &lt;/strategy&gt;
+    &lt;/org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty&gt;
+  &lt;/properties&gt;
+  &lt;scm class=&quot;hudson.scm.NullSCM&quot;/&gt;
+  &lt;canRoam&gt;true&lt;/canRoam&gt;
+  &lt;disabled&gt;false&lt;/disabled&gt;
+  &lt;blockBuildWhenDownstreamBuilding&gt;false&lt;/blockBuildWhenDownstreamBuilding&gt;
+  &lt;blockBuildWhenUpstreamBuilding&gt;false&lt;/blockBuildWhenUpstreamBuilding&gt;
+{% if cron_schedule != &quot;&quot; %}
+  &lt;triggers&gt;
+    &lt;hudson.triggers.TimerTrigger&gt;
+      &lt;spec&gt;{{ configuration.cron_schedule }}&lt;/spec&gt;
+    &lt;/hudson.triggers.TimerTrigger&gt;
+  &lt;/triggers&gt;
+{% else %}
+  &lt;triggers/&gt;
+{% endif %}
+  &lt;concurrentBuild&gt;false&lt;/concurrentBuild&gt;
+  &lt;customWorkspace&gt;{{ configuration.custom_workspace }}&lt;/customWorkspace&gt;
+  &lt;builders&gt;
+    &lt;hudson.tasks.Shell&gt;
+      &lt;command&gt;{{ configuration.shell_command }}&lt;/command&gt;
+    &lt;/hudson.tasks.Shell&gt;
+  &lt;/builders&gt;
+  &lt;publishers&gt;
+    &lt;hudson.plugins.robot.RobotPublisher plugin=&quot;robot@1.6.4&quot;&gt;
+      &lt;outputPath&gt;{{ configuration.output_path }}&lt;/outputPath&gt;
+      &lt;reportFileName&gt;*report.html&lt;/reportFileName&gt;
+      &lt;logFileName&gt;*log.html&lt;/logFileName&gt;
+      &lt;outputFileName&gt;*output.xml&lt;/outputFileName&gt;
+      &lt;disableArchiveOutput&gt;false&lt;/disableArchiveOutput&gt;
+      &lt;passThreshold&gt;0.0&lt;/passThreshold&gt;
+      &lt;unstableThreshold&gt;0.0&lt;/unstableThreshold&gt;
+      &lt;otherFiles&gt;
+        &lt;string&gt;&lt;/string&gt;
+      &lt;/otherFiles&gt;
+      &lt;enableCache&gt;true&lt;/enableCache&gt;
+      &lt;onlyCritical&gt;true&lt;/onlyCritical&gt;
+    &lt;/hudson.plugins.robot.RobotPublisher&gt;
+  &lt;/publishers&gt;
+  &lt;buildWrappers&gt;
+    &lt;hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin=&quot;ansicolor@0.4.3&quot;&gt;
+      &lt;colorMapName&gt;gnome-terminal&lt;/colorMapName&gt;
+    &lt;/hudson.plugins.ansicolor.AnsiColorBuildWrapper&gt;
+  &lt;/buildWrappers&gt;
+&lt;/project&gt;
+&quot;&quot;&quot;
+TEST_CATEGORY = &quot;TEST&quot;
+CURRENT_DIR = os.getcwd()
+JENKINS_SERVER_IP=&quot;jenkins&quot;
+JENKINS_SERVER_USER=os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
+JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
+
+with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
+    try:
+        input = yaml.load(stream)
+        ansible_jobs_template = Template(ANSIBLE_JOBS_CONFIG)
+        test_jobs_template = Template(TEST_JOBS_CONFIG)
+        for action_item in input[&quot;action&quot;]:
+            print (&quot;action_item&quot;, action_item)
+            if &quot;custom_workspace&quot; in action_item[&quot;configuration&quot;].keys() and action_item[&quot;configuration&quot;][&quot;custom_workspace&quot;]:
+                action_item[&quot;configuration&quot;][&quot;custom_workspace&quot;] = CURRENT_DIR + &quot;/&quot; + action_item[&quot;configuration&quot;][&quot;custom_workspace&quot;]
+            else:
+                action_item[&quot;configuration&quot;][&quot;custom_workspace&quot;] = CURRENT_DIR
+            template = ansible_jobs_template
+
+            if action_item[&quot;category&quot;].upper() == TEST_CATEGORY:
+                action_item[&quot;configuration&quot;][&quot;output_path&quot;] = CURRENT_DIR + &quot;/&quot; + str(action_item[&quot;configuration&quot;][&quot;output_path&quot;])
+                template = test_jobs_template
+
+            output = template.render(action_item)
+            #print &quot;output&quot;, output
+            out_file = tempfile.NamedTemporaryFile(delete=False)
+            out_file.write(output.encode())
+            out_file.close()
+            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
+            print(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
+            os.unlink(out_file.name)
+    except Exception as e:
+        print(&quot;Exception while installing the Jenkins Jobs...&quot;)
+        print(e)
+        print(traceback.print_exc())
+        print(traceback.format_exc())
+&apos;
+    else
+        print_error &quot;Source Template Directory: ${src} does not exists or (network_name or project.yaml content recevied is null)&quot;
+    fi
+fi
+
+if [ &quot;${operation}&quot; = &quot;update&quot; ]; then
+    if [ &quot;${hosts}&quot; != &quot;${DEFAULT}&quot; -a -d &quot;$dest_folder&quot; ]; then
+        echo &quot;updating hosts file...&quot;
+        echo &quot;${hosts}&quot; &gt; $dest_folder/hosts;
+    else
+        print_error &quot;Update hosts: Campus Network Directory: $dest_folder does not exists&quot;
+    fi
+fi
+
+if [ &quot;${operation}&quot; = &quot;delete&quot; ]; then
+    if [ &quot;${src}&quot; != &quot;${DEFAULT}&quot; -a &quot;${network_name}&quot; != &quot;${DEFAULT}&quot; -a -d &quot;$dest_folder&quot; ]; then
+        cd $dest_folder
+        echo &quot;uninstalling jenkins jobs...&quot;
+        python3 -c &apos;
+import os
+import yaml
+
+JENKINS_SERVER_IP=&quot;jenkins&quot;
+JENKINS_SERVER_USER=os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
+JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
+
+with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
+    try:
+        input = yaml.load(stream)
+
+        for action_item in input[&quot;action&quot;]:
+            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 delete-job &quot; + action_item[&quot;jenkins_url&quot;])
+    except:
+        print (&quot;Exception while uninstalling the Jenkins Jobs...&quot;)
+&apos;
+        cd ..
+        echo &quot;removing $dest_folder...&quot;
+        rm -rf $dest_folder;
+    else
+        print_error &quot;Delete Campus Network dir: Campus Network Directory: $dest_folder does not exists&quot;
+    fi
+fi
+      </command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

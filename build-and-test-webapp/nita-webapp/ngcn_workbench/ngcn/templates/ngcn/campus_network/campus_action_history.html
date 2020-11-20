@@ -1,0 +1,64 @@
+<!-- ********************************************************
+
+Project: nita-webapp
+Version: 20.10
+
+Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+
+Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+
+SPDX-License-Identifier: Apache-2.0
+
+Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+
+******************************************************** -->
+<html>
+	<head>
+
+		<script>
+		    jQuery(document).ready(function($) {
+		        //$("#action-history-table").css("width", "70%");
+		        $(".select-row").css("cursor","pointer");
+
+		        $("#action-history-table tr").click(function(){
+		            $(this).addClass('selected').siblings().removeClass('selected');
+		        });
+
+			    $(".select-row").click(function(){
+			    	$('#history_id').attr("value", $(this).attr("data-id"));
+				    loadConsoleLog();
+			    });
+			    setTimeout(
+		      		  function()
+		      		  {
+		      			if ( network_action_history_table != null && typeof network_action_history_table != undefined ) {
+		      				network_action_history_table.destroy();
+		  			  	}
+		      			  network_action_history_table = $('#action-history-table').DataTable({
+		      				  "paging":   true,
+		      				  "ordering": false,
+		      				  "info":     false,
+		      				  "bFilter": false,
+		      				  "bInfo": false,
+		      				  "pageLength": 5,
+		    				  "bLengthChange": false,
+		    				  "fnDrawCallback": function (oSettings) {
+		    					  setTimeout(
+	    							  function(){
+	    								  network_action_history_table.$('tr:first').click();
+	    								  }, 100)
+		    					  }
+
+		      			  });
+		      		  }, 100);
+
+		    });
+		</script>
+	</head>
+<body>
+	{% load django_tables2 %}
+	{% if table  %}
+	    {% render_table table %}
+	{% endif %}
+</body>
+</html>

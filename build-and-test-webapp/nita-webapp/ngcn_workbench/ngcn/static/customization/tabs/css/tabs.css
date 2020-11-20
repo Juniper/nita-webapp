@@ -1,0 +1,22 @@
+.nav-tabs > li > a {
+    color: #447e9b;
+}
+
+.nav-tabs > li > a:hover {
+    border-color: #eee #eee #ddd;
+}
+
+.nav > li > a:focus, .nav > li > a:hover {
+    background-color: #eee;
+    text-decoration: none;
+}
+
+.scrtabs-tab-scroll-arrow:hover {
+    background-color: #eeeeee;
+}
+
+.nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
+    background-color: #fff;
+    border-color: #ddd #ddd transparent;
+    color: #555;
+}
