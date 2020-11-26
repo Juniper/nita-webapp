@@ -56,6 +56,14 @@ SCRIPTSDIR=${PACKAGE}-${VERSION}/usr/local/bin
 mkdir -p ${SCRIPTSDIR}
 install -m 755 ../cli_scripts/* ${SCRIPTSDIR}
 
+# install nita-cmd
+mkdir -p ${PACKAGE}-${VERSION}/etc/bash_completion.d
+(
+   cd ../nita-cmd
+   BASH_COMPLETION=../packaging/${PACKAGE}-${VERSION}/etc/bash_completion.d \
+       INSTALLDIR=../packaging/${SCRIPTSDIR} ../nita-cmd/install.sh
+)
+
 # pull all the required containers
 IMAGEDIR=${PACKAGE}-${VERSION}/usr/share/${PACKAGE}/images
 mkdir -p ${IMAGEDIR}
@@ -71,5 +79,6 @@ docker save nginx:1.17.9 | gzip > ${IMAGEDIR}/nginx.tar.gz
     ./build_container.sh
 )
 docker save juniper/nita-webapp:${VERSION} | gzip > ${IMAGEDIR}/nita-webapp.tar.gz
+
 
 dpkg-deb --build ${PACKAGE}-${VERSION}
