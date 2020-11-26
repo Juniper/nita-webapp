@@ -1,5 +1,5 @@
 #!/bin/bash
-        echo -n "    nita images ls => "
+        echo -n "    nita-cmd images ls => "
         echo `cat <<EOT
 Lists all NITA images.
 EOT` >&2

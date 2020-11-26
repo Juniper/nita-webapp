@@ -1,5 +1,5 @@
 #!/bin/bash
-        echo -n "    nita containers ls => "
+        echo -n "    nita-cmd containers ls => "
         echo `cat <<EOT
 Lists all running NITA containers.
 EOT` >&2

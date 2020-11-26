@@ -1,5 +1,5 @@
 #!/bin/bash
-        echo -n "    nita cli version => "
+        echo -n "    nita-cmd cli version => "
         echo `cat <<EOT
 Shows NITA CLI current version.
 EOT` >&2
