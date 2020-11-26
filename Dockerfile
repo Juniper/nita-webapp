@@ -25,9 +25,9 @@ WORKDIR /app
 RUN apt-get update -y
 RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev -y
 
-COPY yaml-to-excel/ yaml-to-excel/
+COPY nita-yaml-to-excel/ yaml-to-excel/
 COPY requirements.txt .
-RUN	pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY nita.properties /etc/nita.properties
 
