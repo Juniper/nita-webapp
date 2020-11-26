@@ -62,7 +62,7 @@ fi
 # load docker images
 add_image $IMAGES_DIR/mariadb.tar.gz mariadb:10.4.12
 add_image $IMAGES_DIR/nginx.tar.gz nginx:1.17.9
-add_image $IMAGES_DIR/nita-webapp.tar.gz ps-docker.artifactory.aslab.juniper.net/nita-webapp:${VERSION}
+add_image $IMAGES_DIR/nita-webapp.tar.gz juniper/nita-webapp:${VERSION}
 
 # create nita docker network
 if [[ `docker network ls -f 'name=nita-network' -q` == '' ]]

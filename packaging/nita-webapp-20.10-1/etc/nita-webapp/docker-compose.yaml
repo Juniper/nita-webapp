@@ -16,7 +16,7 @@
 version: "2.0"
 services:
   webapp:
-    image: ps-docker.artifactory.aslab.juniper.net/nita-webapp:_nita_release_20.10-1
+    image: juniper/nita-webapp:_nita_release_20.10-1
     command: ./build-and-test-webapp/wait-for-db.sh
     networks:
       - nita-network

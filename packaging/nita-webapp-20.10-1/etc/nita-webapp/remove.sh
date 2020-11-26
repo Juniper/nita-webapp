@@ -54,8 +54,8 @@ docker rmi -f mariadb:10.4.12
 docker rmi -f mariadb:_nita_release_$VERSION
 docker rmi -f nginx:1.17.9
 docker rmi -f nginx:_nita_release_$VERSION
-docker rmi -f ps-docker.artifactory.aslab.juniper.net/nita-webapp:$VERSION
-docker rmi -f ps-docker.artifactory.aslab.juniper.net/nita-webapp:_nita_release_$VERSION
+docker rmi -f juniper/nita-webapp:$VERSION
+docker rmi -f juniper/nita-webapp:_nita_release_$VERSION
 
 # remove unused images
 docker images --no-trunc | grep '<none>' | awk '{ print $3 }' | xargs -r docker rmi

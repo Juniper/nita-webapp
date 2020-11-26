@@ -70,6 +70,6 @@ docker save nginx:1.17.9 | gzip > ${IMAGEDIR}/nginx.tar.gz
     cd ..
     ./build_container.sh
 )
-docker save ps-docker.artifactory.aslab.juniper.net/nita-webapp:${VERSION} | gzip > ${IMAGEDIR}/nita-webapp.tar.gz
+docker save juniper/nita-webapp:${VERSION} | gzip > ${IMAGEDIR}/nita-webapp.tar.gz
 
 dpkg-deb --build ${PACKAGE}-${VERSION}
