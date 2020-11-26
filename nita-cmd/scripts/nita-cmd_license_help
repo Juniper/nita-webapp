@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita license => "
+        echo `cat <<EOT
+Displays the NITA License.
+EOT` >&2

@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita images versions => "
+        echo `cat <<EOT
+Displays NITA images versions.
+EOT` >&2

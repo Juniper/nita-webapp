@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# function joins all the elements in @ using _ as the IFS
+function join { local IFS=_; echo "$*"; }
+
+# function to create alaises of all the base commands for a command
+function create_aliases {
+	local COMMAND_NAME=$1
+
+	# find the full path to the command
+	local COMMAND_PATH=`which ${COMMAND_NAME}`
+
+	# grab the alias names
+	local aliases=`for i in ${COMMAND_PATH}_*; do sIFS=$IFS; IFS=_; v=($i); IFS=$sIFS; echo ${v[1]}; done | uniq`
+
+	# load the completions function, which must be installed in this default location
+	. /etc/bash_completion.d/cli_runner_completions
+
+	# create each alias and setup the completions required
+	for i in $aliases; do
+		alias $i="${COMMAND_PATH} $i"
+		complete -F _cli_runner_completions $i
+	done
+
+	# add a help alias
+	alias help="${COMMAND_PATH} help"
+
+	# add an alias to prevent recursive wierdness
+	alias ${COMMAND_NAME}="echo 'Command not recognised' >&2"
+
+	# set the command name so completions will work
+	_CLI_COMMAND_NAME=${COMMAND_NAME}
+}
+
+basename=${0##*/}
+
+# remove trailing debug and set environment variable
+if [ "${@: -1}" == "debug" ]; then
+	export _CLI_RUNNER_DEBUG=1
+	# remove the last argument
+	set -- "${@:1:$(($#-1))}"
+fi
+
+# interactive mode
+if [ $# = 0 ]; then
+	TMP_FILE=`mktemp`
+	echo "PS1='${basename}> '" > ${TMP_FILE}
+	echo "create_aliases ${basename}" >> ${TMP_FILE}
+	export -f create_aliases
+	bash --rcfile ${TMP_FILE}
+	rm ${TMP_FILE}
+	exit 0
+fi
+
+# process base help request
+if [ "${@: -1}" == "help" ]; then
+	params=`join $@`
+	help_scriptbase=${0%_help}
+
+	# find all the help scripts
+	if [ "${params}" == "help" ]; then
+		# for the top level scope
+		help_scripts=${help_scriptbase}_*_help
+	else
+		# for sub level scope
+		params=`join $@`
+		help_subscriptbase=${help_scriptbase}_${params%_help}
+		help_scripts=${help_subscriptbase}*_help
+	fi
+
+	# . (include) all the scripts in this script and run them
+	for help_script in ${help_scripts}; do
+		if [ ${help_script} != "${help_scriptbase}_help" ]; then
+			[ -e $help_script ] && . ${help_script}
+		fi
+	done
+
+	# exit success
+	exit 0
+fi
+
+# find the scripts
+script=""
+path=`which ${basename}`; path=${path%/*}
+
+# pick the matching script by iterating through all the arguments
+for arg in $@; do
+	shift
+	if [ -e "${path}/${basename}_${arg}" ]; then
+		script="${basename}_${arg} $@"
+	fi
+	# make the current script the new basename
+	basename="${basename}_${arg}"
+done
+
+if [ -z "${script}" ]; then
+	# didn't find a matching script
+	echo "Command not recognised" >&2
+	exit 1
+else
+	# execute the script
+	exec ${script}
+fi

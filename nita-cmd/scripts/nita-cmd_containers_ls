@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
+        echo `cat <<EOT
+docker ps --filter "label=net.juniper.framework=NITA" --format "table {{.ID}}	{{.Image}}	{{.RunningFor}}	{{.Status}}	{{.Ports}}	{{.Names}}"
+EOT` >&2
+fi
+docker ps --filter "label=net.juniper.framework=NITA" --format "table {{.ID}}	{{.Image}}	{{.RunningFor}}	{{.Status}}	{{.Ports}}	{{.Names}}"

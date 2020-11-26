@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita ips => "
+        echo `cat <<EOT
+Shows all NITA containers IPs.
+EOT` >&2

@@ -1,0 +1,51 @@
+#!/bin/bash 
+
+function _cli_runner_completions_join { local IFS=_; echo "$*"; }
+
+_cli_runner_completions() {
+
+	local DEBUG=false
+	if [ -z "${_CLI_COMMAND_NAME}" ]; then
+		command=${COMP_WORDS[0]}
+	else
+		command=${_CLI_COMMAND_NAME}
+		COMP_WORDS=(${command} "${COMP_WORDS[@]}")
+	fi
+	$DEBUG && echo "command: $command"
+
+	arg_count=`expr ${#COMP_WORDS[@]} - 1`
+	$DEBUG && echo "arg_count: $arg_count"
+
+	path=`which ${COMP_WORDS[0]}`
+	path=${path%/*}
+	$DEBUG && echo "path: $path"
+
+	partial=`_cli_runner_completions_join ${COMP_WORDS[@]}`
+	$DEBUG && echo "partial: $partial"
+
+	commands=`echo $path/$partial*`
+	if [ "${commands: -1}" == "*" ]; then
+		# if you didn't find anything set this variable blank
+		commands=""
+	fi
+	$DEBUG && echo "commands: $commands"
+
+	suggestions=()
+	for i in ${commands}; do
+		cmd=${i##*/}
+		$DEBUG && echo "cmd: $cmd"
+		saved_IFS=$IFS
+		IFS=_
+		cmd_vector=($cmd)
+		IFS=$saved_IFS
+		match=${cmd_vector[$arg_count]}
+		$DEBUG && echo "match: $match"
+		if [ "$match" != "help" ] && [ "$match" != "" ] && [ "$match" != "debug" ]; then
+			suggestions+=($match)
+		fi	
+	done
+	
+	for i in `(for j in ${suggestions[@]}; do echo $j; done) | uniq`; do
+		COMPREPLY+=($i)
+	done
+}

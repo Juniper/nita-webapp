@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita stats => "
+        echo `cat <<EOT
+Displays NITA containers runtime metrics [CPU %, MEM USAGE / LIMIT, MEM %, NET I/O, BLOCK I/O, PIDS].
+EOT` >&2

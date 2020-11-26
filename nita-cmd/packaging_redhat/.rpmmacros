@@ -1,0 +1,3 @@
+%_topdir %(echo $RPM_BUILD_DIR)
+
+%_tmppath  %{_topdir}/TMP

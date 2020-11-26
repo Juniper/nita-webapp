@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita containers versions => "
+        echo `cat <<EOT
+Lists all running NITA containers versions.
+EOT` >&2
