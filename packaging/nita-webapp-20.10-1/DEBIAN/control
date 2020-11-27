@@ -8,7 +8,6 @@ Maintainer: Ashley Burston <aburston@juniper.net>, Hugo Ribeiro <hribeiro@junipe
 Description: Network Implementation and Test Automation
  docker-compose based cli/web application for doing provisioning
  and testing of network hardware and software.
-
  Copyright 2020 Juniper Networks
  Licensed under the Apache License, Version 2.0
  http://www.apache.org/licenses/LICENSE-2.0

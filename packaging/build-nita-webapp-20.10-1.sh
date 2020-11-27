@@ -53,10 +53,12 @@ fi
 
 # copy cli scripts
 SCRIPTSDIR=${PACKAGE}-${VERSION}/usr/local/bin
+rm -rf ${SCRIPTSDIR}
 mkdir -p ${SCRIPTSDIR}
 install -m 755 ../cli_scripts/* ${SCRIPTSDIR}
 
 # install nita-cmd
+rm -rf ${PACKAGE}-${VERSION}/etc/bash_completion.d
 mkdir -p ${PACKAGE}-${VERSION}/etc/bash_completion.d
 (
    cd ../nita-cmd
