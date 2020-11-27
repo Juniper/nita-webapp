@@ -71,6 +71,8 @@ if [ $(getenforce) != Permissive ]; then echo "******  Please disable SELinux du
 %{_sysconfdir}/%{name}/remove.sh
 %{_datadir}/%{name}/*
 %{_prefix}/local/bin/*
+%{_sysconfdir}/bash_completion.d/cli_runner_completions
+%{_sysconfdir}/bash_completion.d/nita-cmd
 
 %changelog
 * Wed Sep 23 2020 Hugo Ribeiro  20.10-1
