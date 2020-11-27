@@ -8,7 +8,7 @@ Release:        1
 Summary:        Network Implementation and Test Automation command line interface
 Group:          Development/Tools
 BuildArch:      noarch
-License:        https://support.juniper.net/support/legal/scriptlicense
+License:        Apache License, Version 2.0, http://www.apache.org/licenses/LICENSE-2.0
 URL:            https://www.juniper.net
 Source0:        %{name}-%{version}.tar.gz
 
