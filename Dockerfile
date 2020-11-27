@@ -35,16 +35,6 @@ COPY build-and-test-webapp/ build-and-test-webapp/
 RUN mkdir /var/log/nita-webapp
 RUN touch /var/log/nita-webapp/server.log
 
-LABEL net.juniper.image.release="20.10-1" \
-      net.juniper.image.branch="master" \
-      net.juniper.image.issue.date="23/10/2020" \
-      net.juniper.image.create.date="23/10/2020" \
-      net.juniper.image.mantainer="Juniper Networks, Inc." \
-      net.juniper.support.license="UNLICENSED" \
-      net.juniper.support.expiration.date="2021-12-31" \
-      net.juniper.support.status="UNSUPPORTED" \
-      net.juniper.project.id="4938" \
-      net.juniper.jtac="Add Information" \
-      net.juniper.framework="NITA"
+LABEL net.juniper.framework="NITA"
 
 EXPOSE 8000
