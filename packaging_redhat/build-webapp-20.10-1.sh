@@ -53,7 +53,7 @@ SOURCE_DIR=${PACKAGE}-${VERSION}-${RELEASE}/SOURCES
 
 # copy cli scripts
 SCRIPTSDIR=${SOURCE_DIR}/${PACKAGE}-${VERSION}/usr/local/bin
-rm -rf SCRIPTSDIR
+rm -rf ${SCRIPTSDIR}
 mkdir -p ${SCRIPTSDIR}
 install -m 755 ../cli_scripts/* ${SCRIPTSDIR}
 
