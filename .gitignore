@@ -1,4 +1,5 @@
 nita-yaml-to-excel/
 packaging/nita-webapp-20.10-1/usr/
 packaging/nita-webapp-20.10-1/etc/bash_completion.d/
+packaging_redhat/nita-webapp-20.10-1/SOURCES/nita-webapp-20.10/etc/bash_completion.d/
 *.deb
