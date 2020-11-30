@@ -120,7 +120,7 @@ NITA depends on docker-ce and docker-compose.
 If you do not have the the required package files for your system, .deb for Ubuntu or .rpm for Centos refer to [BUILD.md](./BUILD.md) file for instructions on how to generate these files.
 
 ### Docker compose
-The easiest way to install the NITA webapp is to use docker compose.
+The easiest way to install the NITA webapp is to use docker compose, however currently the command line tools only work properly with the packages.  That hopefully will be resolved in future releases.
 
 See https://github.com/Juniper/nita-webapp/blob/main/docker-compose.yaml for the docker compose file.
 
@@ -129,19 +129,19 @@ Once you have docker-ce and docker-compose installed do the following steps:
 ```bash
 git clone https://github.com/Juniper/nita-webapp
 cd nita-webapp
+mkdir nginx/certificates
+openssl req -batch -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/certificates/nginx-certificate-key.key -out nginx/certificates/nginx-certificate.crt
+docker network create nita-network
 docker-compose up -d
-#if you want command line scripts locally (need bash for this)
-cd nita-cmd
-bash install.sh
-cd ../..
-#rerun bash in place in order to load the completions
-exec bash
 ```
 
 In order for NITA to work you also need to run jenkins:
 ```bash
+# install openjdk to get "keytool"
+apt-get install -y openjdk-11-jre-headless
 git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
+keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
 docker-compose up -d
 ```
 
@@ -262,3 +262,4 @@ For more information on Jenkins refer to https://github.com/Juniper/nita-jenkins
 * On CentOS systems if SELinux is enabled it is necessary to manually start the services after the installation, this can be avoided by disabling SELinux during the installation (with ``setenforce 0`` beforehand and ``setenforce 1`` afterwards).
 *	No method to automatically change SSL certificates for the Webapp and Jenkins (can be done manually).
 *	No method to reset Jenkins access password (can be done manually).
+* The command line (cli) tools don't currently support installations based on the docker-compose file only, only packaged versions are supported.  Use the docker-compose version for development and testing.
