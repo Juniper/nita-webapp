@@ -124,7 +124,7 @@ The easiest way to install the NITA webapp is to use docker compose, however cur
 
 See https://github.com/Juniper/nita-webapp/blob/main/docker-compose.yaml for the docker compose file.
 
-Once you have docker-ce and docker-compose installed do the following steps:
+Once you have docker-ce and docker-compose installed do the following steps as **root**:
 
 ```bash
 git clone https://github.com/Juniper/nita-webapp
