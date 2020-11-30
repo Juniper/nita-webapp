@@ -120,11 +120,32 @@ NITA depends on docker-ce and docker-compose.
 If you do not have the the required package files for your system, .deb for Ubuntu or .rpm for Centos refer to [BUILD.md](./BUILD.md) file for instructions on how to generate these files.
 
 ### Docker compose
+The easiest way to install the NITA webapp is to use docker compose.
 
-The easiest way to install the NITA webapp is to use docker compose, see [TODO]
+See https://github.com/Juniper/nita-webapp/blob/main/docker-compose.yaml for the docker compose file.
+
+Once you have docker-ce and docker-compose installed do the following steps:
+
+```
+git clone https://github.com/Juniper/nita-webapp
+cd nita-webapp
+docker-compose up -d
+#if you want command line scripts locally (need bash for this)
+cd nita-cmd
+bash install.sh
+cd ../..
+#rerun bash in place in order to load the completions
+exec bash
+```
+
+In order for NITA to work you also need to run jenkins:
+```
+git clone https://github.com/Juniper/nita-jenkins
+cd nita-jenkins
+docker-compose up -d
+```
 
 ### Ubuntu packages
-
 If you have been provided with the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
 ```bash
@@ -137,7 +158,6 @@ sudo apt-get install ./nita-jenkins-20.10-1.deb ./nita-webapp-20.10-1.deb ./yaml
 ```
 
 ### Centos packages
-
 If you have been provided with the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
 ```bash
