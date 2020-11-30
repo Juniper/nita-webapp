@@ -126,7 +126,7 @@ See https://github.com/Juniper/nita-webapp/blob/main/docker-compose.yaml for the
 
 Once you have docker-ce and docker-compose installed do the following steps:
 
-```
+```bash
 git clone https://github.com/Juniper/nita-webapp
 cd nita-webapp
 docker-compose up -d
@@ -139,7 +139,7 @@ exec bash
 ```
 
 In order for NITA to work you also need to run jenkins:
-```
+```bash
 git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
 docker-compose up -d
