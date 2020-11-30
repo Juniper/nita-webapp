@@ -32,31 +32,27 @@ No containers tagged as "latest" are provided by the package.
 The release has been broken up into multiple packages, see the list bellow:
 
 * Ubuntu 18.04
-  * nita-jenkins-20.5-1
-  * nita-webapp-20.7-1
-  * nita-cli-20.7-1
-  * nita-ansible-2.6.2-3.0.7-2
-  * nita-ansible-2.8.6-20.4-2
-  * nita-ansible-2.9.9-20.7-1
-  * nita-robot-3.0.4-3.0.7-2
-  * nita-robot-3.1.2-20.4-2
+  * nita-jenkins-20.10-1
+  * nita-webapp-20.10-1
+  * nita-ansible-2.9.9-20.10-1
+  * nita-robot-3.2.2-20.10-1
   * yaml-to-excel-1.0.0-1
 
 * Centos 7
-  * nita-jenkins-20.5-3
-  * nita-webapp-20.7-2
-  * nita-cli-20.7-2
-  * nita-ansible-2.6.2-3.0.7-1
-  * nita-ansible-2.8.6-20.4-1
-  * nita-ansible-2.9.9-20.7-2
-  * nita-robot-3.0.4-3.0.7-3
-  * nita-robot-3.1.2-20.4-3
+  * nita-jenkins-20.10-1
+  * nita-webapp-20.10-1
+  * nita-ansible-2.9.9-20.10-1
+  * nita-robot-3.2.2-20.10-1
   * yaml-to-excel-1.0.0-1
 
-Currently the packages can be obtained here: https://junipernetworks-my.sharepoint.com/:f:/g/personal/hribeiro_juniper_net/Er34g6a448lOjlu_joi9UN8BAf6pLz7tMTWuZGezF1y6ZA
+Currently the packages can be obtained here: [TODO]
 
-## New Features and Bug Fixes
-*
+## 20.10 New Features and Bug Fixes
+
+* The NITA webapp is now much more fogiving about the format of project zip files.  The location of the project.yaml file now determins the root of the project and directory names or even a lack of a directory inside a zip file is irrelevant.
+* Jenkins credentials can now be customized during the installation process by providing an environment variable to the docker container.
+* Webapp credentials can now be customized during the installation process by providing an environment variable to the docker container.
+* Fixed a bug in the NITA webapp where after a certain number of spreadsheet uploads the interface would become unusable.
 
 ## 20.7 New Features
 
@@ -100,8 +96,11 @@ Additionally there are two host utilities that can be installed:
 
 1. nita-cli
 2. yaml-to-excel
+3. nita-cmd (installed on the host along with the nita-webapp)
 
-NITA cli provides an command line interface to do common operations required during project development in NITA and can be accessed by typing `nita help`.
+NITA cli provides an command line interface to do common operations required during project development in NITA and can be accessed by typing `nita help`.  nita-cli is based on python.
+
+NITA cmd provides an alternative command line interface to do common operations required during project development in NITA and can be accessed by typing `nita-cmd help`. nita-cmd is based on bash.
 
 The utility for converting files from yaml to excel spreadsheet format and back again provided inside of the webapp container (yaml-to-excel) is also provided on the host.  It is possible to use the webapp to achieve the same effect as yaml-to-excel although that is less convenient.
 
@@ -120,7 +119,11 @@ NITA depends on docker-ce and docker-compose.
 
 If you do not have the the required package files for your system, .deb for Ubuntu or .rpm for Centos refer to [BUILD.md](./BUILD.md) file for instructions on how to generate these files.
 
-### Ubuntu
+### Docker compose
+
+The easiest way to install the NITA webapp is to use docker compose, see [TODO]
+
+### Ubuntu packages
 
 If you have been provided with the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
@@ -130,10 +133,10 @@ sudo apt-get install <path-to-deb-file>
 
 Example:
 ```bash
-sudo apt-get install ./nita-jenkins-20.5-1.deb ./nita-webapp-20.7-2.deb ./nita-cli-20.7-1.deb ./yaml-to-excel-1.0.0-1.deb
+sudo apt-get install ./nita-jenkins-20.10-1.deb ./nita-webapp-20.10-1.deb ./yaml-to-excel-1.0.0-1.deb
 ```
 
-### Centos
+### Centos packages
 
 If you have been provided with the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
@@ -143,7 +146,7 @@ sudo yum install <patch-to-rmp-file>
 
 Example:
 ```bash
-sudo yum install ./nita-jenkins-20.5-3.noarch.rpm ./nita-webapp-20.7-2.noarch.rpm ./nita-cli-20.7-2.noarch.rpm ./yaml-to-excel-1.0.0-1.noarch.rpm
+sudo yum install ./nita-jenkins-20.10-1.noarch.rpm ./nita-webapp-20.10-1.noarch.rpm ./yaml-to-excel-1.0.0-1.noarch.rpm
 ```
 
 NOTE: make sure you disable SELinux during the instalation process. Refer to  [`Known Bugs and irritations`](#Known-Bugs-and-irritations) for more details.
@@ -220,23 +223,22 @@ The "nita" package runs two web applications listening on two ports for https:
 1. NITA webapp on port 443 (using NGINX)
 2. Jenkins on port 8443
 
-Additionally if the "nita-cli" package is installed, it is possible to run the following commands:
+If you installed NITA using one of the webapp packages then "nita-cmd" command is installed, it is possible to run the following commands:
 
-* ``nita webapp up`` -- reloads the containers from ``/usr/share/nita-webapp/images`` and starts the docker service
-* ``nita webapp down`` -- stops the docker service and removes the container images
-* ``nita webapp status`` -- gives the status of the containers
-* ``nita webapp logs`` -- tails the log of the webapp container
+* ``nita-cmd webapp up`` -- reloads the containers from ``/usr/share/nita-webapp/images`` and starts the docker service
+* ``nita-cmd webapp down`` -- stops the docker service and removes the container images
+* ``nita-cmd webapp status`` -- gives the status of the containers
+* ``nita-cmd webapp logs`` -- tails the log of the webapp container
 
 For more commands run ``nita help``.
 
-For more information on Jenkins refer to https://ps-network-automation.visualstudio.com/Foundational/_git/jenkins?path=%2FREADME.md&version=GB20.5&_a=preview
+For more information on Jenkins refer to https://github.com/Juniper/nita-jenkins/
 
 # Known Bugs and Irritations
 
 * When installing the packages with root on a debian based system this warning may surface ``N: Download is performed unsandboxed as root as file '/root/nita-webapp-20.7-1.deb' couldn't be accessed by user '_apt'. - pkgAcquire::Run (13: Permission denied)`` and can be ignored.
 * When removing the webapp the process may leave webapp specific jobs still installed on the runnning Jenkins instance, use ``nita jenkins jobs delete`` to remove them.
-* On reinstalling the nita-jenkins it is necessary to reload the webapp instance to guarantee that the correct jobs are installed, simply run ``nita webapp restart`` after nita-jenkins reinstallation.
+* On reinstalling the nita-jenkins it is necessary to reload the webapp instance to guarantee that the correct jobs are installed, simply run ``nita-cmd webapp restart`` after nita-jenkins reinstallation.
 * On CentOS systems if SELinux is enabled it is necessary to manually start the services after the installation, this can be avoided by disabling SELinux during the installation (with ``setenforce 0`` beforehand and ``setenforce 1`` afterwards).
 *	No method to automatically change SSL certificates for the Webapp and Jenkins (can be done manually).
 *	No method to reset Jenkins access password (can be done manually).
-*	The Centos yaml-to-excel-0.9.0-1 package does not install openpyxl dependency (solve by doing ``pip3 install openpyxl`` as root) also it can only be run as root because of library permission issues.
