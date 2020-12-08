@@ -18,4 +18,4 @@ certifi
 requests==2.18.4
 jdcal==1.4.1
 jinja2==2.10.3
-yaml-to-excel/
+nita-yaml-to-excel-main/

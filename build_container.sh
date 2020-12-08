@@ -17,11 +17,4 @@
 
 set -e
 
-if [ -d nita-yaml-to-excel ]; then
-    echo "nita-yaml-to-excel already exists"
-else
-    git clone https://github.com/Juniper/nita-yaml-to-excel.git
-fi
-(cd nita-yaml-to-excel; git checkout main)
-
 docker build -t juniper/nita-webapp:20.10-1 .
