@@ -16,6 +16,8 @@
 
 - hosts: healthbot
   connection: local
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
       - name: Delete local healthbot configuration file
         file:
@@ -23,7 +25,8 @@
             state: absent
 
 - hosts: switches:firewalls
-  pre_tasks:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   connection: local
   roles:
     - { role: healthbot_config }

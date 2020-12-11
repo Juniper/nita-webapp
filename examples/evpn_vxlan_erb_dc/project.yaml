@@ -49,11 +49,11 @@ action:
     #must be one of NOOB, BUILD or TEST
     category: BUILD
     configuration:
-      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible ps-docker.artifactory.aslab.juniper.net/ansible:20.7-1 /bin/bash -c "cd ${WORKSPACE}; bash netbox.sh ${build_dir}"'
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:20.10-1 /bin/bash -c "cd ${WORKSPACE}; bash netbox.sh ${build_dir}"'
 
   - name: HealthBot Population
     jenkins_url: healthbot_population
     #must be one of NOOB, BUILD or TEST
     category: BUILD
     configuration:
-      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible ps-docker.artifactory.aslab.juniper.net/ansible:20.7-1 /bin/bash -c "cd ${WORKSPACE}; bash healthbot.sh ${build_dir}"'
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:20.10-1 /bin/bash -c "cd ${WORKSPACE}; bash healthbot.sh ${build_dir}"'
