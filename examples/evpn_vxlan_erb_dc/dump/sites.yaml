@@ -27,9 +27,13 @@
       register: configuration
     - name: write to disk
       connection: local
+      vars:
+          ansible_python_interpreter: /usr/bin/python3
       copy:
         content: "{{ configuration.stdout }}"
         dest: "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
     - name: fix file format
       connection: local
+      vars:
+          ansible_python_interpreter: /usr/bin/python3
       command: dos2unix "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
