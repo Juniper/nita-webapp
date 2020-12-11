@@ -14,6 +14,8 @@
 - name: Creating /etc/hosts file
   hosts: all
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Add host to /etc/hosts
       shell: bash make_hosts_entry.sh {{ inventory_hostname }} {{ management_interface.ip }}

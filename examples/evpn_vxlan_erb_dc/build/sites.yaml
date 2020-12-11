@@ -18,13 +18,13 @@
   pre_tasks:
   connection: local
   roles:
-    - { role: common }
+    - { role: junos_common }
 
 - hosts: switches
   connection: local
   roles:
-    - { role: qfx_common }
-    - { role: ipclos_underlay }
+    - { role: junos_qfx_common }
+    - { role: ebgp_ip_fabric }
 
 - hosts: spines
   connection: local
@@ -46,12 +46,12 @@
   pre_tasks:
   connection: local
   roles:
-    - { role: common }
-    - { role: srx_common }
+    - { role: junos_common }
+    - { role: srx_firewall }
 
 - hosts: switches:firewalls
   connection: local
   gather_facts: no
   roles:
-    - { role: commit_config }
+    - { role: junos_commit_config }
 #    - { role: build_config }
