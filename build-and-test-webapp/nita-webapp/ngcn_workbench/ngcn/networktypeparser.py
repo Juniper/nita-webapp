@@ -189,7 +189,7 @@ class NetworkTypeParser:
         return projectname + ".zip"
 
     def validateZipFile(self,file_name):
-        list_of_files = ['write_yaml_files.py', 'ansible.cfg']
+        list_of_files = ['project.yaml', 'ansible.cfg']
         zip_file = None
         result={}
         result["status"]=True
