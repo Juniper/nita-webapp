@@ -1,4 +1,5 @@
 Package: nita-webapp
+Version: 20.10-1
 Section: base
 Priority: optional
 Architecture: all
