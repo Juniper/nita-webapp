@@ -1,7 +1,6 @@
 """ ********************************************************
 
 Project: nita-webapp
-Version: 20.10
 
 Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
 
