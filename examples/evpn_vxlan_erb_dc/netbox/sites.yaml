@@ -18,6 +18,8 @@
   connection: local
   hosts: nita
   gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
 
   tasks:
     - name: Bash script to create an API Token in Netbox
@@ -61,6 +63,8 @@
   connection: local
   hosts: nita
   gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   collections:
     - netbox.netbox
 
@@ -121,6 +125,8 @@
   connection: local
   hosts: spines
   gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   collections:
     - netbox.netbox
 
@@ -134,6 +140,8 @@
   connection: local
   hosts: leaves
   gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   collections:
     - netbox.netbox
 
@@ -148,6 +156,8 @@
   connection: local
   hosts: servers
   gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   collections:
     - netbox.netbox
 
