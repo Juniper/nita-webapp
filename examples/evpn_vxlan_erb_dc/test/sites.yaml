@@ -16,6 +16,8 @@
 
 - hosts: switches:firewalls
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Create shared resource file
       run_once: true
@@ -29,6 +31,8 @@
 
 - hosts: switches
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Create connectivity tests
       template:
@@ -37,6 +41,8 @@
 
 - hosts: firewalls
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Create connectivity tests
       template:
@@ -45,6 +51,8 @@
 
 - hosts: leaves
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Create bgp tests
       template:
@@ -53,6 +61,8 @@
 
 - hosts: spines
   connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
     - name: Create bgp tests
       template:
