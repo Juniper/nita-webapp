@@ -15,16 +15,15 @@
 *** Settings ***
 Documentation     DC Connectivity Test cases
 
+Resource	${EXECDIR}/resource_files/resources.txt
 Resource	${JUNIPER_COMMON}/resource_files/connectivity_resources.txt
 Resource	${JUNIPER_COMMON}/resource_files/device_resources.txt
-Resource	${EXECDIR}/resource_files/resources.txt
 
 Suite Setup	Device Open Connection	{{ inventory_hostname | replace("-", "_") }}
 Suite Teardown	Device Close Connection	{{ inventory_hostname | replace("-", "_") }}
 
 *** Variables ***
 
-${JUNIPER_COMMON}=	${CURDIR}/..
 ${output_directory}=	${CURDIR}
 ${path}=	${CURDIR}
 

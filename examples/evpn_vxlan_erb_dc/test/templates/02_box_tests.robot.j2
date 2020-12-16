@@ -26,7 +26,6 @@ Suite Teardown 	Device Close Connection	${device}
 
 # Device to test against
 ${device}=	{{ inventory_hostname | replace("-", "_") }}
-
 # Time diff against UTC
 ${time_diff}=	+ 0 minutes
 

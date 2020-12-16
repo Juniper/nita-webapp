@@ -14,14 +14,14 @@
 ## ********************************************************
 *** Settings ***
 Documentation   A resource file with reusable keywords and variables
-Variables 	${EXECDIR}/variables_file/variables.py
+Variables 	${JUNIPER_COMMON}/variables_file/variables.py
 Resource 	${JUNIPER_COMMON}/resource_files/common.txt
 {% for device in ansible_play_hosts_all %}
 Library		${JUNIPER_COMMON}/libraries/pybot_jrouter.py     	user=${user}	target=${ {{ device | replace("-", "_") }}_mgmt_ip }	password=${password}        WITH NAME   {{ device | replace("-", "_") }}
 {% endfor %}
 
 *** Variables ***
-${JUNIPER_COMMON}=	${CURDIR}/..
+${JUNIPER_COMMON}=	/usr/share/nita-robot/robot-resources
 
 *** Keywords ***
 
