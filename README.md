@@ -141,6 +141,7 @@ In order for NITA to work you also need to run jenkins:
 apt-get install -y openjdk-11-jre-headless
 git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
+mkdir certificates
 keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
 docker-compose up -d
 ```
