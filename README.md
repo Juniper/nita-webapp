@@ -166,7 +166,7 @@ exec bash
 
 Installing nita-yaml-to-excel without using the .rpm on .deb package:
 ```bash
-git clone git clone https://github.com/Juniper/nita-yaml-to-excel
+git clone https://github.com/Juniper/nita-yaml-to-excel
 pip3 install ./nita-yaml-to-excel
 ```
 
