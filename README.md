@@ -146,8 +146,27 @@ keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_key
 docker-compose up -d
 ```
 
+In order to get nita-cmd scripts working on a docker-compose based installation:
+```bash
+cd nita-webapp
+( cd nita-cmd && bash install.sh )
+( cd cli_scripts && install -m 0755 * /usr/local/bin )
+cd ..
+cd nita-jenkins
+( cd cli_scripts && install -m 0755 * /usr/local/bin )
+cd ..
+git clone https://github.com/Juniper/nita-ansible
+( cd cli_scripts && install -m 0755 * /usr/local/bin )
+cd ..
+git clone https://github.com/Juniper/nita-robot
+( cd packaging/nita-robot-3.2.2-20.10-1/usr/local/bin && install -m 0755 * /usr/local/bin )
+cd ..
+exec bash
+
+```
+
 ### Ubuntu packages
-If you have been provided with the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
+If you have been provided with or built the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
 ```bash
 sudo apt-get install <path-to-deb-file>
@@ -159,7 +178,7 @@ sudo apt-get install ./nita-jenkins-20.10-1.deb ./nita-webapp-20.10-1.deb ./yaml
 ```
 
 ### Centos packages
-If you have been provided with the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
+If you have been provided with or built the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
 ```bash
 sudo yum install <patch-to-rmp-file>
