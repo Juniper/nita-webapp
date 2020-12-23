@@ -162,7 +162,12 @@ git clone https://github.com/Juniper/nita-robot
 ( cd packaging/nita-robot-3.2.2-20.10-1/usr/local/bin && install -m 0755 * /usr/local/bin )
 cd ..
 exec bash
+```
 
+Installing nita-yaml-to-excel without using the .rpm on .deb package:
+```bash
+git clone git clone https://github.com/Juniper/nita-yaml-to-excel
+pip3 install ./nita-yaml-to-excel
 ```
 
 ### Ubuntu packages
