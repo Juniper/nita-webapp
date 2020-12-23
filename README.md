@@ -49,7 +49,7 @@ Currently the packages can be obtained here: [TODO]
 
 ## 20.10 New Features and Bug Fixes
 
-* The NITA webapp is now much more fogiving about the format of project zip files.  The location of the project.yaml file now determins the root of the project and directory names or even a lack of a directory inside a zip file is irrelevant.
+* The NITA webapp is now much more forgiving about the format of project zip files.  The location of the project.yaml file now determins the root of the project and directory names or even a lack of a directory inside a zip file is irrelevant.
 * Jenkins credentials can now be customized during the installation process by providing an environment variable to the docker container.
 * Webapp credentials can now be customized during the installation process by providing an environment variable to the docker container.
 * Fixed a bug in the NITA webapp where after a certain number of spreadsheet uploads the interface would become unusable.
