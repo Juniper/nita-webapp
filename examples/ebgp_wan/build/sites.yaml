@@ -14,26 +14,20 @@
 - import_playbook: ../make_clean.yaml
 - import_playbook: ../make_etc_hosts.yaml
 
-- hosts: switches:firewalls
-  gather_facts: no  
-  tasks:
-    - name: Set ansible credentials
-      set_fact:
-        ansible_ssh_user: "{{ netconf_user }}"
-        ansible_ssh_pass: "{{ netconf_passwd }}"
-        ansible_ssh_private_key_file: ""
-    - name: dump config
-      raw: "show configuration | display inheritance | display set | no-more"
-      register: configuration
-    - name: write to disk
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      copy:
-        content: "{{ configuration.stdout }}"
-        dest: "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
-    - name: fix file format
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      command: dos2unix "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
+- hosts: routers
+  pre_tasks:
+  connection: local
+  roles:
+    - { role: junos_common }
+    - { role: mx_common }
+
+- hosts: routers
+  connection: local
+  roles:
+    - { role: ebgp_ip_fabric }
+
+- hosts: routers
+  connection: local
+  gather_facts: no
+  roles:
+    - { role: junos_commit_config }

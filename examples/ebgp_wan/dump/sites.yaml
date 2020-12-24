@@ -14,7 +14,7 @@
 - import_playbook: ../make_clean.yaml
 - import_playbook: ../make_etc_hosts.yaml
 
-- hosts: switches:firewalls
+- hosts: routers
   gather_facts: no  
   tasks:
     - name: Set ansible credentials

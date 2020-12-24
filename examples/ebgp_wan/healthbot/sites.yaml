@@ -14,26 +14,32 @@
 - import_playbook: ../make_clean.yaml
 - import_playbook: ../make_etc_hosts.yaml
 
-- hosts: switches:firewalls
-  gather_facts: no  
+- hosts: healthbot
+  connection: local
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
+      - name: Delete local healthbot configuration file
+        file:
+            name: "{{ build_dir }}/healthbot.conf"
+            state: absent
+
+- hosts: routers
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  connection: local
+  roles:
+    - { role: healthbot_config }
+
+- hosts: healthbot
+  gather_facts: no
+  pre_tasks:
     - name: Set ansible credentials
       set_fact:
-        ansible_ssh_user: "{{ netconf_user }}"
-        ansible_ssh_pass: "{{ netconf_passwd }}"
+        ansible_ssh_user: "{{ vm_user }}"
+        ansible_ssh_pass: "{{ vm_passwd }}"
+        ansible_become_pass: "{{ vm_passwd }}"
         ansible_ssh_private_key_file: ""
-    - name: dump config
-      raw: "show configuration | display inheritance | display set | no-more"
-      register: configuration
-    - name: write to disk
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      copy:
-        content: "{{ configuration.stdout }}"
-        dest: "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
-    - name: fix file format
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      command: dos2unix "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
+        ansible_python_interpreter: /usr/bin/python3
+  roles:
+    - { role: healthbot_commit }

@@ -14,26 +14,25 @@
 - import_playbook: ../make_clean.yaml
 - import_playbook: ../make_etc_hosts.yaml
 
-- hosts: switches:firewalls
-  gather_facts: no  
+- hosts: routers
+  connection: local
+  vars:
+      ansible_python_interpreter: /usr/bin/python3
   tasks:
-    - name: Set ansible credentials
-      set_fact:
-        ansible_ssh_user: "{{ netconf_user }}"
-        ansible_ssh_pass: "{{ netconf_passwd }}"
-        ansible_ssh_private_key_file: ""
-    - name: dump config
-      raw: "show configuration | display inheritance | display set | no-more"
-      register: configuration
-    - name: write to disk
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      copy:
-        content: "{{ configuration.stdout }}"
-        dest: "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
-    - name: fix file format
-      connection: local
-      vars:
-          ansible_python_interpreter: /usr/bin/python3
-      command: dos2unix "{{ build_dir }}/{{ inventory_hostname }}/junos_backup.set"
+    - name: Create shared resource file
+      run_once: true
+      template:
+        src: resources.txt.j2
+        dest: "resource_files/resources.txt"
+    - name: Create box tests
+      template:
+        src: 02_box_tests.robot.j2    
+        dest: "tests/02_{{ inventory_hostname }}.robot"
+    - name: Create connectivity tests
+      template:
+        src: 04_connectivity.robot.j2
+        dest: "tests/04_{{ inventory_hostname }}.robot"
+    - name: Create bgp tests
+      template:
+        src: 09_bgp_routers.robot.j2
+        dest: "tests/09_{{ inventory_hostname }}.robot"
