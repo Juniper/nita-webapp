@@ -2,7 +2,7 @@
 
 NITA CMD implements a very simple bash shell based command line interface to NITA.
 
-In order to add new commands simply add a sheel script startign with the name nita-cmd_<your command name> to the /usr/local/bin.
+In order to add new commands simply add a shell script starting with the name nita-cmd_<your command name> to the /usr/local/bin.
     
 You can add multiple levels by using more than one underscore (i.e. nita_jenkins_<command name>).
 
