@@ -12,7 +12,7 @@
 #
 # ********************************************************
 description: EVPN VLXAN ERB Data Center
-name: evpn_vxlan_erb_dc_1.0
+name: evpn_vxlan_erb_dc_1.1
 action:
   - name: Build
     jenkins_url: build_qfx_fabric
@@ -27,6 +27,13 @@ action:
     category: BUILD
     configuration:
       shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:20.10-1 /bin/bash -c "cd ${WORKSPACE}; bash configure_bms.sh ${build_dir}"'
+
+  - name: Build base config
+    jenkins_url: base_qfx_fabric
+    #must be one of NOOB, BUILD or TEST
+    category: BUILD
+    configuration:
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:20.10-1 /bin/bash -c "cd ${WORKSPACE}; bash base.sh ${build_dir}"'
 
   - name: Dump configuration
     jenkins_url: dump_qfx_fabric

@@ -19,28 +19,7 @@
   connection: local
   roles:
     - { role: junos_common }
-
-- hosts: switches
-  connection: local
-  roles:
     - { role: junos_qfx_common }
-    - { role: ebgp_ip_fabric }
-
-- hosts: spines
-  connection: local
-  roles:
-    - { role: evpn_vxlan_erb_spine }
-
-- hosts: leaves
-  connection: local
-  roles:
-    - { role: evpn_vxlan_common }
-    - { role: evpn_vxlan_erb_leaf }
-    - { role: evpn_vxlan_vni }
-    - { role: evpn_vxlan_port }
-    - { role: evpn_vxlan_vrf }
-    - { role: evpn_vxlan_policy }
-    - { role: evpn_vxlan_dci }
 
 - hosts: firewalls
   pre_tasks:
@@ -48,7 +27,6 @@
   roles:
     - { role: junos_common }
     - { role: srx_common }
-    - { role: srx_firewall }
 
 - hosts: switches:firewalls
   connection: local
