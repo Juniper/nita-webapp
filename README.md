@@ -170,6 +170,11 @@ git clone https://github.com/Juniper/nita-yaml-to-excel
 pip3 install ./nita-yaml-to-excel
 ```
 
+Finally you *must* set the group on the project directory to be 1000 (for jenkins inside the container):
+```bash
+chgrp 1000 /var/nita_project
+```
+
 ### Ubuntu packages
 If you have been provided with or built the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
