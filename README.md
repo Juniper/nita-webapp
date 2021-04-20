@@ -273,6 +273,15 @@ The "nita" package runs two web applications listening on two ports for https:
 1. NITA webapp on port 443 (using NGINX)
 2. Jenkins on port 8443
 
+## Default User Credentials
+
+The default user credentials for the NITA webapp and Jenkins are listed below:
+
+| | Username | Password |
+|---|---|---|
+| Webapp| vagrant | vagrant123 |
+| Jenkins | admin | admin|
+
 If you installed NITA using one of the webapp packages then "nita-cmd" command is installed, it is possible to run the following commands:
 
 * ``nita-cmd webapp up`` -- reloads the containers from ``/usr/share/nita-webapp/images`` and starts the docker service
