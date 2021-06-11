@@ -288,6 +288,26 @@ The default user credentials for the NITA webapp and Jenkins are listed below:
 | Webapp| vagrant | vagrant123 |
 | Jenkins | admin | admin|
 
+## Set Custom Credentials
+
+The process to set a custom set of credentials for the webapp and the jenkins interfaces is the same regardless of the instalation type used, packaged version or docker-compose deployment.
+
+To use a set custom credentials set the apropriate enviromental variables **before** installing a package or deploying via docker-compose.
+
+Recognized Environment Variables:
+  - WEBAPP_USER
+  - WEBAPP_PASS
+  - JENKINS_USER
+  - JENKINS_PASS
+
+Example: ``export WEBAPP_USER='CustomUser'``
+
+For any unset variable NITA will use the default credentials.
+
+To change the credentials of a running instance reset the relevant enviromental variables and then reload all both webapp and jenkins deployments.
+
+## Command Line Interface
+
 If you installed NITA using one of the webapp packages then "nita-cmd" command is installed, it is possible to run the following commands:
 
 * ``nita-cmd webapp up`` -- reloads the containers from ``/usr/share/nita-webapp/images`` and starts the docker service
@@ -295,7 +315,7 @@ If you installed NITA using one of the webapp packages then "nita-cmd" command i
 * ``nita-cmd webapp status`` -- gives the status of the containers
 * ``nita-cmd webapp logs`` -- tails the log of the webapp container
 
-For more commands run ``nita help``.
+For more commands run ``nita-cmd help``.
 
 For more information on Jenkins refer to https://github.com/Juniper/nita-jenkins/
 
