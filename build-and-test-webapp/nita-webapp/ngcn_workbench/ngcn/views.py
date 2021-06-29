@@ -15,7 +15,6 @@ import os
 import json
 import jenkins
 import yaml
-import xlrd
 from yaml.constructor import Constructor
 import collections
 from collections import OrderedDict
@@ -181,14 +180,13 @@ def campusTypeView(request, campus_type_id):
     return r
 
 def campusNetworkMgmtView(request):
-    logger.debug("campusNetworkMgmtView: entered")
     queryset = CampusNetwork.objects.all()
     table = CampusNetworkTable(queryset)
     RequestConfig(request,paginate=False).configure(table)
+    logger.debug("campusNetworkMgmtView: exit")
     return render(request, 'ngcn/campus_network_mgmt.html',{'table':table})
 
 def campusNetworkView(request, campus_network_id):
-    logger.debug("campusNetworkView: entered")
     return render(request, 'ngcn/campus_network.html',{'campus_network_id':campus_network_id})
 
 class ConfigurationView(View):
@@ -328,6 +326,7 @@ def downloadConfigDataView(request,campus_network_id):
     excel.close()
     response = HttpResponse(output,content_type='application/force-download')
     response['Content-Disposition'] = 'attachment; filename=%s' % smart_str(workbook_name)
+    logger.debug("downloadConfigDataView: exit")
     return response
 
 @login_required(login_url='/admin/login/')
@@ -729,7 +728,7 @@ def parse_workbook(conf_file,campus_network_id):
         pass
     data_manager = GridDataManager()
     data_manager.create_or_update_db(campus_network_id,tables,conf_file.name)
-
+    logger.debug("parse_workbook: exit")
     return "success"
 
 def build_column_data(fields):
@@ -773,12 +772,12 @@ def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
     return yaml.load(stream, OrderedLoader)
 
 def create_new_inv(workbook_name):
-    workbook = xlrd.open_workbook(workbook_name)
-    #print workbook.sheet_names()
+    workbook = load_workbook(workbook_name)
+    print (workbook.sheetnames)
 
     from yamltoexcel import xls2yaml
     xls2yaml_instance = xls2yaml.ExcelToYaml(workbook_name,'./')
-    for sheet_name in workbook.sheet_names():
+    for sheet_name in workbook.sheetnames:
         xls2yaml_instance.process_by_sheet(workbook, sheet_name)
 
     group_and_host_vars = OrderedDict()
@@ -800,9 +799,10 @@ def create_new_inv(workbook_name):
 def create_workbook_from_db(campus_network_id):
     data_manager = GridDataManager()
     sheets = data_manager.get_sheets_by_campus_network(campus_network_id)
-    # create the workbook
+
     wb = open_workbook()
-    wb.remove_sheet(wb.get_sheet_by_name('Sheet'))
+    if "Sheet" in wb.sheetnames:
+    	del wb["Sheet"]
     # create the sheet in workbook for each sheets from db
 
     sheet_index = 0
@@ -811,7 +811,7 @@ def create_workbook_from_db(campus_network_id):
         sheet_index+=1
     # populate the cells with db data for each sheet in workbook
     for sheet in sheets:
-        ws = wb.get_sheet_by_name(sheet["name"])
+        ws = wb[sheet["name"]]
         keys = sheet[sheet["name"]][0].keys()
         column_header = {}
         # create the cells in workbook
@@ -843,20 +843,20 @@ def create_workbook(campus_network_id):
     data_manager = GridDataManager()
     workbook_name = data_manager.get_workbook_name(campus_network_id)
     create_workbook_from_db(campus_network_id)
-    workbook = xlrd.open_workbook('/tmp/nita-webapp/temp.xlsx')
-    #print workbook.sheet_names()
+    workbook = load_workbook('/tmp/nita-webapp/temp.xlsx')
+    print (workbook.sheetnames)
 
     from yamltoexcel import xls2yaml,yaml2xls
     xls2yaml_instance = xls2yaml.ExcelToYaml(workbook_name,'./')
     yaml2xls_instance = yaml2xls.YamlToExcel("")
 
-    for sheet_name in workbook.sheet_names():
+    for sheet_name in workbook.sheetnames:
         xls2yaml_instance.process_by_sheet(workbook, sheet_name)
 
     #group_and_host_vars = OrderedDict()
 
+    #wb = load_workbook()
     wb = open_workbook()
-
     ws = wb.active
     ws.title = 'base'
 
