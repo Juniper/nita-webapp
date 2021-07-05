@@ -1,5 +1,5 @@
 mysqlclient==1.4.6
-django==2.2.21
+django==2.2.24
 djangorestframework==3.11.2
 python-jenkins==1.6.0
 django-tables2==1.21.2
