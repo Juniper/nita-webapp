@@ -306,7 +306,7 @@ For any unset variable NITA will use the default credentials.
 
 To change the credentials of a running instance reset the relevant enviromental variables and then reload all both webapp and jenkins deployments.
 
-## Set Jekins URL
+## Set Jenkins URL
 
 By default the Webapp assumes a local installation. If this is not the case and you have Nita running on a remote machine you can configure the Webapp to properly riderect the user to the Jenkins UI.
 
