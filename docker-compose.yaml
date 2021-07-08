@@ -26,6 +26,8 @@ services:
       - WEBAPP_PASS
       - JENKINS_USER
       - JENKINS_PASS
+      - JENKINS_PORT
+      - HOST_URL
     restart: always
   db:
     image: mariadb:10.4.12

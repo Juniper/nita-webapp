@@ -1008,7 +1008,7 @@ def createActionHistory(queryset,host):
         timestamp = tables.Column(verbose_name="Timestamp")
         status = tables.Column(verbose_name="Status")
         jenkins_job_build_no  = tables.Column(verbose_name="Jenkins Job Id") #tables.TemplateColumn('<a href="http://'+host+'/job/{{record.action_id.jenkins_url}}/{{record.jenkins_job_build_no}}/console" target="_blank" ">{{record.jenkins_job_build_no}}</a>')
-        console_log_link  = tables.TemplateColumn('<a href="http://'+host+'/job/{{record.action_id.jenkins_url}}-{{record.campus_network_id.name}}/{{record.jenkins_job_build_no}}/console" target="_blank" ">View</a>')
+        console_log_link  = tables.TemplateColumn('<a href="https://' + os.getenv('HOST_URL', "localhost") + ':' + os.getenv('JENKINS_PORT', "8443") + '/job/{{record.action_id.jenkins_url}}-{{record.campus_network_id.name}}/{{record.jenkins_job_build_no}}/console" target="_blank" ">View</a>')
         class Meta:
             model = ActionHistory
             attrs = {"class": "table table-condensed table-bordered","id":"all-action-history-table",'width':'98%'}
