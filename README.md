@@ -310,11 +310,11 @@ To change the credentials of a running instance reset the relevant enviromental 
 
 By default the Webapp assumes a local installation. If this is not the case and you have Nita running on a remote machine you can configure the Webapp to properly riderect the user to the Jenkins UI.
 
-You only need to set the environment variable ``HOST_URL`` with the address of the remote machine and the variable ``JENKINS_PORT`` with the port that Jenkins is listening on.
+You only need to set the environment variable ``JENKINS_URL`` with the address of the remote machine and the variable ``JENKINS_PORT`` with the port that Jenkins is listening on.
 
 Example:
 ```
-export HOST_URL=remoteserver.com
+export JENKINS_URL=remoteserver.com
 export JENKINS_PORT=8443
 ```
 
