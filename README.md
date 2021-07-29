@@ -1,16 +1,16 @@
-# NITA Web Application 20.10
+# NITA Web Application 21.7
 
-Welcome to NITA 20.10.
+Welcome to NITA 21.7.
 
 Packages built from this branch will be nita-*-20.10-x where x is the packaging release.
 This branch also contains patches from other branches or minor modifications as required to support the stability and usability of the release.
 There are also some backwards compatibility packages here for ansible and robot that allow projects written for NITA 3.0.7 to work without having to make any changes.
 
-Note that NITA 20.10 backward compatible with NITA 3.0.7 projects, provided the correct ansible and robot containers are installed.
+Note that NITA 21.7 backward compatible with NITA 20.10 projects, provided the correct ansible and robot containers are installed.
 
 # Copyright
 
-Copyright 2020, Juniper Networks, Inc.
+Copyright 2021, Juniper Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -38,20 +38,25 @@ No containers tagged as "latest" are provided by the package.
 The release has been broken up into multiple packages, see the list bellow:
 
 * Ubuntu 18.04
-  * nita-jenkins-20.10-1
-  * nita-webapp-20.10-1
-  * nita-ansible-2.9.9-20.10-1
-  * nita-robot-3.2.2-20.10-1
+  * nita-jenkins-21.7-1
+  * nita-webapp-21.7-1
+  * nita-ansible-2.9.9-21.7-1
+  * nita-robot-3.2.2-21.7-1
   * yaml-to-excel-1.0.0-1
 
 * Centos 7
-  * nita-jenkins-20.10-1
-  * nita-webapp-20.10-1
-  * nita-ansible-2.9.9-20.10-1
-  * nita-robot-3.2.2-20.10-1
+  * nita-jenkins-21.7-1
+  * nita-webapp-21.7-1
+  * nita-ansible-2.9.9-21.7-1
+  * nita-robot-3.2.2-21.7-1
   * yaml-to-excel-1.0.0-1
 
-Currently the packages can be obtained here: [TODO]
+## 21.7 New Features and Bug Fixes
+
+* Loads of security advisories, please use this version to avoid security problems in 20.10.
+* Upgraded django and openpyxl.
+* Removed dependency on xlrd.
+* Made it possible to configure the Jenkins password more easily.
 
 ## 20.10 New Features and Bug Fixes
 
