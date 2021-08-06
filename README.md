@@ -318,7 +318,7 @@ export JENKINS_URL=remoteserver.com
 export JENKINS_PORT=8443
 ```
 
-Alternatively you can configure the docker-compose.yaml file to resolve the hostname "jenkins" to the correct IP address by adding the extra_hosts field:
+Alternatively you can configure the docker-compose.yaml file to resolve the hostname "jenkins" to the correct IP address by adding the ``extra_hosts`` field:
 
 ```
 services:
@@ -329,30 +329,25 @@ services:
 ```
 ### Docker considerations with an external Jenkins server
 
-Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup on the Nita server. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter and keeping the existing -H parameters as well:
-
+Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup on the Nita server. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter while keeping the existing -H parameters:
 ```
 #ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/containerd/containerd.sock
 ```
 ### Nita considerations with an external Jenkins server
 
 The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/wildsubnet/nita-webapp/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
-
 ```
     configuration:
       shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
-
 This would be modified for remote execution via TCP (as configured in the previous section) by adding ``-H tcp://docker-IP`` to the ``docker run`` command:
-
 ```
     configuration:
       shell_command: 'write_yaml_files.py; docker run -H tcp://docker-IP -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
-
 ### nita-jenkins on a separate docker network
 
-It is also possible to run nita-jenkins on its own docker network on the same linux host. However, Docker blocks traffic between container networks by default using the firewall system of the host operating system (iptables in the case of Ubuntu). This can by modified by making configuration to the firewall system. The TCP modifications above do not need to be implemented because the communication is still within a single docker instance. 
+It is also possible to run nita-jenkins on its own docker network on the same host. However, Docker blocks traffic between container networks by default using the firewall system of the host operating system (iptables in the case of Ubuntu). This can by modified by making configuration to the firewall system. The TCP modifications above do not need to be implemented because the communication is still within a single docker instance. Be aware that Docker documentation recommends setting a second interface in the container connected to the second network versus this method as this breaks the security model.
 
 If your setup requires this configuration, you will need to perform the following steps (Ubuntu version):
 
