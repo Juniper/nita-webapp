@@ -15,7 +15,7 @@
 # ********************************************************
 
 PACKAGE=nita-webapp
-VERSION=20.10-1
+VERSION=21.7-1
 
 # stop the script if a command fails
 #set -e

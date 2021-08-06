@@ -17,7 +17,7 @@
 %define        __os_install_post %{_dbpath}/brp-compress
 
 Name:           nita-webapp
-Version:        20.10
+Version:        21.7
 Release:        1
 Summary:        Network Implementation and Test Automation - Webapp
 Group:          Development/Tools
@@ -74,5 +74,10 @@ if [ $(getenforce) != Permissive ]; then echo "******  Please disable SELinux du
 %{_sysconfdir}/bash_completion.d/nita-cmd
 
 %changelog
+* Fri Aug 6 2021 Hugo Ribeiro  21.7-1
+  - Loads of security advisories, please use this version to avoid security problems in 20.10.
+  - Upgraded django and openpyxl.
+  - Removed dependency on xlrd.
+  - Made it possible to configure the Jenkins password more easily.
 * Wed Sep 23 2020 Hugo Ribeiro  20.10-1
   - OS Release

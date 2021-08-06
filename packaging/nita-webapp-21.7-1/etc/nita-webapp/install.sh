@@ -15,7 +15,7 @@
 # ********************************************************
 
 PACKAGE=nita-webapp
-VERSION=20.10-1
+VERSION=21.7-1
 IMAGES_DIR=/usr/share/${PACKAGE}/images
 
 # stop the script if a command fails
@@ -48,6 +48,16 @@ function add_image {
     docker tag "$TAG" "${TAG%:*}:_nita_release_$VERSION"
 
 }
+
+# Create necessary folders
+mkdir -p /etc/${PACKAGE}/certificates
+mkdir -p /var/nita_configs
+mkdir -p /var/nita_project
+
+# give the project directory workable permissions
+PROJECTDIR=/var/nita_project
+chown 0.1000 $PROJECTDIR
+chmod 775 $PROJECTDIR
 
 # generate selfsigned certificate for nginx
 if [ -e /etc/${PACKAGE}/certificates/nginx-certificate.crt ]

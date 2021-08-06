@@ -5,7 +5,7 @@ set -e
 set +x
 
 PACKAGE=nita-cli
-VERSION=20.10
+VERSION=21.7
 RELEASE=1
 
 # cleanup version if the directory name is used
@@ -13,7 +13,7 @@ VTMP="${VERSION#$PACKAGE-}"
 VERSION=${VTMP%/}
 
 
-if [[ "x$VERSION" == "x" ]]; then 
+if [[ "x$VERSION" == "x" ]]; then
     echo "Must provide package version"
     exit 1
 fi

@@ -3,7 +3,7 @@
 %define        __os_install_post %{_dbpath}/brp-compress
 
 Name:           nita-cli
-Version:        20.10
+Version:        27.1
 Release:        1
 Summary:        Network Implementation and Test Automation command line interface
 Group:          Development/Tools
@@ -45,6 +45,8 @@ rm -f %{_prefix}/local/bin/nita
 %{_sysconfdir}/bash_completion.d/cli_runner_completions
 
 %changelog
+* Fri Aug 6 2021 Hugo Ribeiro  21.7-1
+  - Release bump
 * Thu Nov 26 2020 Ashley Burston 20.10-1
   - Release bump
 * Fri Jul 24 2020 Hugo Ribeiro 20.7-1

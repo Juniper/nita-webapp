@@ -4,14 +4,14 @@
 set -e
 
 PACKAGE=nita-cmd
-VERSION=20.10-1
+VERSION=21.7-1
 
 # cleanup version if the directory name is used
 VTMP="${VERSION#$PACKAGE-}"
 VERSION=${VTMP%/}
 
 
-if [ -z "$VERSION" ]; then 
+if [ -z "$VERSION" ]; then
     echo "Must provide package version"
     exit 1
 fi

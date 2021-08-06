@@ -2,11 +2,11 @@
 
 Welcome to NITA 21.7.
 
-Packages built from this branch will be nita-*-20.10-x where x is the packaging release.
+Packages built from this branch will be nita-*-21.7-x where x is the packaging release.
 This branch also contains patches from other branches or minor modifications as required to support the stability and usability of the release.
 There are also some backwards compatibility packages here for ansible and robot that allow projects written for NITA 3.0.7 to work without having to make any changes.
 
-Note that NITA 21.7 backward compatible with NITA 20.10 projects, provided the correct ansible and robot containers are installed.
+Note that NITA 21.7 backward compatible with NITA 21.7 projects, provided the correct ansible and robot containers are installed.
 
 # Copyright
 
