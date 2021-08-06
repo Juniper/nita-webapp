@@ -308,7 +308,7 @@ To change the credentials of a running instance reset the relevant enviromental 
 
 ## Using an external Jenkins server
 
-By default the Webapp assumes a local installation of nita-jenkins container using the hostname "jenkins". If this is not the case and you have a separate Jenkins server running on a remote machine you can configure the Webapp to properly redirect the user to the Jenkins UI.
+By default, the Webapp assumes a local installation of nita-jenkins container using the hostname "jenkins". If this is not the case and you have a separate Jenkins server running on a remote machine you can configure the Webapp to properly redirect the user to the Jenkins UI.
 
 You only need to set the environment variable ``JENKINS_URL`` with the address of the remote machine and the variable ``JENKINS_PORT`` with the port that Jenkins is listening on.
 
@@ -343,15 +343,39 @@ The examples included with nita-webapp assume a local installation of Jenkins. T
       shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
 
-This would be modified for remote execution via TCP (as configured in the previous section) as follows:
+This would be modified for remote execution via TCP (as configured in the previous section) by adding ``-H tcp://docker-IP`` to the ``docker run`` command:
 
 ```
     configuration:
-      shell_command: 'write_yaml_files.py; docker run -H <bold>tcp://docker-IP</bold> -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+      shell_command: 'write_yaml_files.py; docker run -H tcp://docker-IP -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
 
+### nita-jenkins on a separate docker network
 
+It is also possible to run nita-jenkins on its own docker network on the same linux host. However, Docker blocks traffic between container networks by default using the firewall system of the host operating system (iptables in the case of Ubuntu). This can by modified by making configuration to the firewall system. The TCP modifications above do not need to be implemented because the communication is still within a single docker instance. 
 
+If your setup requires this configuration, you will need to perform the following steps (Ubuntu version):
+
+1. Modify the docker-compose.yml file in the nita-jenkins root directory to use the second Docker network (must be created separately):
+
+```
+services:
+  jenkins:
+[...]
+networks:
+  new-network-name:
+    external: true
+```
+
+2. Determin bridge IDs of the nita-network and the network where Jenkins will reside with the ``ip show link`` command or the ``route`` command.
+3. Add rules to iptables as follows:
+
+```
+sudo iptables -I DOCKER-USER -i br-<nita-network> -o br-<second-network> -j ACCEPT
+sudo iptables -I DOCKER-USER -i br-<second-network> -o br-<nita-network> -j ACCEPT
+```
+
+4. Finally, make the firewall persistent across reboots: ``iptables-save > /etc/iptables/rules.v4``
 
 
 
