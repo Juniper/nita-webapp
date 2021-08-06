@@ -29,6 +29,13 @@ services:
       - JENKINS_PORT
       - JENKINS_URL
     restart: always
+# 
+# For external Jenkins hosts, uncomment the lines below and change IP
+# Jenkins' server IP address. This allows the name Jenkins to resolve
+# properly in the container environment.
+#
+#    extra_hosts:
+#      - "jenkins:192.168.X.y"
   db:
     image: mariadb:10.4.12
     command: --default-authentication-plugin=mysql_native_password
