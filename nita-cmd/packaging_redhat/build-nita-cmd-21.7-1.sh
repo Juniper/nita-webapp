@@ -4,7 +4,7 @@
 set -e
 set +x
 
-PACKAGE=nita-cli
+PACKAGE=nita-cmd
 VERSION=21.7
 RELEASE=1
 

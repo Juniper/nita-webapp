@@ -18,7 +18,7 @@
 set -e
 
 PACKAGE=nita-webapp
-VERSION=20.10
+VERSION=21.7
 RELEASE=1
 
 # cleanup version if the directory name is used
