@@ -306,7 +306,7 @@ For any unset variable NITA will use the default credentials.
 
 To change the credentials of a running instance reset the relevant enviromental variables and then reload all both webapp and jenkins deployments.
 
-## Using and external Jenkins server
+## Using an external Jenkins server
 
 By default the Webapp assumes a local installation of nita-jenkins container using the hostname "jenkins". If this is not the case and you have a separate Jenkins server running on a remote machine you can configure the Webapp to properly redirect the user to the Jenkins UI.
 
@@ -327,13 +327,32 @@ services:
     extra_hosts:
       - "jenkins:Jenkins-IP"
 ```
-### Docker considerations with external Jenkins server
+### Docker considerations with an external Jenkins server
 
-Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter and keeping the existing -H parameters as well:
+Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup on the Nita server. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter and keeping the existing -H parameters as well:
 
 ```
 #ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/containerd/containerd.sock
 ```
+### Nita considerations with an external Jenkins server
+
+The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/wildsubnet/nita-webapp/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
+
+```
+    configuration:
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+```
+
+This would be modified for remote execution via TCP (as configured in the previous section) as follows:
+
+```
+    configuration:
+      shell_command: 'write_yaml_files.py; docker run -H <bold>tcp://docker-IP</bold> -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+```
+
+
+
+
 
 
 ## Command Line Interface
