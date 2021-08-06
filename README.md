@@ -331,7 +331,7 @@ services:
 
 Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup on the Nita server. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter while keeping the existing -H parameters:
 ```
-#ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/containerd/containerd.sock
+ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/containerd/containerd.sock
 ```
 ### Nita considerations with an external Jenkins server
 
