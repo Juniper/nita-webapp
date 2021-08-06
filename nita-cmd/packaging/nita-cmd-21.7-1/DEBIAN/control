@@ -1,4 +1,5 @@
 Package: nita-cmd
+Version: 21.7-1
 Source: nita-cmd
 Section: shells
 Priority: extra
