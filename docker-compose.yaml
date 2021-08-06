@@ -32,7 +32,8 @@ services:
 # 
 # For external Jenkins hosts, uncomment the lines below and change IP
 # Jenkins' server IP address. This allows the name Jenkins to resolve
-# properly in the container environment.
+# properly in the container environment. Please see detailed instructions
+# in README file for implications of this change. 
 #
 #    extra_hosts:
 #      - "jenkins:192.168.X.y"
