@@ -245,7 +245,7 @@ end
 The group owner of the docker socket is incorrectly allocated on vagrant boxes.  The reason for this is that vagrant allocates GID 999 for its own purposes and docker then allocates an alternative numeric GID (usually 998). The jenkins container expects GID 999. In order to work around this type the following command:
 
 ```bash
-sudo chmod 0.999 /var/run/docker.sock
+sudo chgrp 999 /var/run/docker.sock
 ```
 
 Additionally in order to avoid having to type this command every time you reboot add it to the ``/etc/rc.local`` startup script(this is a hacky workaround):
@@ -306,9 +306,9 @@ For any unset variable NITA will use the default credentials.
 
 To change the credentials of a running instance reset the relevant enviromental variables and then reload all both webapp and jenkins deployments.
 
-## Set Jenkins URL
+## Using and external Jenkins server
 
-By default the Webapp assumes a local installation. If this is not the case and you have Nita running on a remote machine you can configure the Webapp to properly riderect the user to the Jenkins UI.
+By default the Webapp assumes a local installation of nita-jenkins container using the hostname "jenkins". If this is not the case and you have a separate Jenkins server running on a remote machine you can configure the Webapp to properly redirect the user to the Jenkins UI.
 
 You only need to set the environment variable ``JENKINS_URL`` with the address of the remote machine and the variable ``JENKINS_PORT`` with the port that Jenkins is listening on.
 
@@ -317,6 +317,19 @@ Example:
 export JENKINS_URL=remoteserver.com
 export JENKINS_PORT=8443
 ```
+
+Alternatively you can configure the docker-compose.yaml file to resolve the hostname "jenkins" to the correct IP address by adding the extra_hosts field:
+
+```
+services:
+  webapp:
+    [...]
+    extra_hosts:
+      - "jenkins:A.B.C.D"
+```
+### Ansible considerations with external Jenkins server
+
+Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup. 
 
 ## Command Line Interface
 
