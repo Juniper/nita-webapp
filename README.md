@@ -353,4 +353,4 @@ For more information on Jenkins refer to https://github.com/Juniper/nita-jenkins
 * On CentOS systems if SELinux is enabled it is necessary to manually start the services after the installation, this can be avoided by disabling SELinux during the installation (with ``setenforce 0`` beforehand and ``setenforce 1`` afterwards).
 *	No method to automatically change SSL certificates for the Webapp and Jenkins (can be done manually).
 *	No method to reset Jenkins access password (can be done manually).
-* The command line (cli) tools don't currently support installations based on the docker-compose file only, only packaged versions are supported.  Use the docker-compose version for development and testing.
+* The command line (cli) tools don't fully support installations based on the docker-compose file only, only packaged versions are supported.  Use the docker-compose version for development and testing.
