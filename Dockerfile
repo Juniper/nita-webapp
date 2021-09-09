@@ -2,7 +2,7 @@
 #
 # Project: nita-webapp
 #
-# Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+# Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
 #
 # Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
 #
@@ -26,8 +26,8 @@ RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev wget unz
 
 #COPY nita-yaml-to-excel/ yaml-to-excel/
 
-RUN wget --no-check-certificate -O nita-yaml-to-excel.zip https://github.com/Juniper/nita-yaml-to-excel/archive/main.zip
-RUN unzip nita-yaml-to-excel.zip
+RUN wget --no-check-certificate https://github.com/Juniper/nita-yaml-to-excel/archive/refs/heads/21.7.zip
+RUN unzip 21.7.zip
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 

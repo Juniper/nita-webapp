@@ -1,0 +1,11 @@
+Package: nita-cmd
+Version: 21.7-1
+Source: nita-cmd
+Section: shells
+Priority: extra
+Maintainer: Ashley Burston
+Build-Depends: bash
+Architecture: all
+Pre-Depends: dpkg
+Depends: jq,docker-ce,bash
+Description: NITA command line interface

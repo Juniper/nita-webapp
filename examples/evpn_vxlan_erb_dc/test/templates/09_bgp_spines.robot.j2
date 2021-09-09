@@ -3,7 +3,7 @@
 ##
 ## Project: nita-webapp
 ##
-## Copyright (c) Juniper Networks, Inc., 2020. All rights reserved.
+## Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
 ##
 ## Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
 ##
@@ -30,7 +30,7 @@ ${path}=	${CURDIR}
 *** Keywords ***
 
 *** Test Cases ***
-T9.{{ inventory_hostname | replace("-","_") }}: BGP NEIGHBORS {{ inventory_hostname }} 
+T9.{{ inventory_hostname | replace("-","_") }}: BGP NEIGHBORS {{ inventory_hostname }}
     [Documentation]	Objective: Check BGP is working on {{ inventory_hostname }}
     [Tags]	BGP
     Check BGP Neighbors	{{ inventory_hostname | replace("-","_") }}	{{ underlay_ebgp[0].neighbors|length * 2 + evpn_ibgp[0].neighbors|length }}

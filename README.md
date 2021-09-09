@@ -1,16 +1,16 @@
-# NITA Web Application 20.10
+# NITA Web Application 21.7
 
-Welcome to NITA 20.10.
+Welcome to NITA 21.7.
 
-Packages built from this branch will be nita-*-20.10-x where x is the packaging release.
+Packages built from this branch will be nita-*-21.7-x where x is the packaging release.
 This branch also contains patches from other branches or minor modifications as required to support the stability and usability of the release.
 There are also some backwards compatibility packages here for ansible and robot that allow projects written for NITA 3.0.7 to work without having to make any changes.
 
-Note that NITA 20.10 backward compatible with NITA 3.0.7 projects, provided the correct ansible and robot containers are installed.
+Note that NITA 21.7 backward compatible with NITA 20.10 projects, provided the correct ansible and robot containers are installed.
 
 # Copyright
 
-Copyright 2020, Juniper Networks, Inc.
+Copyright 2021, Juniper Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -38,20 +38,25 @@ No containers tagged as "latest" are provided by the package.
 The release has been broken up into multiple packages, see the list bellow:
 
 * Ubuntu 18.04
-  * nita-jenkins-20.10-1
-  * nita-webapp-20.10-1
-  * nita-ansible-2.9.9-20.10-1
-  * nita-robot-3.2.2-20.10-1
-  * yaml-to-excel-1.0.0-1
+  * nita-jenkins-21.7-1
+  * nita-webapp-21.7-1
+  * nita-ansible-2.9.18-21.7-1
+  * nita-robot-4.1-21.7-1
+  * yaml-to-excel-21.7.0-1
 
 * Centos 7
-  * nita-jenkins-20.10-1
-  * nita-webapp-20.10-1
-  * nita-ansible-2.9.9-20.10-1
-  * nita-robot-3.2.2-20.10-1
-  * yaml-to-excel-1.0.0-1
+  * nita-jenkins-21.7-1
+  * nita-webapp-21.7-1
+  * nita-ansible-2.9.18-21.7-1
+  * nita-robot-4.1-21.7-1
+  * yaml-to-excel-21.7.0-1
 
-Currently the packages can be obtained here: [TODO]
+## 21.7 New Features and Bug Fixes
+
+* Loads of security advisories, please use this version to avoid security problems in 20.10.
+* Upgraded django and openpyxl.
+* Removed dependency on xlrd.
+* Made it possible to configure the Jenkins password more easily.
 
 ## 20.10 New Features and Bug Fixes
 
@@ -135,6 +140,7 @@ Once you have docker-ce and docker-compose installed do the following steps as *
 ```bash
 git clone https://github.com/Juniper/nita-webapp
 cd nita-webapp
+git checkout 21.7
 mkdir nginx/certificates
 openssl req -batch -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/certificates/nginx-certificate-key.key -out nginx/certificates/nginx-certificate.crt
 docker network create nita-network
@@ -147,13 +153,16 @@ In order for NITA to work you also need to run jenkins:
 apt-get install -y openjdk-11-jre-headless
 git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
+git checkout 21.7
 mkdir certificates
 keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
 docker-compose up -d
 ```
 
-In order to get nita-cmd scripts working on a docker-compose based installation:
+In order to get nita-cmd scripts working on a docker-compose based installation (do this in the same directory where you cloned jenkins and the webapp):
 ```bash
+# become root but stay in the installation directory
+sudo bash
 cd nita-webapp
 ( cd nita-cmd && bash install.sh )
 ( cd cli_scripts && install -m 0755 * /usr/local/bin )
@@ -162,10 +171,14 @@ cd nita-jenkins
 ( cd cli_scripts && install -m 0755 * /usr/local/bin )
 cd ..
 git clone https://github.com/Juniper/nita-ansible
+cd nita-ansible
+git checkout 21.7
 ( cd cli_scripts && install -m 0755 * /usr/local/bin )
 cd ..
 git clone https://github.com/Juniper/nita-robot
-( cd packaging/nita-robot-3.2.2-20.10-1/usr/local/bin && install -m 0755 * /usr/local/bin )
+cd nita-robot
+git checkout 21.7
+( cd cli_scripts && install -m 0755 * /usr/local/bin )
 cd ..
 exec bash
 ```
@@ -190,19 +203,19 @@ sudo apt-get install <path-to-deb-file>
 
 Example:
 ```bash
-sudo apt-get install ./nita-jenkins-20.10-1.deb ./nita-webapp-20.10-1.deb ./yaml-to-excel-1.0.0-1.deb
+sudo apt-get install ./nita-jenkins-21.7-1.deb ./nita-webapp-21.7-1.deb ./yaml-to-excel-21.7.0-1.deb
 ```
 
 ### Centos packages
 If you have been provided with or built the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
 ```bash
-sudo yum install <patch-to-rmp-file>
+sudo yum install <patch-to-rpm-file>
 ```
 
 Example:
 ```bash
-sudo yum install ./nita-jenkins-20.10-1.noarch.rpm ./nita-webapp-20.10-1.noarch.rpm ./yaml-to-excel-1.0.0-1.noarch.rpm
+sudo yum install ./nita-jenkins-21.7-1.noarch.rpm ./nita-webapp-21.7-1.noarch.rpm ./yaml-to-excel-21.7.0-1.noarch.rpm
 ```
 
 NOTE: make sure you disable SELinux during the instalation process. Refer to  [`Known Bugs and irritations`](#Known-Bugs-and-irritations) for more details.
@@ -269,9 +282,10 @@ chown 0.999 /var/run/docker.sock
 exit 0
 ```
 
-``/etc/nita/docker-compose.yaml``
+``/etc/nita-webapp/docker-compose.yaml``
+``/etc/nita-jenkins/docker-compose.yaml``
 
-This file controls the containers started automatically and what ports they are accessible on. Only modify this if you understand what you are doing.
+When using packaged versions of nita, these files control the containers started automatically and what ports they are accessible on. Only modify this if you understand what you are doing.
 
 # User Interface
 
@@ -339,4 +353,4 @@ For more information on Jenkins refer to https://github.com/Juniper/nita-jenkins
 * On CentOS systems if SELinux is enabled it is necessary to manually start the services after the installation, this can be avoided by disabling SELinux during the installation (with ``setenforce 0`` beforehand and ``setenforce 1`` afterwards).
 *	No method to automatically change SSL certificates for the Webapp and Jenkins (can be done manually).
 *	No method to reset Jenkins access password (can be done manually).
-* The command line (cli) tools don't currently support installations based on the docker-compose file only, only packaged versions are supported.  Use the docker-compose version for development and testing.
+* The command line (cli) tools don't fully support installations based on the docker-compose file only, only packaged versions are supported.  Use the docker-compose version for development and testing.

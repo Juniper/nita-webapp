@@ -7,17 +7,17 @@ git clone <repo_url>
 
 ## Debian/Ubuntu Package
 
-To generate a .deb package file for the instalation of the NITA webapp on a Debian based system you can run the *build-nita-webapp-20.10-1.sh* script file found under the *packaging* folder:
+To generate a .deb package file for the instalation of the NITA webapp on a Debian based system you can run the *build-nita-webapp-21.7-1.sh* script file found under the *packaging* folder:
 ```bash
 cd packaging
-./build-nita-webapp-20.10-1.sh
+./build-nita-webapp-21.7-1.sh
 ```
 
 ## Centos/RedHat Package
-To generate a .rpm package file for the instalation of the NITA webapp on a Centos based system you can run the *build-webapp-20.10-1.sh* script file found under the *packaging_redhat* folder:
+To generate a .rpm package file for the instalation of the NITA webapp on a Centos based system you can run the *build-webapp-21.7-1.sh* script file found under the *packaging_redhat* folder:
 ```bash
 cd packaging_redhat
-./build-webapp-20.10-1.sh
+./build-webapp-21.7-1.sh
 ```
 
 # Docker Image Build

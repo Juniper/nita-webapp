@@ -1,0 +1,56 @@
+# ********************************************************
+#
+# Project: nita-webapp
+#
+# Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
+#
+# Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
+#
+# ********************************************************
+
+version: "2.0"
+services:
+  webapp:
+    image: juniper/nita-webapp:_nita_release_21.7-1
+    command: ./build-and-test-webapp/wait-for-db.sh
+    networks:
+      - nita-network
+    depends_on: [ db ]
+    environment:
+      - DJANGO_LOG_LEVEL=DEBUG
+      - WEBAPP_USER
+      - WEBAPP_PASS
+      - JENKINS_USER
+      - JENKINS_PASS
+    restart: always
+  db:
+    image: mariadb:_nita_release_21.7-1
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: Sites
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - nita-network
+    volumes:
+      - "mariadb:/var/lib/mysql"
+    restart: always
+  proxy:
+    image: nginx:_nita_release_21.7-1
+    volumes:
+      - "/etc/nita-webapp/nginx.conf:/etc/nginx/nginx.conf"
+      - "/etc/nita-webapp/certificates/:/etc/certificate/"
+    ports:
+      - "443:443"
+    networks:
+      - nita-network
+    depends_on: [ webapp ]
+    restart: always
+volumes:
+  mariadb:
+networks:
+  nita-network:
+    external: true
