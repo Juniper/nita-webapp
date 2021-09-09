@@ -1,5 +1,5 @@
 description: Simple IPCLOS based WAN setup to link two data centers
-name: ebgp_wan_0.1
+name: ebgp_wan_0.2
 
 action:
   - name: Build
