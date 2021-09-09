@@ -258,7 +258,7 @@ end
 The group owner of the docker socket is incorrectly allocated on vagrant boxes.  The reason for this is that vagrant allocates GID 999 for its own purposes and docker then allocates an alternative numeric GID (usually 998). The jenkins container expects GID 999. In order to work around this type the following command:
 
 ```bash
-sudo chmod 0.999 /var/run/docker.sock
+sudo chgrp 999 /var/run/docker.sock
 ```
 
 Additionally in order to avoid having to type this command every time you reboot add it to the ``/etc/rc.local`` startup script(this is a hacky workaround):
@@ -320,9 +320,9 @@ For any unset variable NITA will use the default credentials.
 
 To change the credentials of a running instance reset the relevant enviromental variables and then reload all both webapp and jenkins deployments.
 
-## Set Jenkins URL
+## Using an external Jenkins server
 
-By default the Webapp assumes a local installation. If this is not the case and you have Nita running on a remote machine you can configure the Webapp to properly riderect the user to the Jenkins UI.
+By default, the Webapp assumes a local installation of nita-jenkins container using the hostname "jenkins". If this is not the case and you have a separate Jenkins server running on a remote machine you can configure the Webapp to properly redirect the user to the Jenkins UI.
 
 You only need to set the environment variable ``JENKINS_URL`` with the address of the remote machine and the variable ``JENKINS_PORT`` with the port that Jenkins is listening on.
 
@@ -331,6 +331,62 @@ Example:
 export JENKINS_URL=remoteserver.com
 export JENKINS_PORT=8443
 ```
+
+Alternatively you can configure the docker-compose.yaml file to resolve the hostname "jenkins" to the correct IP address by adding the ``extra_hosts`` field:
+
+```
+services:
+  webapp:
+    [...]
+    extra_hosts:
+      - "jenkins:Jenkins-IP"
+```
+### Docker considerations with an external Jenkins server
+
+Docker on Linux uses an IPC socket for communication (``/var/run/docker.sock``). To execute Jenkins jobs back to the Nita setup TCP connections will need to be enabled in the docker setup on the Nita server. On Ubuntu this can be done by editing docker.service file located at ``/usr/lib/systemd/system/docker.service`` by adding ``-H tcp://Docker-IP`` to the ``ExecStart`` parameter while keeping the existing -H parameters:
+```
+ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/containerd/containerd.sock
+```
+### Nita considerations with an external Jenkins server
+
+The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/wildsubnet/nita-webapp/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
+```
+    configuration:
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+```
+This would be modified for remote execution via TCP (as configured in the previous section) by adding ``-H tcp://docker-IP`` to the ``docker run`` command:
+```
+    configuration:
+      shell_command: 'write_yaml_files.py; docker run -H tcp://docker-IP -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+```
+### nita-jenkins on a separate docker network
+
+It is also possible to run nita-jenkins on its own docker network on the same host. However, Docker blocks traffic between container networks by default using the firewall system of the host operating system (iptables in the case of Ubuntu). This can by modified by making configuration to the firewall system. The TCP modifications above do not need to be implemented because the communication is still within a single docker instance. Be aware that Docker documentation recommends setting a second interface in the container connected to the second network versus this method as this breaks the security model.
+
+If your setup requires this configuration, you will need to perform the following steps (Ubuntu version):
+
+1. Modify the docker-compose.yml file in the nita-jenkins root directory to use the second Docker network (must be created separately):
+
+```
+services:
+  jenkins:
+[...]
+networks:
+  new-network-name:
+    external: true
+```
+
+2. Determin bridge IDs of the nita-network and the network where Jenkins will reside with the ``ip show link`` command or the ``route`` command.
+3. Add rules to iptables as follows:
+
+```
+sudo iptables -I DOCKER-USER -i br-<nita-network> -o br-<second-network> -j ACCEPT
+sudo iptables -I DOCKER-USER -i br-<second-network> -o br-<nita-network> -j ACCEPT
+```
+
+4. Finally, make the firewall persistent across reboots: ``iptables-save > /etc/iptables/rules.v4``
+
+
 
 ## Command Line Interface
 
