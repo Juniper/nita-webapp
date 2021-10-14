@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita-cmd backup "
+        echo `cat <<EOT
+Backups container mounted volumes and project directories to file in /var/nita_backup
+EOT` >&2
