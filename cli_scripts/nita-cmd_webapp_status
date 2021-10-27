@@ -14,7 +14,7 @@
 # ********************************************************
 if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
         echo `cat <<EOT
-docker-compose -p nitawebapp -f /etc/nita-webapp/docker-compose.yaml ps
+docker-compose -p nitawebapp -f ${NITAWEBAPPDIR-/etc/nita-webapp}/docker-compose.yaml ps
 EOT` >&2
 fi
-docker-compose -p nitawebapp -f /etc/nita-webapp/docker-compose.yaml ps
+docker-compose -p nitawebapp -f ${NITAWEBAPPDIR-/etc/nita-webapp}/docker-compose.yaml ps
