@@ -1,0 +1,17 @@
+#!/bin/bash
+if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
+        echo `cat <<EOT
+if [ -z "$1" ]
+then
+    echo "Must supply file name in /var/nita_backup to be restored"
+else
+    tar -zxvf /var/nita_backup/$1 -C /
+fi
+EOT` >&2
+fi
+if [ -z "$1" ]
+then
+    echo "Must supply file name in /var/nita_backup to be restored"
+else
+    tar -zxvf /var/nita_backup/$1 -C /
+fi

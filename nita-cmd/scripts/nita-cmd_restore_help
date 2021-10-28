@@ -1,0 +1,5 @@
+#!/bin/bash
+        echo -n "    nita-cmd restore <filename> "
+        echo `cat <<EOT
+Restores from <filename> the folders backed up using the backup command
+EOT` >&2

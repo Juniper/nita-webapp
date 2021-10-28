@@ -1,0 +1,17 @@
+#!/bin/bash
+now=`date +"%Y-%m-%d-%H-%M"`
+if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
+        echo `cat <<EOT
+if [ ! -d "/var/nita_backup" ]
+then
+    mkdir /var/nita_backup
+fi
+tar -zcvf /var/nita_backup/nita-backup-${now}.gz /var/lib/docker/volumes/nitawebapp_mariadb /var/lib/docker/volumes/nitajenkins_jenkins_home /var/nita_project /var/nita_configs
+EOT` >&2
+fi
+if [ ! -d "/var/nita_backup" ]
+then
+    mkdir /var/nita_backup
+fi
+tar -zcvf /var/nita_backup/nita-backup-${now}.gz /var/lib/docker/volumes/nitawebapp_mariadb /var/lib/docker/volumes/nitajenkins_jenkins_home /var/nita_project /var/nita_configs
+
