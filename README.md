@@ -91,7 +91,7 @@ The release has been broken up into multiple packages, see the list bellow:
 
 # Architecture
 
-It consists of 4 running containers (running under docker compose) and 2 ephemeral containers that are run as sidecars by the Jenkins container as required.
+It consists of 4 running containers (running under docker compose) and 2 ephemeral containers that are run as by the Jenkins container as required.
 The only containers that bind to the host file system are jenkins and the ephemeral containers of robot and ansible.
 
 The containers per package are:
