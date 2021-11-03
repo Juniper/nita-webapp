@@ -67,7 +67,7 @@ The release has been broken up into multiple packages, see the list bellow:
 
 ## 20.7 New Features
 
-* NITA no longer checks for a hosts file or insists on the existaence of group_vars/ or host_vars/ directories
+* NITA no longer checks for a hosts file or insists on the existence of group_vars/ or host_vars/ directories
 * There is new version of the ansible container with Ansible 2.9.9 and support for pyez and Netbox libraries
 * NITA 20.5-1 failed to delete Jenkins jobs when a Network was deleted, fixed in 20.5-2 and included in this release
 * NITA now sets the build_dir variable for jenkins jobs in the "Test" category
