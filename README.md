@@ -105,9 +105,8 @@ The containers per package are:
 
 Additionally there are two host utilities that can be installed:
 
-1. nita-cli
-2. yaml-to-excel
-3. nita-cmd (installed on the host along with the nita-webapp)
+1. yaml-to-excel
+2. nita-cmd (installed on the host along with the nita-webapp)
 
 NITA cli provides an command line interface to do common operations required during project development in NITA and can be accessed by typing `nita help`.  nita-cli is based on python.
 
