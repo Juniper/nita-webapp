@@ -108,7 +108,7 @@ Additionally there are two host utilities that can be installed:
 1. yaml-to-excel
 2. nita-cmd (installed on the host along with the nita-webapp)
 
-NITA cmd provides an alternative command line interface to do common operations required during project development in NITA and can be accessed by typing `nita-cmd help`. nita-cmd is based on bash.
+NITA cmd provides a command line interface to do common operations required during project development in NITA and can be accessed by typing `nita-cmd help`. nita-cmd is based on bash.
 
 The utility for converting files from yaml to excel spreadsheet format and back again provided inside of the webapp container (yaml-to-excel) is also provided on the host.  It is possible to use the webapp to achieve the same effect as yaml-to-excel although that is less convenient.
 
