@@ -256,6 +256,8 @@ end
 
 ## Troubleshooting
 
+### Docker socket 
+
 ``/var/run/docker.sock``
 
 The group owner of the docker socket is incorrectly allocated on vagrant boxes.  The reason for this is that vagrant allocates GID 999 for its own purposes and docker then allocates an alternative numeric GID (usually 998). The jenkins container expects GID 999. In order to work around this type the following command:
@@ -289,6 +291,10 @@ exit 0
 ``/etc/nita-jenkins/docker-compose.yaml``
 
 When using packaged versions of nita, these files control the containers started automatically and what ports they are accessible on. Only modify this if you understand what you are doing.
+
+### Web App refuses to load network network packages
+
+If the web app refuses to load network packages (and just hangs) this may be caused by incorrect permissions or group membership on /var/nita_project. Please review installation instructions for more information. 
 
 # User Interface
 
