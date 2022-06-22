@@ -141,7 +141,7 @@ git checkout 21.7
 mkdir nginx/certificates
 openssl req -batch -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/certificates/nginx-certificate-key.key -out nginx/certificates/nginx-certificate.crt
 docker network create nita-network
-docker-compose up -d
+docker compose up -d
 ```
 
 In order for NITA to work you also need to run jenkins:
@@ -153,7 +153,7 @@ cd nita-jenkins
 git checkout 21.7
 mkdir certificates
 keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
-docker-compose up -d
+docker compose up -d
 ```
 
 In order to get nita-cmd scripts working on a docker-compose based installation (do this in the same directory where you cloned jenkins and the webapp):
@@ -197,6 +197,8 @@ Finally you *must* set the group on the project directory to be 1000 (for jenkin
 chgrp 1000 /var/nita_project
 ```
 
+Note: Verify that the group section of the permissions is writable as well. In some instances the linux permissions 755 are seen after this step and need to modified by ```sudo chmod 775 /var/nita_project```
+
 ### Ubuntu packages
 If you have been provided with or built the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
 
@@ -223,7 +225,7 @@ sudo yum install ./nita-jenkins-21.7-1.noarch.rpm ./nita-webapp-21.7-1.noarch.rp
 
 NOTE: make sure you disable SELinux during the instalation process. Refer to  [`Known Bugs and irritations`](#Known-Bugs-and-irritations) for more details.
 
-## Vagrant
+## 
 
 For users of vagrant, here is a handy "Vagrantfile" that will get you a working ubuntu 18.04 box quickly and forward the relevant ports:
 
@@ -260,7 +262,7 @@ end
 
 ``/var/run/docker.sock``
 
-The group owner of the docker socket is incorrectly allocated on vagrant boxes.  The reason for this is that vagrant allocates GID 999 for its own purposes and docker then allocates an alternative numeric GID (usually 998). The jenkins container expects GID 999. In order to work around this type the following command:
+In some instances (vagrant installs in particular) the docker socket is incorrectly allocated. The jenkins container expects GID 999. In order to work around this type the following command:
 
 ```bash
 sudo chgrp 999 /var/run/docker.sock
