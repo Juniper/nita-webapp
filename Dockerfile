@@ -12,7 +12,7 @@
 #
 # ********************************************************
 
-FROM python:3.8-slim-buster
+FROM python:3.8-slim-bullseye
 
 ENV WEBAPP_USER vagrant
 ENV WEBAPP_PASS vagrant123
