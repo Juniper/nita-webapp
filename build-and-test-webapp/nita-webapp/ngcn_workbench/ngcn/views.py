@@ -905,7 +905,7 @@ def create_workbook(campus_network_id):
 # trigger job code
 
 from jenkinsapi.jenkins import Jenkins
-#new_server = Jenkins('http://jenkins:8080')
+from jenkinsapi.utils.crumb_requester import CrumbRequester
 
 @login_required(login_url='/admin/login/')
 def triggerAction(request, action_id, campus_network_id):
@@ -930,7 +930,8 @@ def triggerAction(request, action_id, campus_network_id):
                 build_dir = configuration_data['group_vars/all.yaml']['build_dir']
 
             current_build_number = server.get_job_info(action_url)['nextBuildNumber']
-            Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS).get_job(action_url).invoke(
+            crumb=CrumbRequester(baseurl=JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+            Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS, requester=crumb).get_job(action_url).invoke(
                 files={
                     'data.json':json.dumps(configuration_data)
             },

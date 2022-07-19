@@ -42,6 +42,7 @@ from django.core.files.storage import default_storage
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
 from jenkinsapi.jenkins import Jenkins
+from jenkinsapi.utils.crumb_requester import CrumbRequester
 
 from MySQLdb import _mysql
 #from _mysql import IntegrityError
@@ -90,7 +91,8 @@ class NetworkTypeParser:
                 current_build_number = server.get_job_info(job_name)['nextBuildNumber']
                 logger.debug("Current build number is: "+ str(current_build_number))
                 with open(default_storage.path(file_name),'rb') as app_zip_file:
-                    jenkins_job=Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS).get_job(job_name)
+                    crumb=CrumbRequester(baseurl=JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+                    jenkins_job=Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS, requester=crumb).get_job(job_name)
                     jenkins_job.invoke(build_params={'file_name':file_name, 'operation':'add'}, files={'app.zip':app_zip_file}, block=True)
                 logger.debug("Invoked Jenkins Job to add zip file")
                 if wait_and_get_build_status(job_name,current_build_number) :

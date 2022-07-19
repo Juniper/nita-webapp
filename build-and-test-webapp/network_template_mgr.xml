@@ -58,6 +58,11 @@ Third-Party Code: This code may depend on other components under separate copyri
     <hudson.tasks.Shell>
       <command>#!/bin/bash
 
+# Copy jenkins-cli.jar
+if [ ! -f "/var/jenkins_home/war/WEB-INF/jenkins-cli.jar" ]; then
+    curl http://jenkins:8080/jnlpJars/jenkins-cli.jar -o /var/jenkins_home/war/WEB-INF/jenkins-cli.jar
+fi
+
 PATH=$PATH:/var/jenkins_scripts/
 export PATH
 
@@ -110,7 +115,7 @@ project_dict = {}
 # Create dictionary based on template project.yaml
 with open(project_yaml, &quot;r&quot;) as template:
     try:
-        input = yaml.load(template)
+        input = yaml.safe_load(template)
         project_dict = input.copy()
 
         project_dict[&quot;name&quot;] = network_name
@@ -277,7 +282,7 @@ JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
 
 with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
     try:
-        input = yaml.load(stream)
+        input = yaml.safe_load(stream)
         ansible_jobs_template = Template(ANSIBLE_JOBS_CONFIG)
         test_jobs_template = Template(TEST_JOBS_CONFIG)
         for action_item in input[&quot;action&quot;]:
@@ -334,7 +339,7 @@ JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
 
 with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
     try:
-        input = yaml.load(stream)
+        input = yaml.safe_load(stream)
 
         for action_item in input[&quot;action&quot;]:
             os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 delete-job &quot; + action_item[&quot;jenkins_url&quot;])
