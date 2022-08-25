@@ -38,7 +38,7 @@ services:
 #    extra_hosts:
 #      - "jenkins:192.168.X.y"
   db:
-    image: mariadb:latest
+    image: mariadb:10.4.12
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_DATABASE: Sites
