@@ -521,7 +521,8 @@ def deleteCampusTypeView(request):
 
         action_url = 'network_type_validator';
         current_build_number = server.get_job_info(action_url)['nextBuildNumber']
-        Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS).get_job(action_url).invoke(build_params={'file_name': campusType.app_zip_name,
+        crumb=CrumbRequester(baseurl=JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+        Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS, requester=crumb).get_job(action_url).invoke(build_params={'file_name': campusType.app_zip_name,
                                                         'operation':'delete',
                                                         'project_workspace_path': ServerProperties.getWorkspaceLocation()},
                                          )

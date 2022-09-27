@@ -16,4 +16,4 @@
 
 set -e
 
-docker build -t juniper/nita-webapp:22.7-1 .
+docker build -t juniper/nita-webapp:22.8-1 .
