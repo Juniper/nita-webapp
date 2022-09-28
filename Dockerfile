@@ -26,8 +26,8 @@ RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev wget unz
 
 #COPY nita-yaml-to-excel/ yaml-to-excel/
 
-RUN wget --no-check-certificate https://github.com/Juniper/nita-yaml-to-excel/archive/refs/heads/21.7.zip
-RUN unzip 21.7.zip
+RUN wget --no-check-certificate https://github.com/Juniper/nita-yaml-to-excel/archive/refs/heads/22.8.zip
+RUN unzip 22.8.zip
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 

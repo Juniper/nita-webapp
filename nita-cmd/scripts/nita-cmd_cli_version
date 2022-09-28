@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=21.7
+VERSION=22.8
 if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
         echo `cat <<EOT
 echo nita-cli $VERSION

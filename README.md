@@ -1,12 +1,12 @@
-# NITA Web Application 21.7
+# NITA Web Application 22.8
 
-Welcome to NITA 21.7.
+Welcome to NITA 22.8.
 
-Packages built from this branch will be nita-*-21.7-x where x is the packaging release.
+Packages built from this branch will be nita-*-22.8-x where x is the packaging release.
 This branch also contains patches from other branches or minor modifications as required to support the stability and usability of the release.
 There are also some backwards compatibility packages here for ansible and robot that allow projects written for NITA 3.0.7 to work without having to make any changes.
 
-Note that NITA 21.7 backward compatible with NITA 20.10 projects, provided the correct ansible and robot containers are installed.
+Note that NITA 22.8 backward compatible with NITA 20.10 projects, provided the correct ansible and robot containers are installed.
 
 # Copyright
 
@@ -33,23 +33,10 @@ It allows NITA projects to declare exactly which version of NITA they are compat
 Projects must explicitly use the versions of the containers provided by this package in order to avoid docker attempting to download from the registry.
 No containers tagged as "latest" are provided by the package.
 
-## Current Version
+## 22.8 New Features and Bug Fixes
 
-The release has been broken up into multiple packages, see the list bellow:
-
-* Ubuntu 18.04
-  * nita-jenkins-21.7-1
-  * nita-webapp-21.7-1
-  * nita-ansible-2.9.18-21.7-1
-  * nita-robot-4.1-21.7-1
-  * yaml-to-excel-21.7.0-1
-
-* Centos 7
-  * nita-jenkins-21.7-1
-  * nita-webapp-21.7-1
-  * nita-ansible-2.9.18-21.7-1
-  * nita-robot-4.1-21.7-1
-  * yaml-to-excel-21.7.0-1
+* Loads of security advisories, please use this version to avoid security problems in 21.7.
+* Upgraded Jenkins
 
 ## 21.7 New Features and Bug Fixes
 
@@ -137,7 +124,7 @@ Once you have docker-ce and docker-compose installed do the following steps as *
 ```bash
 git clone https://github.com/Juniper/nita-webapp
 cd nita-webapp
-git checkout 21.7
+git checkout 22.8
 mkdir nginx/certificates
 openssl req -batch -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/certificates/nginx-certificate-key.key -out nginx/certificates/nginx-certificate.crt
 docker network create nita-network
@@ -150,7 +137,7 @@ In order for NITA to work you also need to run jenkins:
 apt-get install -y openjdk-11-jre-headless
 git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
-git checkout 21.7
+git checkout 22.8
 mkdir certificates
 keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
 docker compose up -d
@@ -169,12 +156,12 @@ cd nita-jenkins
 cd ..
 git clone https://github.com/Juniper/nita-ansible
 cd nita-ansible
-git checkout 21.7
+git checkout 22.8
 ( cd cli_scripts && install -m 0755 * /usr/local/bin )
 cd ..
 git clone https://github.com/Juniper/nita-robot
 cd nita-robot
-git checkout 21.7
+git checkout 22.8
 ( cd cli_scripts && install -m 0755 * /usr/local/bin )
 cd ..
 exec bash
@@ -199,33 +186,7 @@ chgrp 1000 /var/nita_project
 
 Note: Verify that the group section of the permissions is writable as well. In some instances the linux permissions 755 are seen after this step and need to modified by ```sudo chmod 775 /var/nita_project```
 
-### Ubuntu packages
-If you have been provided with or built the .deb package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
-
-```bash
-sudo apt-get install <path-to-deb-file>
-```
-
-Example:
-```bash
-sudo apt-get install ./nita-jenkins-21.7-1.deb ./nita-webapp-21.7-1.deb ./yaml-to-excel-21.7.0-1.deb
-```
-
-### Centos packages
-If you have been provided with or built the .rpm package files, then follow the instructions provided in the [Dependencies](##Dependencies) section above and then run the following command:
-
-```bash
-sudo yum install <patch-to-rpm-file>
-```
-
-Example:
-```bash
-sudo yum install ./nita-jenkins-21.7-1.noarch.rpm ./nita-webapp-21.7-1.noarch.rpm ./yaml-to-excel-21.7.0-1.noarch.rpm
-```
-
-NOTE: make sure you disable SELinux during the instalation process. Refer to  [`Known Bugs and irritations`](#Known-Bugs-and-irritations) for more details.
-
-## 
+## Vagrant
 
 For users of vagrant, here is a handy "Vagrantfile" that will get you a working ubuntu 18.04 box quickly and forward the relevant ports:
 
@@ -363,12 +324,12 @@ ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/cont
 The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/wildsubnet/nita-webapp/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
 ```
     configuration:
-      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+      shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:22.8-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
 This would be modified for remote execution via TCP (as configured in the previous section) by adding ``-H tcp://docker-IP`` to the ``docker run`` command:
 ```
     configuration:
-      shell_command: 'write_yaml_files.py; docker run -H tcp://docker-IP -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:21.3-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
+      shell_command: 'write_yaml_files.py; docker run -H tcp://docker-IP -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:22.8-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
 ```
 ### nita-jenkins on a separate docker network
 
