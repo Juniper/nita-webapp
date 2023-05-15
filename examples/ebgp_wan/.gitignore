@@ -1,7 +1,0 @@
-*.pyc
-*.swp
-data.json
-id_rsa
-id_rsa.pub
-test/resource_files/tmp/
-test/tests/*.robot

@@ -1,3 +1,0 @@
----
-- name: Creating common SNMP config
-  template: src=mx_system.j2 dest={{ tmp_dir }}/mx_system.cfg
