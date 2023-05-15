@@ -219,7 +219,7 @@ end
 
 ## Troubleshooting
 
-### Docker socket 
+### Docker socket
 
 ``/var/run/docker.sock``
 
@@ -257,7 +257,7 @@ When using packaged versions of nita, these files control the containers started
 
 ### Web App refuses to load network network packages
 
-If the web app refuses to load network packages (and just hangs) this may be caused by incorrect permissions or group membership on /var/nita_project. Please review installation instructions for more information. 
+If the web app refuses to load network packages (and just hangs) this may be caused by incorrect permissions or group membership on /var/nita_project. Please review installation instructions for more information.
 
 # User Interface
 
@@ -321,7 +321,7 @@ ExecStart=/usr/bin/dockerd -H tcp://192.168.49.2 -H fd:// --containerd=/run/cont
 ```
 ### Nita considerations with an external Jenkins server
 
-The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/wildsubnet/nita-webapp/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
+The examples included with nita-webapp assume a local installation of Jenkins. The shell commands configured in the ``project.yaml`` file and loaded as Jenkins jobs to build the network environments are written for local installation. In order for the Jenkins to execute the jobs properly, the shell commands will need to be modified for remote execution. For example, in the DC build example, the file https://github.com/Juniper/nita/blob/main/examples/evpn_vxlan_erb_dc/project.yaml contains the following line:
 ```
     configuration:
       shell_command: 'write_yaml_files.py; docker run -u root -v "/var/nita_project:/project:rw" -v "/var/nita_configs:/var/tmp/build:rw" --rm --name ansible juniper/nita-ansible:22.8-1 /bin/bash -c "cd ${WORKSPACE}; bash build.sh ${build_dir}"'
