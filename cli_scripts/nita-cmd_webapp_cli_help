@@ -14,5 +14,5 @@
 # ********************************************************
         echo -n "    nita-cmd webapp cli => "
         echo `cat <<EOT
-Attaches local stdin, stdout and stderr streams to webapp running container.
+Create an interactive session in the webapp container by executing a bash shell and using stdin as a tty.
 EOT` >&2
