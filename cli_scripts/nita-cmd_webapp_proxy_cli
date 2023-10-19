@@ -17,12 +17,12 @@
 
 if [ -x "$(command -v kubectl)" ]; then
 
-    export POD=$(kubectl get pods --no-headers=true -l io.kompose.service=webapp | grep Running | awk '{print $1}')
+    export POD=$(kubectl get pods --no-headers=true -l io.kompose.service=proxy | grep Running | awk '{print $1}')
     CMD="kubectl exec -it $POD -- bash"
 
 elif [ -x "$(command -v docker)" ]; then
 
-    CMD='docker exec -it nitawebapp_webapp_1 /bin/bash'
+    CMD="echo Unsupported command"
 
 else
 
