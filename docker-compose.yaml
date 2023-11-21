@@ -15,7 +15,7 @@
 version: "2.0"
 services:
   webapp:
-    image: juniper/nita-webapp:22.8-1
+    image: juniper/nita-webapp:22.8-2
     command: ./build-and-test-webapp/wait-for-db.sh
     networks:
       - nita-network
