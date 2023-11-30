@@ -151,12 +151,11 @@ keytool -importkeystore -srckeystore certificates/jenkins_keystore.jks -destkeys
 openssl pkcs12 -in jenkins.p12 -nokeys -out certificates/jenkins.crt
 ```
 
-Secondly install the jenkins crt into the cacerts:
+Secondly install the jenkins crt into the cacerts and copy the required jarfile into place:
 ```bash
-docker exec -it -u root nitajenkins_jenkins_1 bash
-keytool -import -keystore /opt/java/openjdk/lib/security/cacerts -file /var/jenkins_home/jenkins.crt
+docker exec -it -u root nitajenkins_jenkins_1 keytool -import -keystore /opt/java/openjdk/lib/security/cacerts -file /certificates/jenkins.crt -storepass changeit -noprompt && curl http://jenkins:8080/jnlpJars/jenkins-cli.jar -o /var/jenkins_home/war/WEB-INF/jenkins-cli.jar
 ```
-Note: Every time you restart the Jenkins container, you will need to rerun the second step show above to add the certificate to jenkins container cacerts.
+Note: Every time you `docker-compose down` the Jenkins container, you will need to rerun the second step show above to add the certificate to jenkins container cacerts as the changes will be lost.
 
 In order to get nita-cmd scripts working on a docker-compose based installation (do this in the same directory where you cloned jenkins and the webapp):
 ```bash
