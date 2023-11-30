@@ -139,9 +139,25 @@ git clone https://github.com/Juniper/nita-jenkins
 cd nita-jenkins
 git checkout 22.8
 mkdir certificates
-keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=, ou=, o=, l=, st=, c="
+keytool -genkey -keyalg RSA -alias selfsigned -keystore certificates/jenkins_keystore.jks -keypass nita123 -storepass nita123 -keysize 4096 -dname "cn=jenkins, ou=, o=, l=, st=, c="
 docker compose up -d
 ```
+
+In order for nita-cmd jenkins commands to work you need to perform the following steps on the certificates/jenkins_keystore.jks created in the previous step:
+
+```
+keytool -importkeystore -srckeystore certificates/jenkins_keystore.jks -destkeystore jenkins.p12 -deststoretype PKCS12
+openssl pkcs12 -in jenkins.p12 -nokeys -out certificates/jenkins.crt
+```
+
+Then you have to install the jenkins crt into the cacerts:
+
+```
+docker exec -it -u root nitajenkins_jenkins_1 bash
+keytool -import -keystore /opt/java/openjdk/lib/security/cacerts -file /var/jenkins_home/jenkins.crt
+```
+
+If you wish to make the modification persistent to pods restarts you would have to commit this image to make a new version of it
 
 In order to get nita-cmd scripts working on a docker-compose based installation (do this in the same directory where you cloned jenkins and the webapp):
 ```bash
