@@ -16,12 +16,13 @@
 # Priority order is top down
 
 if [ -x "$(command -v kubectl)" ]; then
-    
-    CMD="kubectl create -f ${NITAWEBAPPDIR-/etc/nita-webapp}/webapp-deployment.yaml"
+
+    export POD=$(kubectl get pods --no-headers=true -l io.kompose.service=proxy | grep Running | awk '{print $1}')
+    CMD="kubectl exec -it $POD -- bash"
 
 elif [ -x "$(command -v docker)" ]; then
 
-    CMD='docker-compose -p nitawebapp -f ${NITAWEBAPPDIR-/etc/nita-webapp}/docker-compose.yaml up -d'
+    CMD="echo Unsupported command"
 
 else
 
