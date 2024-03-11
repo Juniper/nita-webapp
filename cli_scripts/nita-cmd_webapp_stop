@@ -17,7 +17,7 @@
 
 if [ -x "$(command -v kubectl)" ]; then
 
-    CMD="kubectl scale deploy webapp --replicas=0"
+    CMD="kubectl scale deploy webapp --replicas=0 -n nita"
 
 elif [ -x "$(command -v docker)" ]; then
 

@@ -17,12 +17,11 @@
 
 if [ -x "$(command -v kubectl)" ]; then
 
-    export POD=$(kubectl get pods -n nita --no-headers=true -l io.kompose.service=webapp | grep Running | awk '{print $1}')
-    CMD="kubectl get pods $POD -n nita -o json | jq '.status.podIPs'"
+    CMD="kubectl get pods -n nita"
 
 elif [ -x "$(command -v docker)" ]; then
 
-    CMD='docker inspect nitawebapp_webapp_1 | jq ".[] | .NetworkSettings.Networks[].IPAddress"'
+    CMD="echo Unsupported command"
 
 else
 
