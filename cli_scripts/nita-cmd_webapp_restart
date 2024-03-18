@@ -18,7 +18,7 @@
 if [ -x "$(command -v kubectl)" ]; then
 
     # Rollout starts a new pod before terminating the old one
-    CMD="kubectl rollout restart deployment/webapp"
+    CMD="kubectl rollout restart deployment/webapp -n nita"
 
 elif [ -x "$(command -v docker)" ]; then
 

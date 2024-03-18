@@ -17,8 +17,8 @@
 
 if [ -x "$(command -v kubectl)" ]; then
 
-    export POD=$(kubectl get pods --no-headers=true -l io.kompose.service=webapp | grep Running | awk '{print $1}')
-    CMD="kubectl logs --tail=200 $POD"
+    export POD=$(kubectl get pods -n nita --no-headers=true -l io.kompose.service=webapp | grep Running | awk '{print $1}')
+    CMD="kubectl logs -n nita --tail=200 $POD"
 
 elif [ -x "$(command -v docker)" ]; then
 
