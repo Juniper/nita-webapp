@@ -1,3 +1,7 @@
+# Build
+
+:warning: These instructions related to NITA versions 22.8 and older.
+
 For the building purpose of a **Package** or **Docker Image** it is recommended to first clone the repo:
 ```
 git clone <repo_url>
