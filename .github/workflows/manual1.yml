@@ -32,10 +32,15 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@latest
         with:
           fetch-depth: 0
 
       - name: Run Microsoft Security DevOps
-        uses: microsoft/security-devops-action@v1
+        uses: microsoft/security-devops-action@latest
         id: msdo    
+
+      - name: Upload results to Security tab
+        uses: github/codeql-action/upload-sarif@latest
+        with:
+          sarif_file: ${{ steps.msdo.outputs.sarifFile }}  
