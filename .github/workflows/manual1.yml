@@ -32,7 +32,7 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@latest
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -41,6 +41,6 @@ jobs:
         id: msdo    
 
       - name: Upload results to Security tab
-        uses: github/codeql-action/upload-sarif@latest
+        uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: ${{ steps.msdo.outputs.sarifFile }}  
