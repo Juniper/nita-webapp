@@ -19,5 +19,6 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
       
       - name: Set VERSION.txt
-        run: ./build-end-test-webapp/update_version.sh   
+        shell: bash
+        run: cd ${GITHUB_WORKSPACE} ; ./build-end-test-webapp/update_version.sh   
 
