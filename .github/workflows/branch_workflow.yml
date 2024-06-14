@@ -2,10 +2,7 @@ name: Branch workflow
 
 on:  
   create:
-    branches:
-      - main
  
-
 jobs:
   build:
     name: Build
@@ -20,5 +17,7 @@ jobs:
       - name: Echo
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
-          
+      
+      - name: Set VERSION.txt
+        run: ./build-end-test-webapp/update_version.sh   
 
