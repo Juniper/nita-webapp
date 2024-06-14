@@ -20,5 +20,5 @@ jobs:
       
       - name: Set VERSION.txt
         shell: bash
-        run: cd ${GITHUB_WORKSPACE} ; ls -la ; bash ./build-end-test-webapp/update_version.sh   
+        run: cd ${GITHUB_WORKSPACE} ; bash ./build-and-test-webapp/update_version.sh   
 
