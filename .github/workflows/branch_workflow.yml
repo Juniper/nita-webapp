@@ -20,5 +20,5 @@ jobs:
       
       - name: Set VERSION.txt
         shell: bash
-        run: echo "WORKSPACE=${GITHUB_WORKSPACE}" ; cd ${GITHUB_WORKSPACE} ; pwd ; ./build-end-test-webapp/update_version.sh   
+        run: cd ${GITHUB_WORKSPACE} ; bash ./build-end-test-webapp/update_version.sh   
 
