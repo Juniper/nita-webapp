@@ -38,8 +38,7 @@ jobs:
           git push 
           export ver=`cat VERSION.txt` 
           echo "VER=$ver TAG=v$ver"
-          git tag "v$ver" 
-          git commit -m "Release $ver tag" 
+          git tag "v$ver"  
           git push origin "v$ver"
 
           
