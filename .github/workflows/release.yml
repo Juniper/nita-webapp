@@ -23,7 +23,7 @@ jobs:
         env:
           tag: ${{ github.ref_name }}
         shell: bash
-        run:  echo "${tag:2}" > VERSION.txt  
+        run:  echo "${tag:3}" > VERSION.txt  
 
       - name: Commit and push changes
         run: |
