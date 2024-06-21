@@ -3,7 +3,7 @@ name: Create release
 on:
   push:
     tags:
-      - "v*"
+      - "__v*"
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
         env:
           tag: ${{ github.ref_name }}
         shell: bash
-        run:  echo "$tag"> VERSION.txt  
+        run:  echo "${tag:2}"> VERSION.txt  
 
       - name: Commit and push changes
         run: |
@@ -38,7 +38,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
         run: |
-          gh release create "$tag" \
+          export tag2=`cat VERSION.txt`
+          gh release create "$tag2" \
               --repo="$GITHUB_REPOSITORY" \
-              --title="${tag#v}" \
+              --title="${tag2#v}" \
               --generate-notes
