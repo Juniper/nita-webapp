@@ -1,29 +1,24 @@
-name: Release workflow
+name: Create release
 
-on:  
-  release:
-    types: [created]
- 
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-
+  release:
+    name: Release pushed tag
+    runs-on: ubuntu-22.04
     steps:
-
-      - name: Echo
-        shell: bash
-        run: echo "TAG=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/tags/}}"
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Set VERSION.txt
-        shell: bash
-        run: cd ${GITHUB_WORKSPACE} ; bash ./build-and-test-webapp/update_version.sh   
-      
-      - name: FAIL
-        shell: bash
-        run: exit -1   
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${tag#v}" \
+              --generate-notes
