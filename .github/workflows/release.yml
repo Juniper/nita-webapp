@@ -13,6 +13,24 @@ jobs:
     name: Release pushed tag
     runs-on: ubuntu-22.04
     steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set VERSION.txt
+        env:
+          tag: ${{ github.ref_name }}
+        shell: bash
+        run:  echo "$tag"> VERSION.txt  
+
+      - name: Commit and push changes
+        run: |
+          git add -A
+          git commit -m "Release workflow"
+          git push
+          
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
