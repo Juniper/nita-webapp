@@ -37,6 +37,7 @@ jobs:
           git commit -m "Release workflow"
           git push 
           export ver=`cat VERSION.txt` 
+          echo "VER=$ver TAG=v$ver"
           git tag "v$ver" 
           git commit -m "Release $ver tag" 
           git push origin "v$ver"
