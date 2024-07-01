@@ -41,7 +41,7 @@ jobs:
         
       - uses: actions/upload-artifact@v3.1.0
         with: 
-          path: _manifest\spdx_2.2\manifest.spdx.json
+          path: /var/tmp/sbom_output/manifest.spdx.json
           name: "SBOM"   
 
       - name: Commit and push changes
