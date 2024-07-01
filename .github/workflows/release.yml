@@ -30,16 +30,18 @@ jobs:
         run:  echo "${tag:3}" > VERSION.txt  
         
 
-      - name: SBOM Generator
-        uses: advanced-security/sbom-generator-action@v0.0.1 
-        id: sbom
-        env: 
-          GITHUB_TOKEN: ${{ github.token }}
-      
-      - uses: actions/upload-artifact@v3.1.0
-        with: 
-          path: ${{steps.sbom.outputs.fileName }}
-          name: "SBOM"
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 6.0.x
+  
+      - name: Build
+        run: dotnet build Sample.sln --output buildOutput
+  
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          path: buildOutput
         
         
       - name: Commit and push changes
