@@ -1,0 +1,12 @@
+#!/bin/sh
+PACKAGE_NAME='Python Docker Image'
+PACKAGE_URL='https://hub.docker.com/_/python' 
+PYTHON_DOCKER_DESCR=`docker search python --no-trunc | egrep '^python\W' | cut -d ' '  -f 2- | awk '{$1=$1;print}' | rev | cut -d ' ' -f 3- | rev`
+PYTHON_DOCKER_LICENSE_BASE='https://github.com/docker-library/repo-info/tree/master/repos/python/local'
+PACKAGE_VERSION=`grep "FROM python" Dockerfile | awk -F: '{print $2}'`
+
+LICENSE_PATH="${PYTHON_DOCKER_LICENSE_BASE}/${PACKAGE_VERSION}.md"
+
+echo "${PACKAGE_NAME} ( ${PYTHON_DOCKER_DESCR} )"
+echo "URL: ${PACKAGE_URL}"
+echo "License: ${LICENSE_PATH}"

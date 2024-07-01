@@ -28,7 +28,20 @@ jobs:
           tag: ${{ github.ref_name }}
         shell: bash
         run:  echo "${tag:3}" > VERSION.txt  
+        
 
+      - name: SBOM Generator
+        uses: advanced-security/sbom-generator-action@v0.0.1 
+        id: sbom
+        env: 
+          GITHUB_TOKEN: ${{ github.token }}
+      
+      - uses: actions/upload-artifact@v3.1.0
+        with: 
+          path: ${{steps.sbom.outputs.fileName }}
+          name: "SBOM"
+        
+        
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
