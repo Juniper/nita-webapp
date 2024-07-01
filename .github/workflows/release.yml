@@ -37,7 +37,11 @@ jobs:
           $RUNNER_TEMP/sbom-tool generate -b . -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose
   
         
-        
+      - uses: actions/upload-artifact@v3.1.0
+        with: 
+          path: _manifest\spdx_2.2\manifest.spdx.json
+          name: "SBOM"   
+
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
