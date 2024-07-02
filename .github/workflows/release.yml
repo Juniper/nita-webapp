@@ -37,23 +37,23 @@ jobs:
           export SBOM_OUTPUT="/var/tmp/sbom_output"
           rm -rf ${SBOM_OUTPUT}
           mkdir ${SBOM_OUTPUT}
-          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT} -li true -pm true -b build-and-test-webapp -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -o ${SBOM_OUTPUT}/python_sbom.json
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_python -li true -pm true -b build-and-test-webapp -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose 
           dck_cmd=`grep 'docker build' build_container.sh`
           echo "DCK_CMD == ${dck_cmd}"
           img=`echo ${dck_cmd} | awk '{print $4}'`
           ${dck_cmd}
           echo "IMG = ${img}"
-          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}  -li true -pm true -b . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -di ${img} -o ${SBOM_OUTPUT}/docker_sbom.json
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_docker  -li true -pm true -b . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -di ${img} 
 
           
       - uses: actions/upload-artifact@v3.1.0
         with: 
-          path: /var/tmp/sbom_output/python_sbom.json
+          path: ${SBOM_OUTPUT}_python/_manifest/spdx_2.2/manifest.spdx.json
           name: "PYTHON SBOM"   
 
       - uses: actions/upload-artifact@v3.1.0
         with: 
-          path: /var/tmp/sbom_output/docker_sbom.json
+          path: ${SBOM_OUTPUT}_docker/_manifest/spdx_2.2/manifest.spdx.json
           name: "DOCKER SBOM"   
       
       - name: Commit and push changes
