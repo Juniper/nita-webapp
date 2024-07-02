@@ -34,7 +34,7 @@ jobs:
         run: |
           curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-linux-x64
           chmod +x $RUNNER_TEMP/sbom-tool
-          export SBOM_OUTPUT = "/var/tmp/sbom_output"
+          export SBOM_OUTPUT="/var/tmp/sbom_output"
           rm -rf ${SBOM_OUTPUT}
           mkdir ${SBOM_OUTPUT}
           $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT} -li true -pm true -b build-and-test-webapp -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -o ${SBOM_OUTPUT}/python_sbom.json
