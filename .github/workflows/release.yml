@@ -37,8 +37,12 @@ jobs:
           rm -rf /var/tmp/sbom_output
           mkdir /var/tmp/sbom_output
           $RUNNER_TEMP/sbom-tool generate -m /var/tmp/sbom_output -li true -pm true -b build-and-test-webapp -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose
-  
-        
+          dck_cmd=`cat build_container.sh | sed 's/\.$/-o \/var\/tmp\/webapp_docker ./'`
+          ${dck_cmd}
+          img=`ls /var/tmp/webapp_docker`
+          $RUNNER_TEMP/sbom-tool generate -m /var/tmp/sbom_output -li true -pm true -b /var/tmp/webapp_docker -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -di ${img}
+
+          
       - uses: actions/upload-artifact@v3.1.0
         with: 
           path: /var/tmp/sbom_output/_manifest/spdx_2.2/manifest.spdx.json
