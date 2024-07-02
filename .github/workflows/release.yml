@@ -50,12 +50,12 @@ jobs:
           
       - uses: actions/upload-artifact@v3.1.0
         with: 
-          path: ${SBOM_OUTPUT}_python/_manifest/spdx_2.2/manifest.spdx.json
+          path: /var/tmp/sbom_output_python/_manifest/spdx_2.2/manifest.spdx.json
           name: "PYTHON SBOM"   
 
       - uses: actions/upload-artifact@v3.1.0
         with: 
-          path: ${SBOM_OUTPUT}_docker/_manifest/spdx_2.2/manifest.spdx.json
+          path: /var/tmp/sbom_output_docker/_manifest/spdx_2.2/manifest.spdx.json
           name: "DOCKER SBOM"   
       
       - name: Commit and push changes
