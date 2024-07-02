@@ -37,10 +37,10 @@ jobs:
           rm -rf /var/tmp/sbom_output
           mkdir /var/tmp/sbom_output
           $RUNNER_TEMP/sbom-tool generate -m /var/tmp/sbom_output -li true -pm true -b build-and-test-webapp -bc . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose
-          dck_cmd=`grep 'docker build' build_container.sh | sed 's/\.$/-o \/var\/tmp\/webapp_docker ./'`
+          dck_cmd=`grep 'docker build' build_container.sh`
           echo "DCK_CMD == ${dck_cmd}"
+          img=`echo ${dck_cmd} | awk '{print $4}'`
           ${dck_cmd}
-          img=`ls /var/tmp/webapp_docker`
           echo "IMG = ${img}"
           $RUNNER_TEMP/sbom-tool generate -m /var/tmp/sbom_output -li true -pm true -b /var/tmp/webapp_docker -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -di ${img}
 
