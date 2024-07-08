@@ -60,9 +60,9 @@ jobs:
       
       - name: Generate License
         run: |
-           export $DDATE=`date "+%Y"`
+           export DDATE=`date "+%Y"`
            sed "s/Copyright \[yyyy\] \[name of copyright owner\]/Copyright $DDATE Juniper,Inc/"< build-templates/LICENSE.txt > LICENSE.txt
-           
+
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
