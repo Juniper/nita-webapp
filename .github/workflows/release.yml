@@ -48,21 +48,27 @@ jobs:
           $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_docker  -li true -pm true -b . -pn Test -pv 1.0.0 -ps MyCompany -nsb https://sbom.mycompany.com -V Verbose -di ${img} 
 
           
-      - uses: actions/upload-artifact@v3.1.0
+      - uses: actions/upload-artifact@v4
         with: 
           path: /var/tmp/sbom_output_python/_manifest/spdx_2.2/manifest.spdx.json
           name: "PYTHON SBOM"   
 
-      - uses: actions/upload-artifact@v3.1.0
+      - uses: actions/upload-artifact@v4
         with: 
           path: /var/tmp/sbom_output_docker/_manifest/spdx_2.2/manifest.spdx.json
           name: "DOCKER SBOM"   
       
-      - name: Generate License
+      - name: Generate License and README
+        env:
+          tag: ${{ github.ref_name }}
         run: |
-           export DDATE=`date "+%Y"`
-           sed "s/Copyright \[yyyy\] \[name of copyright owner\]/Copyright $DDATE Juniper,Inc/"< build-templates/LICENSE.txt > LICENSE.txt
+            export DDATE=`date "+%Y"`
+            export VERSION=${tag:3}
+            sed "s/Copyright \[yyyy\] \[name of copyright owner\]/Copyright $DDATE, Juniper Networks,Inc/"< build-templates/LICENSE.txt > LICENSE.txt
+            sed "s/Copyright \[yyyy\], \[name of copyright owner\]/Copyright $DDATE, Juniper Networks,Inc/"< build-templates/README.md > /var/tmp/README.tmp
+            sed "s/\[version_template\]/$VERSION/" < /var/tmp/README.tmp > README.md
 
+      
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
