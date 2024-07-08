@@ -1,5 +1,5 @@
-[branch]: https://github.com/Juniper/nita/tree/23.12
-[readme]: https://github.com/Juniper/nita/blob/23.12/README.md
+[branch]: https://github.com/Juniper/nita/tree/[version_template]
+[readme]: https://github.com/Juniper/nita/blob/[version_template]/README.md
 
 # NITA Web Application [version_template]
 
