@@ -1,7 +1,7 @@
-[branch]: https://github.com/Juniper/nita/tree/23.12
-[readme]: https://github.com/Juniper/nita/blob/23.12/README.md
+[branch]: https://github.com/Juniper/nita/tree/0.0.37-test
+[readme]: https://github.com/Juniper/nita/blob/0.0.37-test/README.md
 
-# NITA Web Application 0.0.36-test
+# NITA Web Application 0.0.37-test
 
 Welcome to NITA, an open source platform for automating the building and testing of complex networks.
 
