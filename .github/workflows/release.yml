@@ -69,7 +69,7 @@ jobs:
               );
             deepmerge({}; .)' $1 $2
           ENDJQ
-          bash ./merge_spdn.sh ${SBOM_OUTPUT}_python ${SBOM_OUTPUT}_docker/manifest.spdx.json > NOTICES.spdx.json
+          bash ./merge_spdx.sh ${SBOM_OUTPUT}_python ${SBOM_OUTPUT}_docker/manifest.spdx.json > NOTICES.spdx.json
           
       - uses: actions/upload-artifact@v4
         with: 
