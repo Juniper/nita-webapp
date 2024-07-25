@@ -57,17 +57,17 @@ jobs:
           # original is here: https://edgebit.io/blog/merge-two-sboms/
 
           jq -s 'def deepmerge(a;b):
-            reduce b[] as $item (a;
-              reduce ($item | keys_unsorted[]) as $key (.;
-                $item[$key] as $val | ($val | type) as $type | .[$key] = if ($type == "object") then
-                  deepmerge({}; [if .[$key] == null then {} else .[$key] end, $val])
-                elif ($type == "array") then
-                  (.[$key] + $val | unique)
+            reduce b[] as \$item (a;
+              reduce (\$item | keys_unsorted[]) as \$key (.;
+                \$item[\$key] as \$val | (\$val | type) as \$type | .[\$key] = if (\$type == "object") then
+                  deepmerge({}; [if .[\$key] == null then {} else .[\$key] end, \$val])
+                elif (\$type == "array") then
+                  (.[\$key] + \$val | unique)
                 else
-                  $val
+                  \$val
                 end)
               );
-            deepmerge({}; .)' $1 $2
+            deepmerge({}; .)' \$1 \$2
           ENDJQ
           bash ./merge_spdx.sh ${SBOM_OUTPUT}_python ${SBOM_OUTPUT}_docker/manifest.spdx.json > NOTICES.spdx.json
           
