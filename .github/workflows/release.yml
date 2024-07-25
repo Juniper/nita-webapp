@@ -39,17 +39,17 @@ jobs:
           curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-linux-x64
           chmod +x $RUNNER_TEMP/sbom-tool
           export SBOM_OUTPUT="/var/tmp/sbom_output"
-          rm -rf ${SBOM_OUTPUT}_python
-          mkdir ${SBOM_OUTPUT}_python
-          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_python -li true -pm true -b build-and-test-webapp -bc . -pn ${PackageName} -pv 1.0.0 -ps ${CompanyName} -nsb ${NSB} -V Verbose 
+          rm -rf "${SBOM_OUTPUT}_python"
+          mkdir "${SBOM_OUTPUT}_python"
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_python -li true -pm true -b build-and-test-webapp -bc . -pn "${PackageName}" -pv 1.0.0 -ps "${CompanyName}" -nsb "${NSB}" -V Verbose 
           dck_cmd=`grep 'docker build' build_container.sh`
           echo "DCK_CMD == ${dck_cmd}"
           img=`echo ${dck_cmd} | awk '{print $4}'`
           ${dck_cmd}
           echo "IMG = ${img}"
-          rm -rf ${SBOM_OUTPUT}_docker
-          mkdir ${SBOM_OUTPUT}_docker
-          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_docker  -li true -pm true -b . -pn ${PackageName}  -pv 1.0.0 -ps ${CompanyName} -nsb ${NSB} -V Verbose -di ${img} 
+          rm -rf "${SBOM_OUTPUT}_docker"
+          mkdir "${SBOM_OUTPUT}_docker"
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_docker  -li true -pm true -b . -pn "${PackageName}"  -pv 1.0.0 -ps "${CompanyName}" -nsb "${NSB}" -V Verbose -di "${img}"" 
           echo "Merge two SPDX files into NOTICES.spdx.json"
           cat << ENDJQ > merge_spdx.sh
           #!/bin/bash
