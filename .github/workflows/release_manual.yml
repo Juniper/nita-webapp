@@ -112,6 +112,8 @@ jobs:
 
           
       - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           export tag=`cat VERSION.txt`
           gh release create "$tag" \
