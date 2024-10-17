@@ -27,6 +27,6 @@ fi
 docker build -t juniper/nita-webapp:22.8-1 .
 
 if [ $ARCH = aarch64 ] ; then 
-        # By some reason PyYAML does not work with 5.4 version so change it to 5.3
+        # restoring requirement.txt to the origial
 	 mv ${REQ_WEBAPP_BACKUP} requirements.txt
 fi
