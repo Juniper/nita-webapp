@@ -534,7 +534,7 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url='/admin/login/')
 def addCampusNetworkView(request):
-
+    global server
     if request.method == 'POST':
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
         if form.is_valid():
@@ -602,8 +602,16 @@ def addCampusNetworkView(request):
                 logger.info("resources for Campus Type: " + campusNetwork.campus_type.name + "::::: is Empty ")
 
             #server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'project_yaml':yaml.safe_dump(project_yaml, default_flow_style=False)})
-            server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'network_desc':network_desc})
-
+            try:
+                server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'network_desc':network_desc})
+            except jenkins.JenkinsException as e:
+                msg=str(e)
+                if 'Forbidden' in msg: # most probably crumbs issue
+                    # reauthenticate and try once more
+                  
+                    server = jenkins.Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+                    server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'network_desc':network_desc})
+                    
             if wait_and_get_build_status(action_url,current_build_number) :
                 logger.info("Campus Network - " + campusNetwork.name + " creation network_template_manager job finished successfully")
                 campusNetwork.save()
@@ -627,7 +635,7 @@ def addCampusNetworkView(request):
 
 @login_required(login_url='/admin/login/')
 def editCampusNetworkView(request, campus_network_id):
-
+    global server
     if request.method == 'POST':
             campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
             POST = request.POST.copy()
@@ -645,7 +653,15 @@ def editCampusNetworkView(request, campus_network_id):
                 network_name=data['name'].strip()
                 action_url = 'network_template_mgr';
                 current_build_number = server.get_job_info(action_url)['nextBuildNumber']
-                server.build_job(action_url,{'src':src,'network_name':network_name,'hosts':hostData,'operation':'update'})
+                try:
+                    server.build_job(action_url,{'src':src,'network_name':network_name,'hosts':hostData,'operation':'update'})
+                except jenkins.JenkinsException as e:
+                    msg=str(e)
+                    if 'Forbidden' in msg: # most probably crumbs issue
+                        # reauthenticate and try once more
+                      
+                        server = jenkins.Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+                        server.build_job(action_url,{'src':src,'network_name':network_name,'hosts':hostData,'operation':'update'})
 
                 if wait_and_get_build_status(action_url,current_build_number) :
                     campusNetwork.status = "Hosts file modified"
@@ -670,6 +686,7 @@ def editCampusNetworkView(request, campus_network_id):
 
 @login_required(login_url='/admin/login/')
 def deleteCampusNetworkView(request):
+    global server
     if request.method == 'POST':
         campus_network_ids=request.POST.get('campus_network_ids')
 
@@ -677,9 +694,18 @@ def deleteCampusNetworkView(request):
         network_name=campusNetwork.name
         src=ServerProperties.getWorkspaceLocation()+"/"+campusNetwork.campus_type.app_zip_name
 
-        action_url = 'network_template_mgr';
+        action_url = 'network_template_mgr'
         current_build_number = server.get_job_info(action_url)['nextBuildNumber']
-        server.build_job(action_url,{'src':src,'network_name':network_name,'operation':'delete'})
+        try:
+            server.build_job(action_url,{'src':src,'network_name':network_name,'operation':'delete'})
+        except jenkins.JenkinsException as e:
+            msg=str(e)
+            if 'Forbidden' in msg: # most probably crumbs issue
+                # reauthenticate and try once more
+                
+                server = jenkins.Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
+                server.build_job(action_url,{'src':src,'network_name':network_name,'operation':'delete'})
+            
         if wait_and_get_build_status(action_url,current_build_number) :
             campusNetwork.delete()
             return JsonResponse({'status':'success', 'name':network_name})
