@@ -1,0 +1,122 @@
+name: Create release manually
+on: 
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'Release name and tag name'
+        required: true
+      confirm_release_name:
+        description: 'Release name and tag name to confirm its value'
+        required: true
+
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release 
+    runs-on: ubuntu-22.04
+    steps:
+
+      - name:  Verify release name
+        shell: bash
+        run: |
+           if [ ${{ github.event.inputs.release_name }} != ${{ github.event.inputs.confirm_release_name }} ] ; then
+              echo "Discrepancy between release name and confirmation release name!"
+              exit 1
+           fi
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Switch to main branch
+        run: |
+          git switch main
+      
+      - name: Set VERSION.txt
+        env:
+          tag: ${{ github.event.inputs.release_name }}
+        shell: bash
+        run:  echo "${tag}" > VERSION.txt  
+        
+
+      - name: Generate SBOM
+        env:
+          CompanyName: "Juniper Networks"
+          PackageName: "nita-webapp"
+          NSB: "https://juniper.net"
+        run: |
+          curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/latest/download/sbom-tool-linux-x64
+          chmod +x $RUNNER_TEMP/sbom-tool
+          export SBOM_OUTPUT="/var/tmp/sbom_output"
+          rm -rf "${SBOM_OUTPUT}_python"
+          mkdir "${SBOM_OUTPUT}_python"
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_python -li true -pm true -b build-and-test-webapp -bc . -pn "${PackageName}" -pv 1.0.0 -ps "${CompanyName}" -nsb "${NSB}" -V Verbose 
+          dck_cmd=`grep 'docker build' build_container.sh`
+          echo "DCK_CMD == ${dck_cmd}"
+          img=`echo ${dck_cmd} | awk '{print $4}'`
+          ${dck_cmd}
+          echo "IMG = ${img}"
+          rm -rf "${SBOM_OUTPUT}_docker"
+          mkdir "${SBOM_OUTPUT}_docker"
+          $RUNNER_TEMP/sbom-tool generate -m ${SBOM_OUTPUT}_docker  -li true -pm true -b . -pn "${PackageName}"  -pv 1.0.0 -ps "${CompanyName}" -nsb "${NSB}" -V Verbose -di "${img}" 
+          echo "Merge two SPDX files into NOTICES.spdx.json"
+          cat << ENDJQ > merge_spdx.sh
+          #!/bin/bash
+          #
+          # Merges two json files together
+          #
+          # Usage:
+          # merge-sbom.sh file1 file2 > merged-file
+          # original is here: https://edgebit.io/blog/merge-two-sboms/
+
+          jq -s 'def deepmerge(a;b):
+            reduce b[] as \$item (a;
+              reduce (\$item | keys_unsorted[]) as \$key (.;
+                \$item[\$key] as \$val | (\$val | type) as \$type | .[\$key] = if (\$type == "object") then
+                  deepmerge({}; [if .[\$key] == null then {} else .[\$key] end, \$val])
+                elif (\$type == "array") then
+                  (.[\$key] + \$val | unique)
+                else
+                  \$val
+                end)
+              );
+            deepmerge({}; .)' \$1 \$2
+          ENDJQ
+          bash ./merge_spdx.sh ${SBOM_OUTPUT}_python/_manifest/spdx_2.2/manifest.spdx.json ${SBOM_OUTPUT}_docker/_manifest/spdx_2.2/manifest.spdx.json > NOTICES.spdx.json
+          
+      - name: Generate License and README
+        env:
+          tag: ${{ github.event.inputs.release_name }}
+        run: |
+            export DDATE=`date "+%Y"`
+            export VERSION=${tag}
+            sed "s/Copyright \[yyyy\] \[name of copyright owner\]/Copyright $DDATE, Juniper Networks,Inc/"< build-templates/LICENSE.txt > LICENSE.txt
+            sed "s/Copyright \[yyyy\], \[name of copyright owner\]/Copyright $DDATE, Juniper Networks,Inc/"< build-templates/README.md > /var/tmp/README.tmp
+            sed "s/\[version_template\]/$VERSION/" < /var/tmp/README.tmp > README.md
+
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release workflow"
+          git push 
+          export ver=`cat VERSION.txt` 
+          echo "VER=$ver TAG=$ver"
+          git tag "$ver"  
+          git push origin "$ver"
+
+          
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export tag=`cat VERSION.txt`
+          gh release create "$tag" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${tag}" \
+              --generate-notes
