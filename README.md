@@ -1,5 +1,5 @@
-[branch]: https://github.com/Juniper/nita/tree/tt888
-[readme]: https://github.com/Juniper/nita/blob/tt888/README.md
+[branch]: https://github.com/Juniper/nita/tree/23.12
+[readme]: https://github.com/Juniper/nita/blob/23.12/README.md
 
 # NITA Web Application tt888
 
