@@ -1,7 +1,7 @@
 [branch]: https://github.com/Juniper/nita/tree/23.12
 [readme]: https://github.com/Juniper/nita/blob/23.12/README.md
 
-# NITA Web Application 23.12
+# NITA Web Application 25.10
 
 Welcome to NITA, an open source platform for automating the building and testing of complex networks.
 
@@ -86,6 +86,11 @@ It allows NITA projects to declare exactly which version of NITA they are compat
 
 Projects must explicitly use the versions of the containers provided by this package in order to avoid docker attempting to download from the registry.
 No containers tagged as "latest" are provided by the package.
+
+## 25.10 New Features and Bug Fixes
+
+* Loads of security advisories, please use this version to avoid security problems in 22.8.
+* Fixed session problem in the webapp causing disconnects from Jenkins and Kubernetes.
 
 ## 22.8 New Features and Bug Fixes
 
