@@ -20,8 +20,6 @@ Third-Party Code: This code may depend on other components under separate copyri
         {% load staticfiles %}
         {% load json_filters %}
 
-        <script src="{% static 'components/tree/js/tree.jquery.js' %}"></script>
-        <script src="{% static 'global/js/ngcn_tree.js' %}"></script>
     <style>
         ul.jqtree-tree .jqtree-title {
             margin-left: 0.5em;
@@ -32,6 +30,8 @@ Third-Party Code: This code may depend on other components under separate copyri
     <body>
     <div id="tree">
     </div>
+    <script src="{% static 'components/tree/js/tree.jquery.js' %}"></script>
+    <script src="{% static 'global/js/ngcn_tree.js' %}"></script>
     <script>
         $('#tree').tree({
             data: {{ data|safe }},
