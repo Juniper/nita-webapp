@@ -12,7 +12,6 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ******************************************************** """
 from django.conf.urls import url
-from django.contrib.auth import views as djangoview
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from . import views

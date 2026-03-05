@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
 
 ******************************************************** """
-from ngcn.models import ActionHistory, Action
+from ngcn.models import ActionHistory
 from django.conf import settings
 import jenkins
 import threading
@@ -52,7 +52,7 @@ class StatusUpdater:
         RESULT="result"
         try:
             buildStatus = self.SERVER.get_build_info(build_name, build_no)[RESULT]
-            if buildStatus != None and buildStatus != 'None':
+            if buildStatus is not None and buildStatus != 'None':
                 logger.info(buildStatus)
         except Exception as e:
             logger.error("StatusUpdater - getBuildStatus - Error while getBuildDuration - Build with build_name: " + build_name +"; build_no: " + str(build_no) + "; is on queue.....")
@@ -78,7 +78,7 @@ class StatusUpdater:
             campus_network=actionHistory.campus_network_id
             build_status=self.getBuildStatus(build_name+"-"+campus_network.name, build_no)
             #print ":::::::updateAllRunningJobs getting build status for: " + str(actionHistory.id) + "---" +build_status
-            if build_status != None:
+            if build_status is not None:
                 self.updateBuildStatusOnDB(actionHistory.id, build_status)
                 logger.debug(":::::::updateAllRunningJobs updated build status on DB: " + str(actionHistory.id) + "---" +build_status)
 

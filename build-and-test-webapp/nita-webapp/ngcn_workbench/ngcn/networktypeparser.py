@@ -17,11 +17,9 @@ import re
 import jenkins
 from django.db import transaction
 from django.conf import settings
-import json
 # from pykwalify.core import Core
 import logging
 import traceback
-import string
 import configparser
 import tempfile
 import shutil
@@ -29,8 +27,6 @@ import shutil
 from ngcn.models import CampusType
 from ngcn.models import Action
 from ngcn.models import ActionCategory
-from ngcn.models import Role
-from ngcn.models import Resource
 from ngcn.models import ActionProperty
 #from ngcn.models import JenkinsJobProperty
 from ngcn.utils import ServerProperties
@@ -44,7 +40,6 @@ from zipfile import ZipFile
 from jenkinsapi.jenkins import Jenkins
 from jenkinsapi.utils.crumb_requester import CrumbRequester
 
-from MySQLdb import _mysql
 #from _mysql import IntegrityError
 
 logger=logging.getLogger(__name__)
@@ -74,11 +69,11 @@ class NetworkTypeParser:
                 app_name = re.sub('\.zip$','',file_name)
                 project_yaml_file = zip_file.read(app_name + '/project.yaml').decode('utf-8')
                 logger.debug(project_yaml_file)
-                project_file_dict = yaml.load(project_yaml_file)
+                yaml.load(project_yaml_file)
                 logger.debug("YAML Parsed Successfully")
                 zip_file.close()
                 validation_error = self.validateProjectYaml(project_yaml_file)
-                if validation_error != None:
+                if validation_error is not None:
                     return JsonResponse({'result':'failure', 'reason':validation_error})
 
                 job_name = 'network_type_validator'
@@ -144,7 +139,7 @@ class NetworkTypeParser:
         projectfilename = find_file(tmp + "/tmp1/","project.yaml")
         logger.debug("projectfilename = find_file('" + tmp + "/tmp1','project.yaml')")
         logger.debug("projectfilename = " + projectfilename)
-        if projectfilename == None:
+        if projectfilename is None:
             msg = "Can't find project.yaml file in: " + filename
             logger.error(msg)
             # bomb out of this by returning the original filename because there are checks
@@ -216,7 +211,7 @@ class NetworkTypeParser:
             no_member_list = []
             for member in list_of_files:
                 if app_name+"/"+member not in archive_member_list:
-                    no_member_list.append(member);
+                    no_member_list.append(member)
                     result["status"] = False
                     result["message"]= member +" is not present in the project directory"
                     logger.error(result)
@@ -305,7 +300,7 @@ class NetworkTypeParser:
             #    error_string="The resources must not be empty."
             #    return error_string
 
-        except IntegrityError:
+        except Exception:
             error_string="Invalid project.yaml file"
             return error_string
         return error_string

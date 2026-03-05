@@ -12,7 +12,10 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ******************************************************** """
 import django_tables2 as tables
-from ngcn.models import *
+from ngcn.models import Action
+from ngcn.models import ActionHistory
+from ngcn.models import CampusNetwork
+from ngcn.models import CampusType
 from django.conf import settings
 from django.utils.translation import gettext as _
 import configparser

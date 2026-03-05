@@ -13,10 +13,10 @@ Third-Party Code: This code may depend on other components under separate copyri
 ******************************************************** """
 from django import forms
 from django.core.validators import validate_slug
+from django.forms import BaseInlineFormSet
 from django.forms import ModelForm
 from ngcn.models import CampusType, CampusNetwork, Action
 from django.forms import inlineformset_factory
-import ngcn.views
 import logging
 
 logger=logging.getLogger(__name__)
@@ -123,8 +123,6 @@ class EditCampusNetworkForm(ModelForm):
         fields = ['name','description','status', 'host_file', 'campus_type', 'dynamic_ansible_workspace']
         fields_required = ['name','description', 'campus_type']
         exclude = ('status',)
-
-from django.forms import BaseInlineFormSet
 
 class CustomInlineFormSet(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):

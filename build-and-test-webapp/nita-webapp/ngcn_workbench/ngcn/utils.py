@@ -61,13 +61,13 @@ def wait_and_get_build_status(action_url,build_number):
             try:
                 sleep(interval)
                 buildStatus=getBuildStatus(action_url, build_number)
-                if buildStatus != None and buildStatus != 'None':
+                if buildStatus is not None and buildStatus != 'None':
                     break
             except Exception as e:
                 logger.error("Error while getting build status of validate template directory")
                 logger.error(e)
 
-        if buildStatus != None:
+        if buildStatus is not None:
             if buildStatus.lower() == "success":
                 return True
     except Exception as e:
@@ -83,7 +83,7 @@ def getBuildStatus(build_name, build_no):
     try:
         logger.debug('Jenkins server: ' + JENKINS_SERVER_URL)
         buildStatus = SERVER.get_build_info(build_name, build_no)[RESULT]
-        if buildStatus != None and buildStatus != 'None':
+        if buildStatus is not None and buildStatus != 'None':
             logger.info(buildStatus)
     except Exception as e:
         logger.error("StatusUpdater - getBuildStatus - Error while getBuildDuration - Build with build_name: " + build_name + "; build_no: " + str(build_no) + "; is on queue.....")

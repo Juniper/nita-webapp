@@ -18,7 +18,6 @@ import yaml
 from yaml.constructor import Constructor
 import collections
 from collections import OrderedDict
-from io import StringIO
 import traceback
 import logging
 import configparser
@@ -38,17 +37,17 @@ from django.conf import settings
 from openpyxl import load_workbook
 from openpyxl import Workbook as open_workbook
 from openpyxl.styles import Font, NamedStyle, PatternFill, Border, Side, Alignment
-from xml.dom.minidom import parseString
+from jenkinsapi.jenkins import Jenkins
+from jenkinsapi.utils.crumb_requester import CrumbRequester
 from django_tables2   import RequestConfig
 import django_tables2 as tables
 
 from ngcn.models import CampusType,CampusNetwork,ActionHistory,ActionCategory,Workbook,Worksheets,Action,Resource,Role
-from ngcn.tables import CampusTypeTable,CampusNetworkTable,ActionHistoryTable,ActionListTable, CampusNetworkActionListTable, RolesTable, ResourcesTable
+from ngcn.tables import CampusTypeTable,CampusNetworkTable,ActionHistoryTable,ActionListTable, CampusNetworkActionListTable
 from ngcn.forms import CampusNetworkForm, UploadFileForm, CampusTypeForm, EditCampusNetworkForm
 from ngcn.networktypeparser import NetworkTypeParser
 from ngcn.utils import ServerProperties
 from ngcn.utils import wait_and_get_build_status
-from docutils.parsers.rst import roles
 
 TEST_ACTION_ID = 3
 
@@ -241,7 +240,7 @@ def campusNetworkSummaryView(request,campus_network_id):
     campus_network = CampusNetwork.objects.get(id = campus_network_id)
     campusTypeName = CampusType.objects.get(pk=campus_network.campus_type_id).name
     form = json_data[0]["fields"]
-    form['ct_name']=campusTypeName;
+    form['ct_name']=campusTypeName
 #     print form
     action_list_queryset = Action.objects.filter(campus_type_id = campus_network.campus_type.id)
     action_list_table = CampusNetworkActionListTable(action_list_queryset, campus_network.name)
@@ -341,7 +340,6 @@ def jenkinsConsoleView(request,action_history_id):
     job_url = action_history.action_id.jenkins_url
     job_id = action_history.jenkins_job_build_no
     jenkins_port = ServerProperties.getServerPort()
-    host = request.get_host()
     host_name = request.get_host().rsplit(':', 1)[0]
     console_url = "http://" + host_name + ":" + jenkins_port + "/job/" + job_url + "/" + str(job_id) + "/consoleText"
     logger.debug(console_url)
@@ -364,7 +362,7 @@ def jenkinsConsoleLogView(request,action_history_id):
     try:
         response = server.get_build_console_output(job_url, job_id)
         #logger.debug(response)
-    except:
+    except Exception:
         response = "The current build is queued in the Jenkins Server. Please wait for some time to view console log.. "
     return HttpResponse(escape_ansi(response))
 
@@ -519,7 +517,7 @@ def deleteCampusTypeView(request):
             return JsonResponse({'status':'failed',
                                  'message':'The selected ' + _('network_type_heading') + ' has active ' + _('network_heading') + '(s). Please delete the active ' + _('network_heading') + 's before deleting the ' + _('network_type_heading'), 'name':name})
 
-        action_url = 'network_type_validator';
+        action_url = 'network_type_validator'
         current_build_number = server.get_job_info(action_url)['nextBuildNumber']
         crumb=CrumbRequester(baseurl=JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS)
         Jenkins(JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS, requester=crumb).get_job(action_url).invoke(build_params={'file_name': campusType.app_zip_name,
@@ -540,16 +538,16 @@ def addCampusNetworkView(request):
         if form.is_valid():
             data = form.cleaned_data
             campusNetwork = CampusNetwork(name=data['name'].strip())
-            campusNetwork.description=data['description'].strip();
+            campusNetwork.description=data['description'].strip()
             campusNetwork.dynamic_ansible_workspace=data['dynamic_ansible_workspace']
             #campusNetwork.status=data['status'].strip();
-            campusNetwork.status = "Initialized";
-            campusNetwork.host_file = data['host_file'].read().decode();
-            campusNetwork.campus_type = data['campus_type'];
+            campusNetwork.status = "Initialized"
+            campusNetwork.host_file = data['host_file'].read().decode()
+            campusNetwork.campus_type = data['campus_type']
             src = ServerProperties.getWorkspaceLocation()+"/"+campusNetwork.campus_type.app_zip_name
             network_name = campusNetwork.name
             network_desc = campusNetwork.description
-            action_url = 'network_template_mgr';
+            action_url = 'network_template_mgr'
             #initiating the copy_template_job
             current_build_number = server.get_job_info(action_url)['nextBuildNumber']
 
@@ -644,14 +642,14 @@ def editCampusNetworkView(request, campus_network_id):
             if form.is_valid():
                 campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
                 data = form.cleaned_data
-                campusNetwork.description=data['description'].strip();
-                campusNetwork.dynamic_ansible_workspace=data['dynamic_ansible_workspace'];
+                campusNetwork.description=data['description'].strip()
+                campusNetwork.dynamic_ansible_workspace=data['dynamic_ansible_workspace']
 #                 campusNetwork.status=data['status'].strip();
                 #campusNetwork.host_file=data['host_file'];
-                hostData=data['host_file'];   #data['host_file'].read()
+                hostData=data['host_file']   #data['host_file'].read()
                 src=ServerProperties.getWorkspaceLocation()+"/"+campusNetwork.campus_type.app_zip_name
                 network_name=data['name'].strip()
-                action_url = 'network_template_mgr';
+                action_url = 'network_template_mgr'
                 current_build_number = server.get_job_info(action_url)['nextBuildNumber']
                 try:
                     server.build_job(action_url,{'src':src,'network_name':network_name,'hosts':hostData,'operation':'update'})
@@ -667,7 +665,7 @@ def editCampusNetworkView(request, campus_network_id):
                     campusNetwork.status = "Hosts file modified"
                     campusNetwork.host_file=hostData
                     #print campusNetwork.host_file
-                    campusNetwork.campus_type=data['campus_type'];
+                    campusNetwork.campus_type=data['campus_type']
                     campusNetwork.save()
                     return JsonResponse({'result':'success', 'name':network_name})
                 else:
@@ -751,7 +749,7 @@ def parse_workbook(conf_file,campus_network_id):
         workbook_row = Workbook.objects.get(campus_network_id=campus_network_id)
         if workbook_row is not None :
             Workbook.objects.get(campus_network_id=campus_network_id).delete()
-    except:
+    except Exception:
         pass
     data_manager = GridDataManager()
     data_manager.create_or_update_db(campus_network_id,tables,conf_file.name)
@@ -931,9 +929,6 @@ def create_workbook(campus_network_id):
 
 # trigger job code
 
-from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.utils.crumb_requester import CrumbRequester
-
 @login_required(login_url='/admin/login/')
 def triggerAction(request, action_id, campus_network_id):
     action_obj = Action.objects.get(pk=action_id)
@@ -992,7 +987,7 @@ class GridDataManager:
                 workbook_row = Workbook.objects.get(name=filename,campus_network_id=campus_network_id)
             else:
                 workbook_row = Workbook.objects.get(campus_network_id=campus_network_id)
-        except:
+        except Exception:
             workbook_row = Workbook(name=filename,campus_network_id=campus_network)
             workbook_row.save()
         for sheet in sheets:
@@ -1000,7 +995,7 @@ class GridDataManager:
                 worksheet_row = Worksheets.objects.get(name = sheet["name"],workbook_id = workbook_row)
                 worksheet_row.data= sheet
                 worksheet_row.save()
-            except:
+            except Exception:
                 worksheet_row = Worksheets(name = sheet["name"],data=sheet,workbook_id = workbook_row)
                 worksheet_row.save()
 
@@ -1015,7 +1010,7 @@ class GridDataManager:
 
     def delete_workbook(self,campus_network_id):
         workbook = Workbook.objects.get(campus_network_id=campus_network_id)
-        status = workbook.delete()
+        workbook.delete()
 
     """ workbook name defined by user while uploading """
     def get_user_defined_workbook_name(self,campus_network_id):

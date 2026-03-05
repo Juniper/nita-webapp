@@ -16,7 +16,6 @@ try:
 except ImportError:
     MiddlewareMixin = object
 
-from django.core.exceptions import MiddlewareNotUsed
 from ngcn.statusupdater import StatusUpdater
 import logging
 logger=logging.getLogger(__name__)

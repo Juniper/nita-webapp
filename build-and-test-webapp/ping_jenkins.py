@@ -13,9 +13,7 @@ Third-Party Code: This code may depend on other components under separate copyri
 ******************************************************** """
 import os
 import jenkins
-import string
 import sys
-from jenkinsapi.jenkins import Jenkins
 
 jenkins_host_name = sys.argv[1]
 jenkins_port = sys.argv[2]
