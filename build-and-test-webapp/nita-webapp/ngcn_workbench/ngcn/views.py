@@ -1026,12 +1026,7 @@ def parse_workbook(conf_file, campus_network_id):
         table[sheet.title] = conf_value  # create_table_view(model, request)
         tables.append(table)
     # campus_network_name = request.session['app_name']
-    try:
-        workbook_row = Workbook.objects.get(campus_network_id=campus_network_id)
-        if workbook_row is not None:
-            Workbook.objects.get(campus_network_id=campus_network_id).delete()
-    except Exception:
-        pass
+    Workbook.objects.filter(campus_network_id=campus_network_id).delete()
     data_manager = GridDataManager()
     data_manager.create_or_update_db(campus_network_id, tables, conf_file.name)
     logger.debug("parse_workbook: exit")
