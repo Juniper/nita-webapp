@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -13,14 +14,24 @@ Third-Party Code: This code may depend on other components under separate copyri
 ******************************************************** -->
 <html>
     <head>
-	<title>NITA</title>
+    <title>NITA</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         {% load staticfiles %}
         {% load json_filters %}
 
-        <script src="{% static "components/tree/js/tree.jquery.js" %}"></script>
-        <script src="{% static "global/js/ngcn_tree.js" %}"></script>
+        <script src="{% static 'components/tree/js/tree.jquery.js' %}"></script>
+        <script src="{% static 'global/js/ngcn_tree.js' %}"></script>
+    <style>
+        ul.jqtree-tree .jqtree-title {
+            margin-left: 0.5em;
+        }
+    </style>
+    </head>
+
+    <body>
+    <div id="tree">
+    </div>
     <script>
         $('#tree').tree({
             data: {{ data|safe }},
@@ -32,21 +43,11 @@ Third-Party Code: This code may depend on other components under separate copyri
                 if (level != 1) {
                     // child node
                     $li.find('.jqtree-title')
-                    .before('<span><img style="height:6px;width=6px;padding-left:3px" src="{% static "components/tree/images/tree-circle.png" %}"/><span>');
+                    .before('<span><img style="height:6px;width=6px;padding-left:3px" src="{% static 'components/tree/images/tree-circle.png' %}"/><span>');
                 }
             }
         });
 
     </script>
-    <style>
-        ul.jqtree-tree .jqtree-title {
-            margin-left: 0.5em;
-        }
-    </style>
-    </head>
-
-    <body>
-    <div id="tree">
-    </div>
     </body>
 </html>
