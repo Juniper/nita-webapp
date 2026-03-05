@@ -1,3 +1,4 @@
+<!-- htmlhint doctype-first:false -->
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -14,12 +15,12 @@ Third-Party Code: This code may depend on other components under separate copyri
 {% extends "base_site.html" %}
 {% load i18n %}
 {% load i18n admin_static %}
- <link rel="shortcut icon" href="{% static "images/juniper.png" %}">
+ <link rel="shortcut icon" href="{% static 'images/juniper.png' %}">
 {% block extrastyle %}{{ block.super }}
-	<link rel="stylesheet" type="text/css" href="{% static "admin/css/login.css" %}" />
-	<link rel="stylesheet" type="text/css" href="{% static "global/css/bootstrap.css" %}">
-	<link rel="stylesheet" type="text/css" href="{% static "customization/login/css/login.css" %}">
-	<link rel="stylesheet" type="text/css" href="{% static "customization/buttons/css/buttons.css" %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/login.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'global/css/bootstrap.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'customization/login/css/login.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'customization/buttons/css/buttons.css' %}">
 
 
 {{ form.media }}

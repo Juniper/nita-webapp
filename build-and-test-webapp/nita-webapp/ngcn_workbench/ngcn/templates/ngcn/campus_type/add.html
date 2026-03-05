@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<!-- htmlhint head-script-disabled:false -->
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -13,27 +15,29 @@ Third-Party Code: This code may depend on other components under separate copyri
 ******************************************************** -->
 <head>
 {% load staticfiles %}
+{% load i18n %}
+<title>Add {% trans "network_type_heading" %}</title>
 <style>
 td.input { display: none; }
 </style>
-	<script src="{% static "global/js/jquery.formset.js" %} "></script>
-	<script>
-	jQuery(document).ready(function($) {
-		$("#formset").formset({
+    <script src="{% static 'global/js/jquery.formset.js' %}"></script>
+    <script>
+    jQuery(document).ready(function($) {
+        $("#formset").formset({
             animateForms: true
         });
-	 });
-	</script>
-	<style type="text/css">
-		.custom-form-error {
-			color:red;
-		}
-	</style>
-	</head>
-	<body>
+     });
+    </script>
+    <style type="text/css">
+        .custom-form-error {
+            color:red;
+        }
+    </style>
+    </head>
+    <body>
 <fieldset class="module aligned">
-	    {% csrf_token %}
-	    {{ form.as_p }}
-	  {% load formset_tags %}
+        {% csrf_token %}
+        {{ form.as_p }}
+      {% load formset_tags %}
 </fieldset>
 </body>

@@ -12,15 +12,6 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ******************************************************** """
 
-"""
-WSGI config for ngcn_workbench project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/1.9/howto/deployment/wsgi/
-"""
-
 import os
 
 from django.core.wsgi import get_wsgi_application

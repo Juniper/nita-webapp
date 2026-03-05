@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
 
 ******************************************************** """
+
 from django.core.serializers import serialize
 from django.db.models.query import QuerySet
 import json
@@ -18,9 +19,11 @@ from django.template import Library
 
 register = Library()
 
+
 def jsonify(object):
     if isinstance(object, QuerySet):
-        return serialize('json', object)
+        return serialize("json", object)
     return json.dumps(object)
 
-register.filter('jsonify', jsonify)
+
+register.filter("jsonify", jsonify)

@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<!-- htmlhint spec-char-escape:false, tag-pair:false, id-class-value:false -->
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -11,21 +13,27 @@ SPDX-License-Identifier: Apache-2.0
 Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
 
 ******************************************************** -->
-{% load i18n admin_static %}<!DOCTYPE html>
+{% load i18n admin_static %}
 {% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
-<html lang="{{ LANGUAGE_CODE|default:"en-us" }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
+<html lang="en">
 <head>
 <title>{% block title %}{% endblock %}</title>
-<link rel="stylesheet" type="text/css" href="{% block stylesheet %}{% static "admin/css/base.css" %}{% endblock %}" />
+<link rel="stylesheet" type="text/css" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}" />
 {% block extrastyle %}{% endblock %}
-{% if LANGUAGE_BIDI %}<link rel="stylesheet" type="text/css" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}" />{% endif %}
+{% if LANGUAGE_BIDI %}<link rel="stylesheet" type="text/css" href="{% block stylesheet_rtl %}{% static 'admin/css/rtl.css' %}{% endblock %}" />{% endif %}
 {% block extrahead %}{% endblock %}
 {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE" />{% endblock %}
 </head>
 {% load i18n %}
 
-<body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
-  data-admin-utc-offset="{% now "Z" %}">
+<body data-admin-utc-offset="0">
+
+{% if LANGUAGE_BIDI %}
+<script>document.documentElement.setAttribute('dir', 'rtl');</script>
+{% endif %}
+{% if is_popup %}
+<script>document.body.classList.add('popup');</script>
+{% endif %}
 
 <!-- Container -->
 <div id="container">
@@ -75,13 +83,17 @@ Third-Party Code: This code may depend on other components under separate copyri
     {% block messages %}
         {% if messages %}
         <ul class="messagelist">{% for message in messages %}
-          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
+                    {% if message.tags %}
+                    <li class="{{ message.tags }}">{{ message|capfirst }}</li>
+                    {% else %}
+                    <li>{{ message|capfirst }}</li>
+                    {% endif %}
         {% endfor %}</ul>
         {% endif %}
     {% endblock messages %}
 
     <!-- Content -->
-    <div id="content" class="{% block coltype %}colM{% endblock %}">
+    <div id="content" class="colm">
         {% block pretitle %}{% endblock %}
         {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
         {% block content %}
