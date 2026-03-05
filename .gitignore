@@ -4,3 +4,5 @@ packaging/nita-webapp-21.7-1/etc/bash_completion.d/
 packaging_redhat/nita-webapp-21.7-1/SOURCES/nita-webapp-21.7/etc/bash_completion.d/
 *.deb
 nginx/certificates/
+__pycache__
+/.venv/

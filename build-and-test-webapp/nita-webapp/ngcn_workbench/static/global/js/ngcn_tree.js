@@ -14,7 +14,7 @@ Third-Party Code: This code may depend on other components under separate copyri
     $('#tree').bind(
         'tree.click',
         function(event) {
-        	if(typeof($('#main-tabs-list .active').children()[0])!='undefined' && $('#main-tabs-list .active').children()[0].id == "configuration_header"){
+            if(typeof($('#main-tabs-list .active').children()[0])!='undefined' && $('#main-tabs-list .active').children()[0].id == "configuration-header"){
         		if(isUnsavedData()) {
         				event.preventDefault();
         	 			$('#save-warning-modal').modal('show');

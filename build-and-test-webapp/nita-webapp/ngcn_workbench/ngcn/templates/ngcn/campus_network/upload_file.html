@@ -248,7 +248,7 @@ function getCookie(name) {
 var csrftoken = getCookie('csrftoken');
 var temp = true;
 $('#main-tabs-list').on('show.bs.tab', 'a[data-toggle="tab"]', function (e) {
-	if(e.relatedTarget.id == "configuration_header" && temp) {
+	if(e.relatedTarget.id == "configuration-header" && temp) {
 		if(isUnsavedData()) {
 				e.preventDefault();
 	 			$('#save-warning-modal').modal('show');
