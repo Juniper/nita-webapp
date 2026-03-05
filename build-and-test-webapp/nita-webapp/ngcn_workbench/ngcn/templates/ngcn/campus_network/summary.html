@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- htmlhint id-class-value:false -->
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -17,30 +18,7 @@ Third-Party Code: This code may depend on other components under separate copyri
 {% load staticfiles %}
 {% load i18n %}
 <title>{% trans "network_heading" %} Summary</title>
-<script src="{% static 'global/js/campus_network_mgmt.js' %}"></script>
 
-
-<script>
-jQuery(document).ready(function($) {
-setTimeout(
-          function()
-          {
-              if ( campus_network_summary_table != null && typeof campus_network_summary_table != undefined ) {
-                  campus_network_summary_table.destroy();
-                  }
-                  campus_network_summary_table = $('#Action').DataTable({
-                  "paging":   true,
-                  "ordering": false,
-                  "info":     false,
-                  "bFilter": false,
-                  "bInfo": false,
-                  "pageLength": 5,
-                  "bLengthChange": false,
-                  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
-              });
-          }, 100);
-});
-</script>
 </head>
 <body>
     <div>
@@ -134,5 +112,27 @@ setTimeout(
              </div>
          </form>
 
+<script src="{% static 'global/js/campus_network_mgmt.js' %}"></script>
+<script>
+jQuery(document).ready(function($) {
+setTimeout(
+          function()
+          {
+              if ( campus_network_summary_table != null && typeof campus_network_summary_table != undefined ) {
+                  campus_network_summary_table.destroy();
+                  }
+                  campus_network_summary_table = $('#Action').DataTable({
+                  "paging":   true,
+                  "ordering": false,
+                  "info":     false,
+                  "bFilter": false,
+                  "bInfo": false,
+                  "pageLength": 5,
+                  "bLengthChange": false,
+                  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+              });
+          }, 100);
+});
+</script>
 </body>
 </html>

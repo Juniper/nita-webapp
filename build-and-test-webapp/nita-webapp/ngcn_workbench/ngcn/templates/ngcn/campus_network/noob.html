@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- htmlhint id-class-value:false -->
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -16,8 +17,6 @@ Third-Party Code: This code may depend on other components under separate copyri
 <head>
     {% load staticfiles %}
     <title>Noob</title>
-    <script src="{% static 'components/jquery-timer/js/jquery.timer.js' %}"></script>
-    <script src="{% static 'global/js/noob.js' %}"></script>
     <style>
         .selected {
             background: #e9e9e9 !important;
@@ -40,13 +39,13 @@ Third-Party Code: This code may depend on other components under separate copyri
                     <div class="col-md-6"></div>
                     <div class="col-md-4" style="padding-top:4px">
                         <select class="form-control" name="action-selector" id="action-selector" style="padding: 0 12px;height:28px;font-size: 13px;">
-                        {% if actions|length <= 0 %}
+                        {% if not actions %}
                         <script>
                         $('#trigger-action').prop('disabled',true);
                         </script>
                         {% endif %}
                             {% for action_obj in actions %}
-                                <option value={{ action_obj.id }}>{{ action_obj.name }}</option>
+                                <option value="{{ action_obj.id }}">{{ action_obj.name }}</option>
                             {% endfor %}
                         </select>
                      </div>
@@ -93,6 +92,9 @@ Third-Party Code: This code may depend on other components under separate copyri
                  <pre id="console-pane-pre" style="width:100%;height:100%;overflow:auto">
                  </pre>
              </div>
+        </div>
     </div>
+    <script src="{% static 'components/jquery-timer/js/jquery.timer.js' %}"></script>
+    <script src="{% static 'global/js/noob.js' %}"></script>
 </body>
 </html>
