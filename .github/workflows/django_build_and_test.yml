@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DJANGO_SETTINGS_MODULE: ngcn_workbench.settings_ci
+      DJANGO_SETTINGS_MODULE: ngcn_workbench.test_settings
 
     defaults:
       run:
@@ -38,9 +38,15 @@ jobs:
           python -m pip install --upgrade pip
           grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
+          pip install -r ../../../requirements-test.txt
 
       - name: Validate Django project
         run: python manage.py check
 
       - name: Run Django tests
         run: python manage.py test
+
+      - name: Run pytest suite
+        run: |
+          cd ../../../
+          pytest -q
