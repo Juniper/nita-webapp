@@ -1,0 +1,46 @@
+name: Django Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  django-build-test:
+    name: Build and test build-and-test-webapp
+    runs-on: ubuntu-latest
+
+    env:
+      DJANGO_SETTINGS_MODULE: ngcn_workbench.settings_ci
+
+    defaults:
+      run:
+        working-directory: build-and-test-webapp/nita-webapp/ngcn_workbench
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmysqlclient-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt > /tmp/requirements-ci.txt
+          pip install -r /tmp/requirements-ci.txt
+
+      - name: Validate Django project
+        run: python manage.py check
+
+      - name: Run Django tests
+        run: python manage.py test
