@@ -9,7 +9,9 @@ from ngcn.models import CampusType
 
 
 @pytest.mark.django_db
-def test_get_tree_data_returns_network_type_and_network(client, campus_type, campus_network):
+def test_get_tree_data_returns_network_type_and_network(
+    client, campus_type, campus_network
+):
     response = client.get(reverse("treepanedata"))
 
     assert response.status_code == 200
@@ -19,7 +21,9 @@ def test_get_tree_data_returns_network_type_and_network(client, campus_type, cam
     type_node = next(node for node in payload if node["id"] == "campus_type")
     network_node = next(node for node in payload if node["id"] == "campus_network")
 
-    assert any(child["id"] == f"campustype_{campus_type.id}" for child in type_node["children"])
+    assert any(
+        child["id"] == f"campustype_{campus_type.id}" for child in type_node["children"]
+    )
     assert any(
         child["id"] == f"campusnetwork_{campus_network.id}"
         for child in network_node["children"]
@@ -53,7 +57,9 @@ def test_add_campus_type_view_uses_parser_and_storage(auth_client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_trigger_action_returns_failure_when_no_workbook(auth_client, action, campus_network):
+def test_trigger_action_returns_failure_when_no_workbook(
+    auth_client, action, campus_network
+):
     response = auth_client.get(
         reverse(
             "trigger_action_view",
@@ -69,7 +75,9 @@ def test_trigger_action_returns_failure_when_no_workbook(auth_client, action, ca
 
 
 @pytest.mark.django_db
-def test_delete_campus_type_blocks_when_networks_exist(auth_client, campus_type, campus_network):
+def test_delete_campus_type_blocks_when_networks_exist(
+    auth_client, campus_type, campus_network
+):
     response = auth_client.post(
         reverse("campustypedelete"),
         data={"campus_type_ids": str(campus_type.id)},

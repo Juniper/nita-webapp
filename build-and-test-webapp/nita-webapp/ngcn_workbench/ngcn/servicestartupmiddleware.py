@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
 
 ******************************************************** """
+
 try:
     from django.utils.deprecation import MiddlewareMixin
 except ImportError:
@@ -18,7 +19,9 @@ except ImportError:
 
 from ngcn.statusupdater import StatusUpdater
 import logging
-logger=logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 class StatusStartupServiceMiddleware(MiddlewareMixin):
     def process_request(self, request):

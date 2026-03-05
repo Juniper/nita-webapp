@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
 
 ******************************************************** """
+
 from django.contrib import admin
 from ngcn.models import Action
 from ngcn.models import ActionCategory
@@ -28,4 +29,4 @@ admin.site.register(CampusNetwork)
 admin.site.register(ActionHistory)
 admin.site.register(Workbook)
 admin.site.register(Worksheets)
-#admin.site.register(JenkinsJobProperty)
+# admin.site.register(JenkinsJobProperty)
