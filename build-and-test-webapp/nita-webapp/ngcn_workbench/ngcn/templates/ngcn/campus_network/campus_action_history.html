@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!-- ********************************************************
 
 Project: nita-webapp
@@ -12,52 +13,50 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ******************************************************** -->
 <html>
-	<head>
-
-		<script>
-		    jQuery(document).ready(function($) {
-		        //$("#action-history-table").css("width", "70%");
-		        $(".select-row").css("cursor","pointer");
-
-		        $("#action-history-table tr").click(function(){
-		            $(this).addClass('selected').siblings().removeClass('selected');
-		        });
-
-			    $(".select-row").click(function(){
-			    	$('#history_id').attr("value", $(this).attr("data-id"));
-				    loadConsoleLog();
-			    });
-			    setTimeout(
-		      		  function()
-		      		  {
-		      			if ( network_action_history_table != null && typeof network_action_history_table != undefined ) {
-		      				network_action_history_table.destroy();
-		  			  	}
-		      			  network_action_history_table = $('#action-history-table').DataTable({
-		      				  "paging":   true,
-		      				  "ordering": false,
-		      				  "info":     false,
-		      				  "bFilter": false,
-		      				  "bInfo": false,
-		      				  "pageLength": 5,
-		    				  "bLengthChange": false,
-		    				  "fnDrawCallback": function (oSettings) {
-		    					  setTimeout(
-	    							  function(){
-	    								  network_action_history_table.$('tr:first').click();
-	    								  }, 100)
-		    					  }
-
-		      			  });
-		      		  }, 100);
-
-		    });
-		</script>
-	</head>
+    <head>
+        <title>Campus Action History</title>
+    </head>
 <body>
-	{% load django_tables2 %}
-	{% if table  %}
-	    {% render_table table %}
-	{% endif %}
+    {% load django_tables2 %}
+    {% if table %}
+        {% render_table table %}
+    {% endif %}
+
+    <script>
+        jQuery(document).ready(function ($) {
+            //$("#action-history-table").css("width", "70%");
+            $(".select-row").css("cursor", "pointer");
+
+            $("#action-history-table tr").click(function () {
+                $(this).addClass("selected").siblings().removeClass("selected");
+            });
+
+            $(".select-row").click(function () {
+                $("#history_id").attr("value", $(this).attr("data-id"));
+                loadConsoleLog();
+            });
+
+            setTimeout(function () {
+                if (network_action_history_table != null && typeof network_action_history_table != undefined) {
+                    network_action_history_table.destroy();
+                }
+
+                network_action_history_table = $("#action-history-table").DataTable({
+                    "paging": true,
+                    "ordering": false,
+                    "info": false,
+                    "bFilter": false,
+                    "bInfo": false,
+                    "pageLength": 5,
+                    "bLengthChange": false,
+                    "fnDrawCallback": function (_oSettings) {
+                        setTimeout(function () {
+                            network_action_history_table.$("tr:first").click();
+                        }, 100);
+                    }
+                });
+            }, 100);
+        });
+    </script>
 </body>
 </html>
