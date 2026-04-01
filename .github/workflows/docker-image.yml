@@ -1,0 +1,48 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions: read-all
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v6.0.2
+
+    - name: Set up Node.js 24
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24
+
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag juniper/nita-webapp:$(cat VERSION.txt)
+
+    - name: Log in to GitHub Container Registry
+      if: github.event_name == 'push'
+      uses: docker/login-action@v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push to GitHub Container Registry
+      if: github.event_name == 'push'
+      run: |
+        VERSION=$(cat VERSION.txt)
+        IMAGE=ghcr.io/${{ github.repository }}
+        docker tag juniper/nita-webapp:${VERSION} ${IMAGE,,}:${VERSION}
+        docker tag juniper/nita-webapp:${VERSION} ${IMAGE,,}:latest
+        docker push ${IMAGE,,}:${VERSION}
+        docker push ${IMAGE,,}:latest

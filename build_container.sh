@@ -24,7 +24,7 @@ if [ $ARCH = aarch64 ] ; then # it is ARM64
         mv /var/tmp/requirements.tmp.$$ requirements.txt
 fi
 
-docker build -t juniper/nita-webapp:25.10-1 .
+docker build -t juniper/nita-webapp:$(tr -d '\r\n[:space:]' < VERSION.txt) .
 
 if [ $ARCH = aarch64 ] ; then 
         # restoring requirement.txt to the origial
