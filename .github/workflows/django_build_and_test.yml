@@ -36,7 +36,9 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt > /tmp/requirements-ci.txt
+          grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt \
+            | sed 's/django-tables2==1\.21\.2/django-tables2==2.3.4/' \
+            > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
 
       - name: Validate Django project
