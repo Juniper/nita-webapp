@@ -15,7 +15,6 @@ Third-Party Code: This code may depend on other components under separate copyri
 import os
 import yaml
 import re
-import jenkins
 from django.db import transaction
 from django.conf import settings
 
@@ -40,8 +39,6 @@ from django.core.files.storage import default_storage
 
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
-from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.utils.crumb_requester import CrumbRequester
 
 # from _mysql import IntegrityError
 
@@ -84,6 +81,9 @@ class NetworkTypeParser:
                     )
 
                 job_name = "network_type_validator"
+                import jenkins
+                from jenkinsapi.jenkins import Jenkins
+                from jenkinsapi.utils.crumb_requester import CrumbRequester
                 server = jenkins.Jenkins(
                     JENKINS_SERVER_URL,
                     username=JENKINS_SERVER_USER,
