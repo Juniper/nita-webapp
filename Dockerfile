@@ -19,6 +19,10 @@ RUN wget --no-check-certificate https://github.com/Juniper/nita-yaml-to-excel/ar
 RUN unzip 22.8.zip
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+# python-jenkins 1.8.0 declares setuptools<66, but that version of setuptools
+# uses pkgutil.ImpImporter which was removed in Python 3.12. Upgrade setuptools
+# in a separate step so pip's resolver only considers setuptools's own deps.
+RUN pip install "setuptools>=67.6.0"
 
 COPY nita.properties /etc/nita.properties
 
