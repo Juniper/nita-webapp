@@ -36,7 +36,9 @@ def test_status_startup_service_middleware_calls_updater(monkeypatch):
         statusupdater.StatusUpdater, "getInstance", staticmethod(lambda: fake_updater)
     )
 
-    middleware = servicestartupmiddleware.StatusStartupServiceMiddleware()
+    middleware = servicestartupmiddleware.StatusStartupServiceMiddleware(
+        get_response=lambda request: None
+    )
     middleware.process_request(SimpleNamespace())
 
     assert fake_updater.started is True

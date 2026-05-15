@@ -12,9 +12,18 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-from django.conf.urls import url, include
 from django.contrib import admin
+from django.urls import path, include
+from rest_framework.authtoken.views import obtain_auth_token
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
-urlpatterns = [url(r"^admin/", admin.site.urls), url(r"^", include("ngcn.urls"))]
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("api/v1/", include("ngcn.api.urls")),
+    path("api/v1/auth/token/", obtain_auth_token, name="api-token-auth"),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("", include("ngcn.urls")),
+]

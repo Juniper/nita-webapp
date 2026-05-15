@@ -22,6 +22,10 @@ services:
     depends_on: [ db ]
     environment:
       - DJANGO_LOG_LEVEL=DEBUG
+      - DJANGO_SECRET_KEY
+      - DJANGO_DEBUG=False
+      - DJANGO_ALLOWED_HOSTS
+      - CSRF_TRUSTED_ORIGINS
       - WEBAPP_USER
       - WEBAPP_PASS
       - JENKINS_USER

@@ -12,8 +12,6 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-from __future__ import unicode_literals
-
 from django.db import models
 from django.utils.translation import gettext as _
 
@@ -26,9 +24,6 @@ class ActionCategory(models.Model):
     )
 
     def __str__(self):
-        return self.category_name
-
-    def __unicode__(self):
         return self.category_name
 
 
@@ -52,9 +47,6 @@ class CampusType(models.Model):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 class ActionProperty(models.Model):
     shell_command = models.TextField(max_length=255, verbose_name="Shell Command")
@@ -66,9 +58,6 @@ class ActionProperty(models.Model):
     )
 
     def __str__(self):
-        return self.shell_command
-
-    def __unicode__(self):
         return self.shell_command
 
 
@@ -87,9 +76,6 @@ class Action(models.Model):
     )
 
     def __str__(self):
-        return self.action_name
-
-    def __unicode__(self):
         return self.action_name
 
 
@@ -112,9 +98,6 @@ class CampusNetwork(models.Model):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 class ActionHistory(models.Model):
     action_id = models.ForeignKey(
@@ -132,9 +115,6 @@ class ActionHistory(models.Model):
     )
 
     def __str__(self):
-        return self.action_id.action_name
-
-    def __unicode__(self):
         return self.action_id.action_name
 
 
@@ -167,7 +147,4 @@ class Worksheets(models.Model):
         )
 
     def __str__(self):
-        return self.name
-
-    def __unicode__(self):
         return self.name

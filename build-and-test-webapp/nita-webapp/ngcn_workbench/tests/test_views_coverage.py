@@ -110,7 +110,7 @@ def test_save_grid_data_view_updates_workbook(auth_client, campus_network, monke
 
     assert response.status_code == 200
     assert response.content.decode("utf-8") == "Success"
-    assert updated_calls["campus_network_id"] == str(campus_network.id)
+    assert updated_calls["campus_network_id"] == campus_network.id
     assert updated_calls["sheets"] == [{"name": "sheet1", "sheet1": [{"host": "new"}]}]
 
 
@@ -443,7 +443,7 @@ def test_trigger_action_uses_expected_build_dir(
     assert history.status == "Running"
     assert history.jenkins_job_build_no == 21
     assert recorded_updates == {
-        "campus_network_id": str(campus_network.id),
+        "campus_network_id": campus_network.id,
         "status": f"Triggered {action.jenkins_url}-{campus_network.name}",
     }
 

@@ -12,10 +12,9 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-from __future__ import unicode_literals
-
 from django.apps import AppConfig
 
 
 class TreeTutorialConfig(AppConfig):
     name = "ngcn"
+    default_auto_field = "django.db.models.AutoField"

@@ -138,9 +138,9 @@ class CampusNetworkActionListTable(tables.Table):
     # id = tables.CheckBoxColumn(accessor='pk')
     network_name = None
 
-    def __init__(self, *args, **kwargs):
-        self.network_name = args[1]
-        super(tables.Table, self).__init__(*args, **kwargs)
+    def __init__(self, data, network_name, *args, **kwargs):
+        self.network_name = network_name
+        super().__init__(data, *args, **kwargs)
 
     id = tables.Column(verbose_name="Id")
     action_name = tables.Column(verbose_name="Name")
