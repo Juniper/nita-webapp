@@ -81,6 +81,13 @@ class NetworkTypeParser:
                     )
 
                 job_name = "network_type_validator"
+                # Intentionally imported here rather than at module level.
+                # python-jenkins (jenkins package) loads plugins.py at import
+                # time, which calls pkg_resources -> pkgutil.ImpImporter.
+                # pkgutil.ImpImporter was removed in Python 3.12, so a
+                # module-level import crashes Django startup (manage.py check,
+                # URL loading) before any request is served.  Lazy-importing
+                # inside this method keeps the chain out of the startup path.
                 import jenkins
                 from jenkinsapi.jenkins import Jenkins
                 from jenkinsapi.utils.crumb_requester import CrumbRequester
