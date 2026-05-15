@@ -119,8 +119,11 @@ From this point on, **no existing URL or view is modified**. All new code lives 
   pagination (page size 50), and `DEFAULT_SCHEMA_CLASS` for spectacular.
 - [x] **2.7** — `rest_framework.authtoken` added to `INSTALLED_APPS`.
 - [x] **2.8** — Token endpoint exposed at `POST /api/v1/auth/token/`.
-- [ ] **2.9** — Dedicated `tests/test_api.py` not written. *(Existing 40 tests cover the
-  UI layer. API endpoint tests are the main remaining gap.)*
+- [x] **2.9** — `tests/test_api.py` written: auth, ActionCategoryViewSet, CampusTypeViewSet
+  (including upload action), CampusNetworkViewSet CRUD, ActionViewSet with filter.
+  Also fixed a bug: `CampusTypeViewSet` was using `ModelViewSet` + `http_method_names`
+  which blocked POST on the upload `@action`; replaced with `ListModelMixin +
+  RetrieveModelMixin + DestroyModelMixin + GenericViewSet`.
 
 **Checkpoint 2 ✓** — `GET /api/v1/networks/`, `GET /api/v1/network-types/`, etc. all
 return paginated JSON with token auth. Existing UI tests still pass.
@@ -142,7 +145,10 @@ return paginated JSON with token auth. Existing UI tests still pass.
 - [x] **3.8** — `POST /api/v1/networks/{id}/trigger/{action_id}/` implemented. Returns
   `202 Accepted` with `action_history_id`. Client polls `GET /api/v1/action-history/{id}/`.
 - [x] **3.9** — `GET /api/v1/action-history/{id}/console/` implemented.
-- [ ] **3.10** — API endpoint tests not written. *(Main remaining gap — see 2.9.)*
+- [x] **3.10** — Action endpoint tests written: workbook upload/get/save/clear/download,
+  trigger (202 + history created, 409 no workbook, 404 unknown action),
+  ActionHistoryViewSet console (ANSI stripping, Jenkins unavailable fallback).
+  **74/74 tests pass.**
 
 **Checkpoint 3 ✓** — Integration test passes: create network type via API → create network
 → upload workbook → trigger action → poll action history → status reflects Jenkins result.
@@ -173,15 +179,14 @@ to the repository.
 |-------|-------------|--------|
 | 0 | Baseline & prep | ✅ Complete (4/5 — pip-compile skipped) |
 | 1 | Django 5.2 + Python 3.12 + security hardening | ✅ Complete (18/24 — 1.15, 1.20, 1.23, 1.24 deferred; see notes) |
-| 2 | API: serializers, ViewSets, token auth | ✅ Complete (8/9 — no test_api.py) |
-| 3 | API: action & file endpoints | ✅ Complete (9/10 — no endpoint tests) |
+| 2 | API: serializers, ViewSets, token auth | ✅ Complete (9/9) |
+| 3 | API: action & file endpoints | ✅ Complete (10/10) |
 | 4 | API: OpenAPI docs | ✅ Complete (6/6) |
 
 **Remaining before first production deployment:**
 - 1.20 — run `manage.py check --deploy` against a live DB instance
 - 1.23 — smoke-test the running app (UI + API) with MySQL and Jenkins
 - 1.24 — bump `VERSION.txt` and `nita.properties`
-- 2.9 / 3.10 — write `tests/test_api.py` covering ViewSet and action endpoints
 
 ## Hard Rules
 
