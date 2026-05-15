@@ -67,7 +67,7 @@ class NetworkTypeParser:
                     "utf-8"
                 )
                 logger.debug(project_yaml_file)
-                yaml.load(project_yaml_file)
+                yaml.safe_load(project_yaml_file)
                 logger.debug("YAML Parsed Successfully")
                 zip_file.close()
                 validation_error = self.validateProjectYaml(project_yaml_file)
@@ -188,7 +188,7 @@ class NetworkTypeParser:
         try:
             logger.debug("open(" + projectfilename + ")")
             projectfile = open(projectfilename)
-            projectdata = yaml.load(projectfile)
+            projectdata = yaml.safe_load(projectfile)
             projectfile.close()
             projectname = projectdata["name"]
         except Exception as e:
@@ -378,7 +378,7 @@ class NetworkTypeParser:
         try:
             with transaction.atomic():
                 logger.info(project_file)
-                project_file_dict = yaml.load(project_file)
+                project_file_dict = yaml.safe_load(project_file)
                 logger.info(project_file_dict)
                 campus_type = CampusType(
                     name=project_file_dict["name"].strip(),

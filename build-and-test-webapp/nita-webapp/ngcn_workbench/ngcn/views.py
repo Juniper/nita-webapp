@@ -707,10 +707,6 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url="/admin/login/")
 def addCampusNetworkView(request):
-    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-    # was removed in Python 3.12; lazy import keeps startup path clean).
-    import jenkins  # noqa: PLC0415
-
     server = _make_jenkins_server()
     if request.method == "POST":
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
@@ -814,16 +810,11 @@ def addCampusNetworkView(request):
                         "network_desc": network_desc,
                     },
                 )
-            except jenkins.JenkinsException as e:
+            except Exception as e:
                 msg = str(e)
                 if "Forbidden" in msg:  # most probably crumbs issue
                     # reauthenticate and try once more
-
-                    server = jenkins.Jenkins(
-                        JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
-                    )
+                    server = _make_jenkins_server()
                     server.build_job(
                         action_url,
                         {
@@ -882,10 +873,6 @@ def addCampusNetworkView(request):
 
 @login_required(login_url="/admin/login/")
 def editCampusNetworkView(request, campus_network_id):
-    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-    # was removed in Python 3.12; lazy import keeps startup path clean).
-    import jenkins  # noqa: PLC0415
-
     server = _make_jenkins_server()
     if request.method == "POST":
         campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
@@ -918,16 +905,11 @@ def editCampusNetworkView(request, campus_network_id):
                         "operation": "update",
                     },
                 )
-            except jenkins.JenkinsException as e:
+            except Exception as e:
                 msg = str(e)
                 if "Forbidden" in msg:  # most probably crumbs issue
                     # reauthenticate and try once more
-
-                    server = jenkins.Jenkins(
-                        JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
-                    )
+                    server = _make_jenkins_server()
                     server.build_job(
                         action_url,
                         {
@@ -972,10 +954,6 @@ def editCampusNetworkView(request, campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def deleteCampusNetworkView(request):
-    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-    # was removed in Python 3.12; lazy import keeps startup path clean).
-    import jenkins  # noqa: PLC0415
-
     server = _make_jenkins_server()
     if request.method == "POST":
         campus_network_ids = request.POST.get("campus_network_ids")
@@ -995,16 +973,12 @@ def deleteCampusNetworkView(request):
                 action_url,
                 {"src": src, "network_name": network_name, "operation": "delete"},
             )
-        except jenkins.JenkinsException as e:
+        except Exception as e:
             msg = str(e)
             if "Forbidden" in msg:  # most probably crumbs issue
                 # reauthenticate and try once more
 
-                server = jenkins.Jenkins(
-                    JENKINS_SERVER_URL,
-                    username=JENKINS_SERVER_USER,
-                    password=JENKINS_SERVER_PASS,
-                )
+                server = _make_jenkins_server()
                 server.build_job(
                     action_url,
                     {"src": src, "network_name": network_name, "operation": "delete"},
@@ -1259,12 +1233,6 @@ def create_workbook(campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def triggerAction(request, action_id, campus_network_id):
-    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-    # was removed in Python 3.12; lazy import keeps startup path clean).
-    from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
-    from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
-
-    server = _make_jenkins_server()
     action_obj = Action.objects.get(pk=action_id)
     action_url = action_obj.jenkins_url
     try:
@@ -1276,6 +1244,13 @@ def triggerAction(request, action_id, campus_network_id):
                     "reason": "No data configured",
                 }
             )
+
+        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+        # was removed in Python 3.12; lazy import keeps startup path clean).
+        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
+        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+
+        server = _make_jenkins_server()
 
         campus_network = CampusNetwork.objects.get(pk=campus_network_id)
         action_url += "-" + campus_network.name

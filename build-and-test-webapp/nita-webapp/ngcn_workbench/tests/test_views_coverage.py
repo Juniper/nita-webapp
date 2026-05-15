@@ -228,19 +228,18 @@ def test_add_campus_network_view_retries_on_forbidden(
 ):
     class ForbiddenServer(FakeServer):
         def build_job(self, job_name, params):
-            import jenkins  # noqa: PLC0415  # already in sys.modules by the time this runs
-            raise jenkins.JenkinsException("Forbidden: crumbs required")
+            raise Exception("Forbidden: crumbs required")
 
     initial_server = ForbiddenServer(build_number=11)
     reauth_server = FakeServer(build_number=11)
-    monkeypatch.setattr(views, "_make_jenkins_server", lambda: initial_server)
+    _servers = iter([initial_server, reauth_server])
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: next(_servers))
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
         "getWorkspaceLocation",
         staticmethod(lambda: "/workspace"),
     )
-    monkeypatch.setattr("jenkins.Jenkins", lambda *args, **kwargs: reauth_server)
 
     response = auth_client.post(
         reverse("campusnetworkadd"),
