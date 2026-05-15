@@ -69,7 +69,7 @@ class NetworkTypeParser:
         if zip_validation["status"]:
             try:
                 zip_file = ZipFile(default_storage.path(file_name), "r")
-                app_name = re.sub("\.zip$", "", file_name)
+                app_name = re.sub(r"\.zip$", "", file_name)
                 project_yaml_file = zip_file.read(app_name + "/project.yaml").decode(
                     "utf-8"
                 )
@@ -236,7 +236,7 @@ class NetworkTypeParser:
             file_name = self.normalizeZipFile(default_storage.path(file_name))
             zip_file = ZipFile(default_storage.path(file_name), "r")
             logger.error("Unzipping zipfile to: " + default_storage.path(file_name))
-            app_name = re.sub("\.zip$", "", file_name)
+            app_name = re.sub(r"\.zip$", "", file_name)
             logger.debug(app_name)
             archive_member_list = zip_file.namelist()
             logger.debug(archive_member_list)
