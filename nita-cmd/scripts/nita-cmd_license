@@ -2,7 +2,7 @@
 if [ "$_CLI_RUNNER_DEBUG" == 1 ]; then
         echo `cat <<EOT
 echo "
-# Copyright 2020 Juniper Networks
+# Copyright 2026 Hewlett Packard Enterprise
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # You may obtain a copy of the License at
@@ -18,7 +18,7 @@ echo "
 EOT` >&2
 fi
 echo "
-# Copyright 2020 Juniper Networks
+# Copyright 2026 Hewlett Packard Enterprise
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # You may obtain a copy of the License at

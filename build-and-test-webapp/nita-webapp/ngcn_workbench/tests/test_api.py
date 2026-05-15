@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 API endpoint tests for ngcn/api/ (ViewSets and @action endpoints).
 

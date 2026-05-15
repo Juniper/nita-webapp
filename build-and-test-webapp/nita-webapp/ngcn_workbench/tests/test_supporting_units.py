@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Unit tests for supporting modules: middleware, status updater, models, and tables.
 
 Covers servicestartupmiddleware, statusupdater, model validation logic, and

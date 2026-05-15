@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """UI-layer view tests for legacy HTML views (ngcn.views).
 
 Covers upload, workbook editing, trigger, and error paths that exercise the

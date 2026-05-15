@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """CI settings for running automated checks and tests in GitHub Actions."""
 
 from .settings import *  # noqa: F401,F403

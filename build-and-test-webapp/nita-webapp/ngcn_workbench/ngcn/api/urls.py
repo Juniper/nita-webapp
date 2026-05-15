@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """URL configuration for the NITA Webapp REST API.
 
 All endpoints are registered under the ``/api/v1/`` prefix (wired in

@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from ngcn.forms import CampusTypeForm, EditCampusTypeForm
