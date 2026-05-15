@@ -196,14 +196,13 @@ class NetworkTypeParser:
 
         os.mkdir(tmp + "/tmp2")
         if projectbase == "tmp1":
-            os.replace(tmp + "/tmp1", tmp + "/tmp2/" + projectname)
-            logger.debug("os.replace(" + "/tmp1", tmp + "/tmp2/" + projectname + ")")
+            src, dst = tmp + "/tmp1", tmp + "/tmp2/" + projectname
+            os.replace(src, dst)
+            logger.debug("os.replace(%s, %s)", src, dst)
         else:
-            os.replace(tmp + "/tmp1/" + projectbase, tmp + "/tmp2/" + projectname)
-            logger.debug(
-                "os.replace(" + tmp + "/tmp1/" + projectbase,
-                tmp + "/tmp2/" + projectname + ")",
-            )
+            src, dst = tmp + "/tmp1/" + projectbase, tmp + "/tmp2/" + projectname
+            os.replace(src, dst)
+            logger.debug("os.replace(%s, %s)", src, dst)
 
         # put the new zipfile in the default storage location
         zf = ZipFile(default_storage.path(projectname + ".zip"), "w")
@@ -266,6 +265,7 @@ class NetworkTypeParser:
             logger.debug(result)
         except Exception as e:
             logger.error(e)
+            result["filename"] = file_name
             result["message"] = "Undefined exception occured"
             result["status"] = False
             return result
