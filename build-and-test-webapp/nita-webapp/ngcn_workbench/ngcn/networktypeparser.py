@@ -139,7 +139,7 @@ class NetworkTypeParser:
                 logger.error("Error while adding Campus Type")
                 logger.error(traceback.format_exc())
                 logger.error(e)
-                result = JsonResponse({"result": "failure", "reason": validation_error})
+                result = JsonResponse({"result": "failure", "reason": str(e)})
             finally:
                 if zip_file is not None:
                     zip_file.close()
