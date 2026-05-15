@@ -285,7 +285,7 @@ class NetworkTypeParser:
     def validateProjectYaml(self, project_file):
         error_string = None
         campus_type_locale = _("network_type_heading")
-        project_file_dict = yaml.load(project_file)
+        project_file_dict = yaml.safe_load(project_file)
         try:
             campus_type_name = project_file_dict["name"]
             if not campus_type_name or campus_type_name.isspace():
