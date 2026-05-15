@@ -350,7 +350,7 @@ def test_trigger_action_returns_202_and_creates_history(
     api_client, campus_network, action, monkeypatch
 ):
     Workbook.objects.create(name="wb", campus_network_id=campus_network)
-    monkeypatch.setattr("ngcn.views.server", _FakeServer())
+    monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _FakeServer())
     monkeypatch.setattr(api_views, "create_workbook_from_db", lambda pk: "test.xlsx")
     monkeypatch.setattr(
         api_views,
@@ -449,7 +449,7 @@ def test_action_history_filter_by_campus_network(api_client, action_history, cam
 def test_action_history_console_returns_ansi_stripped_output(
     api_client, action_history, monkeypatch
 ):
-    monkeypatch.setattr("ngcn.views.server", _FakeServer())
+    monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _FakeServer())
     response = api_client.get(f"/api/v1/action-history/{action_history.id}/console/")
     assert response.status_code == 200
     data = response.json()
@@ -463,7 +463,7 @@ def test_action_history_console_returns_ansi_stripped_output(
 def test_action_history_console_returns_fallback_when_jenkins_unavailable(
     api_client, action_history, monkeypatch
 ):
-    monkeypatch.setattr("ngcn.views.server", _RaisingServer())
+    monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _RaisingServer())
     response = api_client.get(f"/api/v1/action-history/{action_history.id}/console/")
     assert response.status_code == 200
     assert "queued" in response.json()["console"].lower()

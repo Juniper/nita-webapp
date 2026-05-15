@@ -22,7 +22,6 @@ import traceback
 from collections import OrderedDict
 
 import django_tables2 as tables
-import jenkins
 import yaml
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -35,8 +34,6 @@ from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
 from django.views.generic import View
 from django_tables2 import RequestConfig
-from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.utils.crumb_requester import CrumbRequester
 from openpyxl import Workbook as open_workbook
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Font, NamedStyle, PatternFill, Side
@@ -79,9 +76,23 @@ jenkins_port = config["jenkins.server.details"]["port"]
 JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
 JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
-server = jenkins.Jenkins(
-    JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
-)
+
+
+def _make_jenkins_server():
+    """Return a new jenkins.Jenkins connection. Imports are lazy."""
+    # Intentionally imported here rather than at module level.
+    # python-jenkins (jenkins package) loads plugins.py at import
+    # time, which calls pkg_resources -> pkgutil.ImpImporter.
+    # pkgutil.ImpImporter was removed in Python 3.12, so a
+    # module-level import crashes Django startup (manage.py check,
+    # URL loading) before any request is served.  Lazy-importing
+    # inside this function keeps the chain out of the startup path.
+    import jenkins  # noqa: PLC0415
+
+    return jenkins.Jenkins(
+        JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
+    )
+
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +494,7 @@ def jenkinsConsoleLogView(request, action_history_id):
     logger.debug(job_url)
     job_id = action_history.jenkins_job_build_no
     logger.debug(job_id)
+    server = _make_jenkins_server()
     try:
         response = server.get_build_console_output(job_url, job_id)
         # logger.debug(response)
@@ -660,7 +672,13 @@ def deleteCampusTypeView(request):
                 }
             )
 
+        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+        # was removed in Python 3.12; lazy import keeps startup path clean).
+        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
+        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+
         action_url = "network_type_validator"
+        server = _make_jenkins_server()
         current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
         crumb = CrumbRequester(
             baseurl=JENKINS_SERVER_URL,
@@ -689,7 +707,11 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url="/admin/login/")
 def addCampusNetworkView(request):
-    global server
+    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+    # was removed in Python 3.12; lazy import keeps startup path clean).
+    import jenkins  # noqa: PLC0415
+
+    server = _make_jenkins_server()
     if request.method == "POST":
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
         if form.is_valid():
@@ -860,7 +882,11 @@ def addCampusNetworkView(request):
 
 @login_required(login_url="/admin/login/")
 def editCampusNetworkView(request, campus_network_id):
-    global server
+    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+    # was removed in Python 3.12; lazy import keeps startup path clean).
+    import jenkins  # noqa: PLC0415
+
+    server = _make_jenkins_server()
     if request.method == "POST":
         campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
         POST = request.POST.copy()
@@ -946,7 +972,11 @@ def editCampusNetworkView(request, campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def deleteCampusNetworkView(request):
-    global server
+    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+    # was removed in Python 3.12; lazy import keeps startup path clean).
+    import jenkins  # noqa: PLC0415
+
+    server = _make_jenkins_server()
     if request.method == "POST":
         campus_network_ids = request.POST.get("campus_network_ids")
 
@@ -1229,6 +1259,12 @@ def create_workbook(campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def triggerAction(request, action_id, campus_network_id):
+    # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+    # was removed in Python 3.12; lazy import keeps startup path clean).
+    from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
+    from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+
+    server = _make_jenkins_server()
     action_obj = Action.objects.get(pk=action_id)
     action_url = action_obj.jenkins_url
     try:

@@ -40,6 +40,11 @@ jobs:
             > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
           pip install -r ../../../requirements-test.txt
+          # python-jenkins 1.8.0 requires setuptools<66, which downgrades
+          # pkg_resources to a version that still uses pkgutil.ImpImporter,
+          # removed in Python 3.12.  Re-upgrade after all requirements are
+          # installed so the runtime uses a fixed pkg_resources.
+          pip install --upgrade setuptools
 
       - name: Validate Django project
         run: python manage.py check

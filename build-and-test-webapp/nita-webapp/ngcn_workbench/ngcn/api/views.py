@@ -259,7 +259,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             JENKINS_SERVER_PASS,
             JENKINS_SERVER_URL,
             JENKINS_SERVER_USER,
-            server,
+            _make_jenkins_server,
             updateCampusNetworkStatusOnDB,
         )
 
@@ -285,6 +285,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             else:
                 build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
 
+            server = _make_jenkins_server()
             current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
             crumb = CrumbRequester(
                 baseurl=JENKINS_SERVER_URL,
@@ -371,10 +372,11 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         """Return the Jenkins console log for this action history entry."""
         import re
 
-        from ngcn.views import server
+        from ngcn.views import _make_jenkins_server
 
         history = self.get_object()
         job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
+        server = _make_jenkins_server()
         try:
             output = server.get_build_console_output(job_url, history.jenkins_job_build_no)
             ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
