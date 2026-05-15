@@ -1,0 +1,334 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# System Integration Tests — kind cluster
+#
+# Spins up a minimal Kubernetes (kind) cluster containing:
+#   • MariaDB      (emptyDir, no PVC needed in CI)
+#   • Jenkins      (HTTP-only, emptyDir, registry image)
+#   • nita-webapp  (registry image, original wait-for-db.sh entrypoint)
+#
+# All images are pulled from ghcr.io — nothing is built locally.
+#
+# The pytest integration suite handles all fixture setup through the REST API:
+#   1. Uploads the evpn_vxlan_erb_dc project zip → POST /api/v1/network-types/upload/
+#   2. Creates networks, uploads workbooks, exercises full CRUD.
+#
+# Tests stop short of triggering NOOB / build / test Jenkins jobs.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: System Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  integration-test:
+    name: E2E API tests (kind cluster)
+    runs-on: ubuntu-latest
+
+    env:
+      NITA_BASE_URL: http://localhost:8000
+      NITA_USER: admin
+      NITA_PASS: admin123
+      # Passed to the integration tests so they can find the xlsx / hosts files
+      # from the nita repo checked out as a sibling workspace directory.
+      EVPN_FIXTURE_DIR: ${{ github.workspace }}/nita/examples/evpn_vxlan_erb_dc
+
+    steps:
+      # ── Source checkouts ────────────────────────────────────────────────────
+
+      - name: Checkout nita-webapp
+        uses: actions/checkout@v4
+
+      - name: Checkout nita (fixture data)
+        uses: actions/checkout@v4
+        with:
+          repository: aburston/nita
+          path: nita
+
+      # ── Python for running tests ─────────────────────────────────────────────
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install integration-test dependencies
+        run: pip install -r requirements-integration-test.txt
+
+      # ── kind cluster ─────────────────────────────────────────────────────────
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: nita-ci
+
+      # ── Registry credentials ─────────────────────────────────────────────────
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Deploy services ──────────────────────────────────────────────────────
+
+      - name: Apply namespace
+        run: kubectl apply -f .github/k8s/namespace.yaml
+
+      - name: Create registry pull secret in nita namespace
+        run: |
+          kubectl create secret docker-registry regcred \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="${{ secrets.GITHUB_TOKEN }}" \
+            -n nita
+
+      - name: Apply MariaDB manifests
+        run: |
+          kubectl apply -f .github/k8s/db-deployment.yaml
+          kubectl apply -f .github/k8s/db-service.yaml
+
+      - name: Apply Jenkins RBAC + manifests
+        run: |
+          kubectl apply -f .github/k8s/jenkins-rbac.yaml
+          envsubst < .github/k8s/jenkins-deployment.yaml | kubectl apply -f -
+          kubectl apply -f .github/k8s/jenkins-service.yaml
+
+      - name: Apply webapp manifest
+        run: |
+          envsubst < .github/k8s/webapp-deployment.yaml | kubectl apply -f -
+          kubectl apply -f .github/k8s/webapp-service.yaml
+
+      # ── Wait for services ─────────────────────────────────────────────────────
+
+      - name: Wait for MariaDB to be ready
+        run: kubectl rollout status deployment/db -n nita --timeout=120s
+
+      - name: Wait for Jenkins to be ready
+        run: kubectl rollout status deployment/jenkins -n nita --timeout=300s
+
+      - name: Wait for webapp to be ready
+        # webapp waits for Jenkins internally (wait-for-db.sh pings Jenkins),
+        # so the timeout here covers db + Jenkins startup + app init.
+        run: kubectl rollout status deployment/webapp -n nita --timeout=600s
+
+      # ── Port-forward webapp ──────────────────────────────────────────────────
+
+      - name: Start port-forward (webapp → localhost:8000)
+        run: |
+          kubectl port-forward svc/webapp -n nita 8000:8000 &
+          echo "PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for webapp HTTP endpoint to respond
+        run: |
+          for i in $(seq 1 60); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Token invalid" \
+              http://localhost:8000/api/v1/networks/ 2>/dev/null || echo 000)
+            # 401/403 = server is up and responding
+            if [[ "$STATUS" == "401" || "$STATUS" == "403" ]]; then
+              echo "Webapp is up (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "  attempt $i: got HTTP $STATUS, waiting..."
+            sleep 3
+          done
+          echo "ERROR: webapp did not become ready within 3 minutes"
+          kubectl logs -n nita -l io.kompose.service=webapp --tail=50
+          exit 1
+
+      # ── Run integration tests ─────────────────────────────────────────────────
+      # No separate seed step — the conftest.py fixtures upload the project zip
+      # and create all test data through the REST API.
+
+      - name: Run pytest integration suite
+        run: |
+          pytest -c pytest-integration.ini \
+            --tb=short \
+            -v
+
+      # ── Diagnostics on failure ────────────────────────────────────────────────
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=== webapp pod logs ==="
+          kubectl logs -n nita -l io.kompose.service=webapp --tail=100 || true
+          echo "=== jenkins pod logs ==="
+          kubectl logs -n nita -l io.kompose.service=jenkins --tail=100 || true
+          echo "=== db pod logs ==="
+          kubectl logs -n nita -l io.kompose.service=db --tail=50 || true
+          echo "=== pod status ==="
+          kubectl get pods -n nita -o wide || true
+          echo "=== events ==="
+          kubectl get events -n nita --sort-by='.lastTimestamp' | tail -40 || true
+
+      - name: Stop port-forward
+        if: always()
+        run: |
+          if [[ -n "${PORT_FORWARD_PID:-}" ]]; then
+            kill "${PORT_FORWARD_PID}" 2>/dev/null || true
+          fi
+
+name: System Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: E2E API tests (kind cluster)
+    runs-on: ubuntu-latest
+
+    env:
+      NITA_BASE_URL: http://localhost:8000
+      NITA_USER: admin
+      NITA_PASS: admin123
+      # Passed to the integration tests so they can find the xlsx / hosts files
+      # from the nita repo checked out as a sibling workspace directory.
+      EVPN_FIXTURE_DIR: ${{ github.workspace }}/nita/examples/evpn_vxlan_erb_dc
+
+    steps:
+      # ── Source checkouts ────────────────────────────────────────────────────
+
+      - name: Checkout nita-webapp
+        uses: actions/checkout@v4
+
+      - name: Checkout nita (fixture data)
+        uses: actions/checkout@v4
+        with:
+          repository: aburston/nita
+          path: nita
+
+      # ── Python for running tests ─────────────────────────────────────────────
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install integration-test dependencies
+        run: pip install -r requirements-integration-test.txt
+
+      # ── Docker image ─────────────────────────────────────────────────────────
+
+      - name: Build nita-webapp Docker image
+        run: |
+          docker build . \
+            --file Dockerfile \
+            --tag nita-webapp:ci \
+            --label "ci=true"
+
+      # ── kind cluster ─────────────────────────────────────────────────────────
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          # Single-node cluster; no special port mappings needed because we use
+          # kubectl port-forward from within the runner.
+          cluster_name: nita-ci
+
+      - name: Load webapp image into kind
+        run: kind load docker-image nita-webapp:ci --name nita-ci
+
+      # ── Deploy services ──────────────────────────────────────────────────────
+
+      - name: Apply k8s CI manifests
+        run: |
+          kubectl apply -f .github/k8s/namespace.yaml
+          kubectl apply -f .github/k8s/db-deployment.yaml
+          kubectl apply -f .github/k8s/db-service.yaml
+          kubectl apply -f .github/k8s/webapp-deployment.yaml
+          kubectl apply -f .github/k8s/webapp-service.yaml
+
+      - name: Wait for MariaDB to be ready
+        run: |
+          kubectl rollout status deployment/db -n nita --timeout=120s
+
+      - name: Wait for webapp to be ready
+        run: |
+          kubectl rollout status deployment/webapp -n nita --timeout=300s
+
+      # ── Port-forward webapp ──────────────────────────────────────────────────
+
+      - name: Start port-forward (webapp → localhost:8000)
+        run: |
+          kubectl port-forward svc/webapp -n nita 8000:8000 &
+          echo "PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for webapp HTTP endpoint to respond
+        run: |
+          for i in $(seq 1 60); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Token invalid" \
+              http://localhost:8000/api/v1/networks/ 2>/dev/null || echo 000)
+            # 401/403 = server is up and responding; anything else = still starting
+            if [[ "$STATUS" == "401" || "$STATUS" == "403" ]]; then
+              echo "Webapp is up (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "  attempt $i: got HTTP $STATUS, waiting..."
+            sleep 3
+          done
+          echo "ERROR: webapp did not become ready within 3 minutes"
+          kubectl logs -n nita -l io.kompose.service=webapp --tail=50
+          exit 1
+
+      # ── Seed fixture data ─────────────────────────────────────────────────────
+
+      - name: Seed evpn_vxlan_erb_dc CampusType
+        run: |
+          WEBAPP_POD=$(kubectl get pods -n nita \
+            -l io.kompose.service=webapp \
+            -o jsonpath='{.items[0].metadata.name}')
+          echo "Webapp pod: ${WEBAPP_POD}"
+
+          kubectl cp \
+            nita/examples/evpn_vxlan_erb_dc/project.yaml \
+            nita/${WEBAPP_POD}:/tmp/evpn_project.yaml
+
+          kubectl exec -n nita "${WEBAPP_POD}" -- \
+            python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py \
+            seed_evpn_fixture /tmp/evpn_project.yaml
+
+      # ── Run integration tests ─────────────────────────────────────────────────
+
+      - name: Run pytest integration suite
+        run: |
+          pytest -c pytest-integration.ini \
+            --tb=short \
+            -v
+
+      # ── Diagnostics on failure ────────────────────────────────────────────────
+
+      - name: Dump webapp logs on failure
+        if: failure()
+        run: |
+          echo "=== webapp pod logs ==="
+          kubectl logs -n nita -l io.kompose.service=webapp --tail=100 || true
+          echo "=== db pod logs ==="
+          kubectl logs -n nita -l io.kompose.service=db --tail=50 || true
+          echo "=== pod status ==="
+          kubectl get pods -n nita -o wide || true
+
+      - name: Stop port-forward
+        if: always()
+        run: |
+          if [[ -n "${PORT_FORWARD_PID:-}" ]]; then
+            kill "${PORT_FORWARD_PID}" 2>/dev/null || true
+          fi

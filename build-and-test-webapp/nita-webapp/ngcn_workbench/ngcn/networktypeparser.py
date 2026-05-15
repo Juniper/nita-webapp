@@ -114,7 +114,11 @@ class NetworkTypeParser:
                     )
                     logger.debug("db_status server: " + str(db_status))
                     if db_status:
-                        result = JsonResponse({"result": "success"})
+                        try:
+                            ct = CampusType.objects.get(name=app_name)
+                            result = JsonResponse({"result": "success", "name": ct.name, "id": ct.id})
+                        except CampusType.DoesNotExist:
+                            result = JsonResponse({"result": "success"})
                     else:
                         result = JsonResponse({"result": "failure"})
                     logger.debug("Updated network type details: " + str(result))

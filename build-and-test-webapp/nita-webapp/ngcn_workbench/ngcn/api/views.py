@@ -78,8 +78,14 @@ class CampusTypeViewSet(
     viewsets.GenericViewSet,
 ):
     """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/."""
-    queryset = CampusType.objects.all()
     serializer_class = CampusTypeSerializer
+
+    def get_queryset(self):
+        qs = CampusType.objects.all()
+        name = self.request.query_params.get("name")
+        if name:
+            qs = qs.filter(name=name)
+        return qs
 
     @extend_schema(
         request={"multipart/form-data": {"type": "object", "properties": {"app_zip_file": {"type": "string", "format": "binary"}}}},
