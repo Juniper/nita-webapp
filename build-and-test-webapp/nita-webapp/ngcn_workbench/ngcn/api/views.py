@@ -1,3 +1,26 @@
+"""DRF ViewSet classes for the NITA Webapp REST API.
+
+Endpoints
+---------
+``/api/v1/action-categories/``
+    :class:`ActionCategoryViewSet` — read-only list/retrieve.
+
+``/api/v1/network-types/``
+    :class:`CampusTypeViewSet` — list, retrieve, delete, and zip upload.
+    POST /create is intentionally disabled; use the ``/upload/`` action.
+
+``/api/v1/networks/``
+    :class:`CampusNetworkViewSet` — full CRUD plus workbook and trigger
+    actions.
+
+``/api/v1/actions/``
+    :class:`ActionViewSet` — read-only, filterable by ``?campus_type_id=``.
+
+``/api/v1/action-history/``
+    :class:`ActionHistoryViewSet` — read-only, filterable by
+    ``?campus_network_id=``, with a Jenkins console proxy action.
+"""
+
 import json
 import logging
 import traceback
@@ -40,6 +63,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActionCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only list and retrieve for ActionCategory objects."""
     queryset = ActionCategory.objects.all()
     serializer_class = ActionCategorySerializer
 
@@ -86,6 +110,27 @@ class CampusTypeViewSet(
 
 
 class CampusNetworkViewSet(viewsets.ModelViewSet):
+    """Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+    Standard CRUD
+        ``GET /api/v1/networks/``                — paginated list
+        ``POST /api/v1/networks/``               — create
+        ``GET /api/v1/networks/{id}/``           — retrieve
+        ``PUT/PATCH /api/v1/networks/{id}/``     — update
+        ``DELETE /api/v1/networks/{id}/``        — destroy
+
+    Workbook actions
+        ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+        ``GET    …/{id}/workbook/``          — retrieve current grid data
+        ``POST   …/{id}/workbook/save/``     — save edited grid data
+        ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+        ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+    Trigger
+        ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+        returns ``202 Accepted`` with ``action_history_id`` immediately.
+        Poll ``GET /api/v1/action-history/{id}/`` for status.
+    """
     queryset = CampusNetwork.objects.all()
     serializer_class = CampusNetworkSerializer
 
@@ -209,6 +254,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         """
         from jenkinsapi.jenkins import Jenkins
         from jenkinsapi.utils.crumb_requester import CrumbRequester
+
         from ngcn.views import (
             JENKINS_SERVER_PASS,
             JENKINS_SERVER_URL,
@@ -284,6 +330,11 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
 
 class ActionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only list and retrieve for Action objects.
+
+    Supports ``?campus_type_id=<id>`` query parameter to filter actions
+    that belong to a specific network type.
+    """
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
 
@@ -296,6 +347,12 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only list and retrieve for ActionHistory objects, ordered newest-first.
+
+    Supports ``?campus_network_id=<id>`` query parameter to filter history
+    for a specific network.  The ``/console/`` action proxies the Jenkins
+    console log for a given history entry.
+    """
     queryset = ActionHistory.objects.all().order_by("-timestamp")
     serializer_class = ActionHistorySerializer
 

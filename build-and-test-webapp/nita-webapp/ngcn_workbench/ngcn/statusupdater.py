@@ -12,15 +12,17 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-from ngcn.models import ActionHistory
-from django.conf import settings
-import jenkins
+import configparser
+import logging
+import os
 import threading
 import time
 import traceback
-import logging
-import configparser
-import os
+
+import jenkins
+from django.conf import settings
+
+from ngcn.models import ActionHistory
 
 logger = logging.getLogger(__name__)
 

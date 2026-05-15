@@ -12,13 +12,13 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
+import logging
+
 from django import forms
 from django.core.validators import validate_slug
-from django.forms import BaseInlineFormSet
-from django.forms import ModelForm
-from ngcn.models import CampusType, CampusNetwork, Action
-from django.forms import inlineformset_factory
-import logging
+from django.forms import BaseInlineFormSet, ModelForm, inlineformset_factory
+
+from ngcn.models import Action, CampusNetwork, CampusType
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class EditCampusNetworkForm(ModelForm):
 
 class CustomInlineFormSet(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
-        super(CustomInlineFormSet, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for form in self.forms:
             form.empty_permitted = False
 

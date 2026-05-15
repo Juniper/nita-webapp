@@ -13,13 +13,16 @@ Third-Party Code: This code may depend on other components under separate copyri
 ********************************************************"""
 
 from django.contrib import admin
-from ngcn.models import Action
-from ngcn.models import ActionCategory
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
-from ngcn.models import Workbook
-from ngcn.models import Worksheets
+
+from ngcn.models import (
+    Action,
+    ActionCategory,
+    ActionHistory,
+    CampusNetwork,
+    CampusType,
+    Workbook,
+    Worksheets,
+)
 
 # Register your models here.
 admin.site.register(ActionCategory)

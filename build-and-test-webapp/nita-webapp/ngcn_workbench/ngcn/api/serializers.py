@@ -1,3 +1,19 @@
+"""DRF ModelSerializer classes for the NITA Webapp REST API.
+
+Each model in ``ngcn.models`` has a corresponding serializer here.  Where
+useful, read-only computed / nested fields are added so that API consumers
+get enough context without having to make extra requests:
+
+* ``CampusTypeSerializer``     — includes nested ``roles`` and ``resources``
+* ``ActionSerializer``         — includes nested ``action_property`` and
+  ``action_category``
+* ``CampusNetworkSerializer``  — adds a ``campus_type_name`` string field
+* ``ActionHistorySerializer``  — adds ``action_name``, ``category_name``,
+  ``network_name`` string fields
+* ``WorkbookSerializer``       — includes nested ``WorksheetsSerializer``
+  entries; the ``data`` column is JSON-decoded on read
+"""
+
 import json
 
 from drf_spectacular.utils import extend_schema_field
@@ -18,24 +34,28 @@ from ngcn.models import (
 
 
 class ActionCategorySerializer(serializers.ModelSerializer):
+    """Serializer for ActionCategory (build / test / deploy labels)."""
     class Meta:
         model = ActionCategory
         fields = "__all__"
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    """Serializer for Role (Ansible role assigned to a network type)."""
     class Meta:
         model = Role
         fields = "__all__"
 
 
 class ResourceSerializer(serializers.ModelSerializer):
+    """Serializer for Resource (resource allocated to a network type)."""
     class Meta:
         model = Resource
         fields = "__all__"
 
 
 class CampusTypeSerializer(serializers.ModelSerializer):
+    """Serializer for CampusType.  Includes nested roles and resources lists."""
     roles = RoleSerializer(many=True, read_only=True)
     resources = ResourceSerializer(many=True, read_only=True)
 
@@ -45,12 +65,14 @@ class CampusTypeSerializer(serializers.ModelSerializer):
 
 
 class ActionPropertySerializer(serializers.ModelSerializer):
+    """Serializer for ActionProperty (shell command + workspace configuration)."""
     class Meta:
         model = ActionProperty
         fields = "__all__"
 
 
 class ActionSerializer(serializers.ModelSerializer):
+    """Serializer for Action.  Nests ActionProperty and ActionCategory inline."""
     action_property = ActionPropertySerializer(read_only=True)
     action_category = ActionCategorySerializer(read_only=True)
 
@@ -60,6 +82,7 @@ class ActionSerializer(serializers.ModelSerializer):
 
 
 class CampusNetworkSerializer(serializers.ModelSerializer):
+    """Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience."""
     campus_type_name = serializers.CharField(
         source="campus_type.name", read_only=True
     )
@@ -70,6 +93,11 @@ class CampusNetworkSerializer(serializers.ModelSerializer):
 
 
 class ActionHistorySerializer(serializers.ModelSerializer):
+    """Serializer for ActionHistory.
+
+    Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
+    string fields so consumers can display context without extra look-ups.
+    """
     action_name = serializers.CharField(
         source="action_id.action_name", read_only=True
     )
@@ -86,6 +114,11 @@ class ActionHistorySerializer(serializers.ModelSerializer):
 
 
 class WorksheetsSerializer(serializers.ModelSerializer):
+    """Serializer for a single worksheet inside a Workbook.
+
+    The ``data`` column is stored as a JSON string in the database; this
+    serializer transparently parses it back to a Python object on read.
+    """
     data = serializers.SerializerMethodField()
 
     class Meta:
@@ -101,6 +134,7 @@ class WorksheetsSerializer(serializers.ModelSerializer):
 
 
 class WorkbookSerializer(serializers.ModelSerializer):
+    """Serializer for a Workbook together with all of its Worksheets."""
     sheets = WorksheetsSerializer(source="worksheets_set", many=True, read_only=True)
 
     class Meta:

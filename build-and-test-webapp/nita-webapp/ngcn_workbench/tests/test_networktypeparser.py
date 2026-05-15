@@ -4,10 +4,7 @@ from zipfile import ZipFile
 
 import pytest
 from django.core.files.storage import default_storage
-
-from ngcn.models import Action
-from ngcn.models import ActionProperty
-from ngcn.models import CampusType
+from ngcn.models import Action, ActionProperty, CampusType
 from ngcn.networktypeparser import NetworkTypeParser
 
 

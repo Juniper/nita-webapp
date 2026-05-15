@@ -12,15 +12,14 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-import django_tables2 as tables
-from ngcn.models import Action
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
-from django.conf import settings
-from django.utils.translation import gettext as _
 import configparser
+
+import django_tables2 as tables
+from django.conf import settings
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext as _
+
+from ngcn.models import Action, ActionHistory, CampusNetwork, CampusType
 
 config = configparser.ConfigParser()
 config_location = settings.BASE_DIR + "/../"

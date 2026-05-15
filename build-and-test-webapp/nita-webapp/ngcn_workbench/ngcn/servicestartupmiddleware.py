@@ -17,8 +17,9 @@ try:
 except ImportError:
     MiddlewareMixin = object
 
-from ngcn.statusupdater import StatusUpdater
 import logging
+
+from ngcn.statusupdater import StatusUpdater
 
 logger = logging.getLogger(__name__)
 

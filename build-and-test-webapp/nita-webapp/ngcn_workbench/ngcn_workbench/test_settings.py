@@ -1,3 +1,8 @@
+"""Test-only Django settings overlay.
+
+Overrides the production settings to use an in-memory SQLite database so
+the test suite requires no external database server.
+"""
 from .settings import *
 
 DATABASES = {

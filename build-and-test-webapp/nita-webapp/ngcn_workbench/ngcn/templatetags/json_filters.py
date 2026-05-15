@@ -12,9 +12,10 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
+import json
+
 from django.core.serializers import serialize
 from django.db.models.query import QuerySet
-import json
 from django.template import Library
 
 register = Library()

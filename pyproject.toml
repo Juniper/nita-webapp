@@ -1,0 +1,29 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",  # line too long — pre-existing code has long lines in licence headers
+    "UP006", # use X | Y for union types — Django CBVs not compatible everywhere
+    "UP007", # use X | Y for Optional — same as above
+]
+
+[tool.ruff.lint.per-file-ignores]
+# test_settings.py uses deliberate wildcard import to inherit Django settings
+"**/test_settings.py" = ["F403", "F405"]
+# Pre-existing files with long licence-header lines
+"**/ngcn/__init__.py"    = ["E501"]
+"**/ngcn/admin.py"       = ["E501"]
+"**/ngcn/forms.py"       = ["E501"]
+"**/ngcn/models.py"      = ["E501"]
+"**/ngcn/views.py"       = ["E501"]
+"**/networktypeparser.py" = ["E501"]

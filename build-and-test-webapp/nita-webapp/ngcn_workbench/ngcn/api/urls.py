@@ -1,3 +1,19 @@
+"""URL configuration for the NITA Webapp REST API.
+
+All endpoints are registered under the ``/api/v1/`` prefix (wired in
+``ngcn_workbench.urls``) via a DRF ``DefaultRouter``:
+
+=========================  =====================================
+URL prefix                 ViewSet
+=========================  =====================================
+``network-types/``         :class:`~ngcn.api.views.CampusTypeViewSet`
+``networks/``              :class:`~ngcn.api.views.CampusNetworkViewSet`
+``actions/``               :class:`~ngcn.api.views.ActionViewSet`
+``action-categories/``     :class:`~ngcn.api.views.ActionCategoryViewSet`
+``action-history/``        :class:`~ngcn.api.views.ActionHistoryViewSet`
+=========================  =====================================
+"""
+
 from rest_framework.routers import DefaultRouter
 
 from .views import (

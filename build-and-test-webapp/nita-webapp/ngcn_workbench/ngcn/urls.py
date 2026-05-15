@@ -12,9 +12,10 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-from django.urls import path
 from django.contrib.auth import logout
 from django.shortcuts import redirect
+from django.urls import path
+
 from . import views
 
 

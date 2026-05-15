@@ -14,11 +14,9 @@ import json
 
 import pytest
 from django.utils import timezone
-from rest_framework.test import APIClient
-
 from ngcn.api import views as api_views
 from ngcn.models import ActionHistory, CampusNetwork, CampusType, Workbook
-
+from rest_framework.test import APIClient
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -165,8 +163,8 @@ def test_network_type_delete(api_client, campus_type):
 
 @pytest.mark.django_db
 def test_network_type_upload_returns_parser_result(api_client, monkeypatch):
-    from django.http import JsonResponse
     import django.core.files.storage as django_storage
+    from django.http import JsonResponse
 
     monkeypatch.setattr(django_storage, "default_storage", _FakeStorage())
     monkeypatch.setattr(

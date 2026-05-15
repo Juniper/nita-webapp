@@ -12,64 +12,62 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-import os
+import collections
+import configparser
 import json
+import logging
+import os
+import re
+import traceback
+from collections import OrderedDict
+
+import django_tables2 as tables
 import jenkins
 import yaml
-from yaml.constructor import Constructor
-import collections
-from collections import OrderedDict
-import traceback
-import logging
-import configparser
-import re
-
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.files.storage import default_storage
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.utils import timezone
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
-from django.core.files.storage import default_storage
 from django.views.generic import View
-from django.contrib.auth.decorators import login_required
-from django.conf import settings
-
-from openpyxl import load_workbook
-from openpyxl import Workbook as open_workbook
-from openpyxl.styles import Font, NamedStyle, PatternFill, Border, Side, Alignment
+from django_tables2 import RequestConfig
 from jenkinsapi.jenkins import Jenkins
 from jenkinsapi.utils.crumb_requester import CrumbRequester
-from django_tables2 import RequestConfig
-import django_tables2 as tables
+from openpyxl import Workbook as open_workbook
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment, Border, Font, NamedStyle, PatternFill, Side
+from yaml.constructor import Constructor
 
+from ngcn.forms import (
+    CampusNetworkForm,
+    CampusTypeForm,
+    EditCampusNetworkForm,
+    UploadFileForm,
+)
 from ngcn.models import (
-    CampusType,
-    CampusNetwork,
-    ActionHistory,
-    ActionCategory,
-    Workbook,
-    Worksheets,
     Action,
+    ActionCategory,
+    ActionHistory,
+    CampusNetwork,
+    CampusType,
     Resource,
     Role,
+    Workbook,
+    Worksheets,
 )
+from ngcn.networktypeparser import NetworkTypeParser
 from ngcn.tables import (
-    CampusTypeTable,
-    CampusNetworkTable,
     ActionHistoryTable,
     ActionListTable,
     CampusNetworkActionListTable,
+    CampusNetworkTable,
+    CampusTypeTable,
 )
-from ngcn.forms import (
-    CampusNetworkForm,
-    UploadFileForm,
-    CampusTypeForm,
-    EditCampusNetworkForm,
-)
-from ngcn.networktypeparser import NetworkTypeParser
-from ngcn.utils import ServerProperties
-from ngcn.utils import wait_and_get_build_status
+from ngcn.utils import ServerProperties, wait_and_get_build_status
 
 TEST_ACTION_ID = 3
 
@@ -212,7 +210,7 @@ def campusTypeView(request, campus_type_id):
 
         logger.debug("campusTypeView: " + r)
     except BaseException as e:
-        logger.error("campusTypeView: render error {}".format(e))
+        logger.error(f"campusTypeView: render error {e}")
     return r
 
 
@@ -436,9 +434,7 @@ def downloadConfigDataView(request, campus_network_id):
     output = excel.read()
     excel.close()
     response = HttpResponse(output, content_type="application/force-download")
-    response["Content-Disposition"] = "attachment; filename=%s" % smart_str(
-        workbook_name
-    )
+    response["Content-Disposition"] = f"attachment; filename={smart_str(workbook_name)}"
     logger.debug("downloadConfigDataView: exit")
     return response
 
@@ -1138,7 +1134,7 @@ def create_workbook_from_db(campus_network_id):
 
         column_index = 1
         # insert the column column_header value
-        for key, cell in zip(keys, ws.iter_cols(min_row=1, max_row=1)):
+        for key, cell in zip(keys, ws.iter_cols(min_row=1, max_row=1), strict=False):
             cell[0].value = key
             column_header[cell[0].column] = key
             column_index += 1

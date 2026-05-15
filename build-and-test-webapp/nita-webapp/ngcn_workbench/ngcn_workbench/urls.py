@@ -13,9 +13,9 @@ Third-Party Code: This code may depend on other components under separate copyri
 ********************************************************"""
 
 from django.contrib import admin
-from django.urls import path, include
-from rest_framework.authtoken.views import obtain_auth_token
+from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.authtoken.views import obtain_auth_token
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.

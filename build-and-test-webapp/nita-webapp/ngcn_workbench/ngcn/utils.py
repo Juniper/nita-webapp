@@ -12,12 +12,13 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-import os
 import configparser
-from django.conf import settings
-from time import sleep
-import jenkins
 import logging
+import os
+from time import sleep
+
+import jenkins
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def wait_and_get_build_status(action_url, build_number):
     buildStatus = None
     interval = 2
     try:
-        for i in range(0, 60):
+        for _i in range(0, 60):
             try:
                 sleep(interval)
                 buildStatus = getBuildStatus(action_url, build_number)

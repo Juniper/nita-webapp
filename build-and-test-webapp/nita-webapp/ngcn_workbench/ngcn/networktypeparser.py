@@ -12,33 +12,29 @@ Third-Party Code: This code may depend on other components under separate copyri
 
 ********************************************************"""
 
-import os
-import yaml
-import re
-from django.db import transaction
-from django.conf import settings
+import configparser
 
 # from pykwalify.core import Core
 import logging
-import traceback
-import configparser
-import tempfile
+import os
+import re
 import shutil
-
-from ngcn.models import CampusType
-from ngcn.models import Action
-from ngcn.models import ActionCategory
-from ngcn.models import ActionProperty
-
-# from ngcn.models import JenkinsJobProperty
-from ngcn.utils import ServerProperties
-from ngcn.utils import wait_and_get_build_status
-from django.utils.translation import gettext as _
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-
+import tempfile
+import traceback
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
+
+import yaml
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.db import transaction
+from django.http import JsonResponse
+from django.utils.translation import gettext as _
+
+from ngcn.models import Action, ActionCategory, ActionProperty, CampusType
+
+# from ngcn.models import JenkinsJobProperty
+from ngcn.utils import ServerProperties, wait_and_get_build_status
 
 # from _mysql import IntegrityError
 
@@ -166,7 +162,7 @@ class NetworkTypeParser:
 
         # inner function to find project file
         def find_file(top, filename):
-            for root, dirs, files in os.walk(top):
+            for root, _dirs, files in os.walk(top):
                 for file in files:
                     logger.debug("find_file: " + file)
                     if file.endswith(filename):
@@ -218,7 +214,7 @@ class NetworkTypeParser:
 
         # put the new zipfile in the default storage location
         zf = ZipFile(default_storage.path(projectname + ".zip"), "w")
-        for root, dirs, files in os.walk(tmp + "/tmp2/" + projectname):
+        for root, _dirs, files in os.walk(tmp + "/tmp2/" + projectname):
             for file in files:
                 zf.write(
                     os.path.join(root, file),

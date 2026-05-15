@@ -1,8 +1,6 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-
-from ngcn.forms import CampusTypeForm
-from ngcn.forms import EditCampusTypeForm
+from ngcn.forms import CampusTypeForm, EditCampusTypeForm
 from ngcn.models import CampusType
 
 

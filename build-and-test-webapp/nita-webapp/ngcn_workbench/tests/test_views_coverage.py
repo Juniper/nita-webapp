@@ -1,15 +1,17 @@
+"""UI-layer view tests for legacy HTML views (ngcn.views).
+
+Covers upload, workbook editing, trigger, and error paths that exercise the
+pre-existing Django view functions rather than the REST API ViewSets.
+"""
 import json
 
 import jenkins
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from openpyxl import Workbook as OpenPyxlWorkbook
-
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import Workbook
 from ngcn import views
+from ngcn.models import ActionHistory, CampusNetwork, Workbook
+from openpyxl import Workbook as OpenPyxlWorkbook
 
 
 class FakeJob:
