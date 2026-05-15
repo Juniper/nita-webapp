@@ -5,7 +5,7 @@ import traceback
 from django.http import FileResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -44,11 +44,15 @@ class ActionCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActionCategorySerializer
 
 
-class CampusTypeViewSet(viewsets.ModelViewSet):
+class CampusTypeViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/."""
     queryset = CampusType.objects.all()
     serializer_class = CampusTypeSerializer
-    # Create is intentionally disabled — use the /upload/ action instead.
-    http_method_names = ["get", "delete", "head", "options"]
 
     @extend_schema(
         request={"multipart/form-data": {"type": "object", "properties": {"app_zip_file": {"type": "string", "format": "binary"}}}},
