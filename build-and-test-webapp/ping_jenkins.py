@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import jenkins
 import sys
+import urllib.request
+import urllib.error
+import base64
 
 jenkins_host_name = sys.argv[1]
 jenkins_port = sys.argv[2]
@@ -12,12 +14,17 @@ JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
 JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 try:
-    server = jenkins.Jenkins(
-        JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
+    credentials = base64.b64encode(
+        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
+    ).decode()
+    req = urllib.request.Request(
+        JENKINS_SERVER_URL + "/api/json",
+        headers={"Authorization": f"Basic {credentials}"},
     )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        version = resp.headers.get("X-Jenkins", "unknown")
     print("Jenkins server: " + JENKINS_SERVER_URL)
-    result = server.get_version()
-    print(result)
+    print(version)
 except Exception as e:
     print("Error contacting jenkins")
     print(e)
