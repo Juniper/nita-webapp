@@ -17,19 +17,9 @@ import logging
 import os
 from time import sleep
 
-import jenkins
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
-config = configparser.ConfigParser()
-config_location = settings.BASE_DIR + "/../"
-config.read_file(open(config_location + "server_details.ini"))
-jenkins_host_name = config["jenkins.server.details"]["hostname"]
-jenkins_port = config["jenkins.server.details"]["port"]
-JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
-JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
-JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 
 class ServerProperties:
@@ -83,6 +73,22 @@ def wait_and_get_build_status(action_url, build_number):
 
 
 def getBuildStatus(build_name, build_no):
+    # Intentionally imported here rather than at module level.
+    # python-jenkins (jenkins package) loads plugins.py at import
+    # time, which calls pkg_resources -> pkgutil.ImpImporter.
+    # pkgutil.ImpImporter was removed in Python 3.12, so a
+    # module-level import crashes Django startup (manage.py check,
+    # URL loading) before any request is served.  Lazy-importing
+    # inside this function keeps the chain out of the startup path.
+    import jenkins  # noqa: PLC0415
+
+    config = configparser.ConfigParser()
+    config.read_file(open(settings.BASE_DIR + "/../server_details.ini"))
+    jenkins_host_name = config["jenkins.server.details"]["hostname"]
+    jenkins_port = config["jenkins.server.details"]["port"]
+    JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
+    JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
+    JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
     SERVER = jenkins.Jenkins(
         JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
     )
