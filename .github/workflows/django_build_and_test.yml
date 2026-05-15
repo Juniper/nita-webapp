@@ -26,15 +26,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Checkout nita (evpn_vxlan_erb_dc fixture data)
-        uses: actions/checkout@v4
-        with:
-          repository: aburston/nita
-          # _HERE.parents[4] in test_evpn_vxlan_erb_dc.py resolves to
-          # /home/runner/work/nita-webapp/, so the nita examples directory
-          # must be at /home/runner/work/nita-webapp/nita/examples/.
-          path: ../nita
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
