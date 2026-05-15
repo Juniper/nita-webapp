@@ -14,15 +14,15 @@
 
 FROM python:3.12-slim-bookworm
 
-ENV WEBAPP_USER vagrant
-ENV WEBAPP_PASS vagrant123
-ENV JENKINS_USER admin
-ENV JENKINS_PASS admin
+ENV WEBAPP_USER=vagrant
+ENV WEBAPP_PASS=vagrant123
+ENV JENKINS_USER=admin
+ENV JENKINS_PASS=admin
 
 WORKDIR /app
 
 RUN apt-get update -y
-RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev wget unzip -y
+RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev pkg-config wget unzip -y
 
 #COPY nita-yaml-to-excel/ yaml-to-excel/
 
