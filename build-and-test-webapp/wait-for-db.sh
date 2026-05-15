@@ -57,7 +57,7 @@ echo "        Django makemigrations"
 echo ""
 echo "##############################################"
 
-python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations --check
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations ngcn
 # python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations ngcn --check
 
 echo ""
