@@ -22,23 +22,45 @@ def _auth_header() -> str:
     return f"Basic {credentials}"
 
 
+def _get_crumb() -> dict:
+    """Return Jenkins CSRF crumb headers, or {} if CSRF is disabled."""
+    try:
+        req = urllib.request.Request(
+            f"{JENKINS_SERVER_URL}/crumbIssuer/api/json",
+            headers={"Authorization": _auth_header()},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            import json
+            body = json.loads(resp.read())
+            field = body.get("crumbRequestField", "Jenkins-Crumb")
+            crumb = body.get("crumb", "")
+            print(f"Got Jenkins CSRF crumb (field={field})")
+            return {field: crumb}
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print("CSRF crumb issuer not found — CSRF likely disabled, proceeding without crumb.")
+        else:
+            print(f"Warning: could not fetch CSRF crumb: HTTP {e.code}")
+        return {}
+    except Exception as e:
+        print(f"Warning: could not fetch CSRF crumb: {e}")
+        return {}
+
+
 def add_job(job_name, file_name):
     with open(file_name, "r") as f:
         xml = f.read()
+    crumb_headers = _get_crumb()
     try:
         print("Jenkins server: " + JENKINS_SERVER_URL)
-        print("Job xml: " + xml)
         url = f"{JENKINS_SERVER_URL}/createItem?name={urllib.parse.quote(job_name)}"
         data = xml.encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=data,
-            headers={
-                "Authorization": _auth_header(),
-                "Content-Type": "text/xml; charset=utf-8",
-            },
-            method="POST",
-        )
+        headers = {
+            "Authorization": _auth_header(),
+            "Content-Type": "text/xml; charset=utf-8",
+        }
+        headers.update(crumb_headers)
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=30) as resp:
             print(f"Job '{job_name}' created: HTTP {resp.status}")
     except urllib.error.HTTPError as e:
@@ -46,10 +68,15 @@ def add_job(job_name, file_name):
             # Job already exists — treat as success
             print(f"Job '{job_name}' already exists (HTTP 400), skipping.")
         else:
-            print(f"Error while adding job: HTTP {e.code} {e.reason}")
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="replace")[:500]
+            except Exception:
+                pass
+            print(f"Error while adding job '{job_name}': HTTP {e.code} {e.reason}")
+            print(f"Response body: {body}")
     except Exception as e:
-        print("Error while adding job")
-        print(e)
+        print(f"Error while adding job '{job_name}': {e}")
 
 
 add_job(sys.argv[3], sys.argv[4])
