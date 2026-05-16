@@ -549,6 +549,7 @@ paths:
               properties:
                 data:
                   type: array
+                  maxItems: 1000
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -759,11 +760,13 @@ components:
           readOnly: true
         roles:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Role'
           readOnly: true
         resources:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Resource'
           readOnly: true
@@ -805,6 +808,7 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/ActionCategory'
     PaginatedActionHistoryList:
@@ -828,6 +832,7 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/ActionHistory'
     PaginatedActionList:
@@ -851,6 +856,7 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Action'
     PaginatedCampusNetworkList:
@@ -874,6 +880,7 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/CampusNetwork'
     PaginatedCampusTypeList:
@@ -897,6 +904,7 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/CampusType'
     PatchedCampusNetwork:
@@ -963,6 +971,7 @@ components:
           title: Network
         sheets:
           type: array
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Worksheets'
           readOnly: true
@@ -984,6 +993,7 @@ components:
           oneOf:
           - type: object
           - type: array
+            maxItems: 1000
           - type: string
           readOnly: true
       required:
