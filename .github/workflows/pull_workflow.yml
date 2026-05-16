@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Lint Code Base
-        uses: github/super-linter@v4
+        uses: super-linter/super-linter@v8.6.0
         env:
           # Lint only files changed in the PR to avoid unrelated legacy/vendor churn.
           VALIDATE_ALL_CODEBASE: false
@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Microsoft Security DevOps
-        uses: microsoft/security-devops-action@latest
+        uses: microsoft/security-devops-action@v1.12.0
         id: msdo
 
       - name: Upload results to Security tab
@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.12"
 
