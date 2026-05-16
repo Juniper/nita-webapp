@@ -11,6 +11,7 @@ import traceback
 from collections import OrderedDict
 
 import django_tables2 as tables
+import jenkins
 import yaml
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -68,16 +69,7 @@ JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 
 def _make_jenkins_server():
-    """Return a new jenkins.Jenkins connection. Imports are lazy."""
-    # Intentionally imported here rather than at module level.
-    # python-jenkins (jenkins package) loads plugins.py at import
-    # time, which calls pkg_resources -> pkgutil.ImpImporter.
-    # pkgutil.ImpImporter was removed in Python 3.12, so a
-    # module-level import crashes Django startup (manage.py check,
-    # URL loading) before any request is served.  Lazy-importing
-    # inside this function keeps the chain out of the startup path.
-    import jenkins  # noqa: PLC0415
-
+    """Return a new jenkins.Jenkins connection."""
     return jenkins.Jenkins(
         JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
     )

@@ -13,6 +13,7 @@ import traceback
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
 
+import jenkins
 import yaml
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -67,13 +68,6 @@ class NetworkTypeParser:
 
                 job_name = "network_type_validator"
                 # Intentionally imported here rather than at module level.
-                # python-jenkins (jenkins package) loads plugins.py at import
-                # time, which calls pkg_resources -> pkgutil.ImpImporter.
-                # pkgutil.ImpImporter was removed in Python 3.12, so a
-                # module-level import crashes Django startup (manage.py check,
-                # URL loading) before any request is served.  Lazy-importing
-                # inside this method keeps the chain out of the startup path.
-                import jenkins
                 from jenkinsapi.jenkins import Jenkins
                 from jenkinsapi.utils.crumb_requester import CrumbRequester
                 server = jenkins.Jenkins(

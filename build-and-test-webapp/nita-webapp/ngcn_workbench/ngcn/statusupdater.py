@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import configparser
+import jenkins
 import logging
 import os
 import threading
@@ -41,14 +42,6 @@ class StatusUpdater:
 
     def getBuildStatus(self, build_name, build_no):
         if self.SERVER is None:
-            # Intentionally imported here rather than at module level.
-            # python-jenkins (jenkins package) loads plugins.py at import
-            # time, which calls pkg_resources -> pkgutil.ImpImporter.
-            # pkgutil.ImpImporter was removed in Python 3.12, so a
-            # module-level import crashes Django startup (manage.py check,
-            # URL loading) before any request is served.  Lazy-importing
-            # inside this method keeps the chain out of the startup path.
-            import jenkins  # noqa: PLC0415
             StatusUpdater.SERVER = jenkins.Jenkins(
                 JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
             )
