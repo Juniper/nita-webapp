@@ -52,13 +52,11 @@ def test_validate_zip_file_rejects_missing_project_yaml(tmp_path, monkeypatch):
 
 @pytest.mark.django_db
 def test_validate_zip_file_rejects_missing_ansible_cfg(tmp_path, monkeypatch):
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: sample_type
         description: Sample type
         action: []
-        """
-    ).strip()
+        """).strip()
     zip_path = _write_project_zip(
         tmp_path,
         "input.zip",
@@ -81,13 +79,11 @@ def test_validate_zip_file_rejects_missing_ansible_cfg(tmp_path, monkeypatch):
 
 @pytest.mark.django_db
 def test_validate_zip_file_accepts_and_normalizes_nested_project(tmp_path, monkeypatch):
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: project_alpha
         description: Sample type
         action: []
-        """
-    ).strip()
+        """).strip()
     zip_path = _write_project_zip(
         tmp_path,
         "input.zip",
@@ -110,8 +106,7 @@ def test_validate_zip_file_accepts_and_normalizes_nested_project(tmp_path, monke
 
 @pytest.mark.django_db
 def test_validate_project_yaml_rejects_duplicate_campus_type(campus_type):
-    project_yaml = dedent(
-        f"""
+    project_yaml = dedent(f"""
         name: {campus_type.name}
         description: Sample type
         action:
@@ -121,8 +116,7 @@ def test_validate_project_yaml_rejects_duplicate_campus_type(campus_type):
             configuration:
               shell_command: echo ok
               output_path: /tmp/out
-        """
-    ).strip()
+        """).strip()
 
     result = NetworkTypeParser().validateProjectYaml(project_yaml)
 
@@ -132,13 +126,11 @@ def test_validate_project_yaml_rejects_duplicate_campus_type(campus_type):
 
 @pytest.mark.django_db
 def test_validate_project_yaml_rejects_missing_action_list():
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: sample_type
         description: Sample type
         action: []
-        """
-    ).strip()
+        """).strip()
 
     result = NetworkTypeParser().validateProjectYaml(project_yaml)
 
@@ -149,8 +141,7 @@ def test_validate_project_yaml_rejects_missing_action_list():
 def test_validate_project_yaml_rejects_test_action_without_output_path(
     action_category,
 ):
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: sample_type
         description: Sample type
         action:
@@ -160,8 +151,7 @@ def test_validate_project_yaml_rejects_test_action_without_output_path(
             configuration:
               shell_command: echo ok
               output_path: ""
-        """
-    ).strip()
+        """).strip()
 
     result = NetworkTypeParser().validateProjectYaml(project_yaml)
 
@@ -173,8 +163,7 @@ def test_validate_project_yaml_rejects_test_action_without_output_path(
 
 @pytest.mark.django_db
 def test_validate_project_yaml_rejects_unknown_category():
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: sample_type
         description: Sample type
         action:
@@ -184,8 +173,7 @@ def test_validate_project_yaml_rejects_unknown_category():
             configuration:
               shell_command: echo ok
               output_path: /tmp/out
-        """
-    ).strip()
+        """).strip()
 
     result = NetworkTypeParser().validateProjectYaml(project_yaml)
 
@@ -196,8 +184,7 @@ def test_validate_project_yaml_rejects_unknown_category():
 def test_update_network_type_details_on_db_creates_actions(
     action_category, build_action_category
 ):
-    project_yaml = dedent(
-        """
+    project_yaml = dedent("""
         name: sample_type
         description: Sample type
         action:
@@ -214,8 +201,7 @@ def test_update_network_type_details_on_db_creates_actions(
             configuration:
               shell_command: echo build
               custom_workspace: "  "
-        """
-    ).strip()
+        """).strip()
 
     parser = NetworkTypeParser()
     assert parser.updateNetworkTypeDetailsOnDB(project_yaml, "sample.zip") is True

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """pytest fixtures shared across the entire NITA Webapp test suite."""
+
 import pytest
 from django.contrib.auth import get_user_model
 from ngcn.models import (

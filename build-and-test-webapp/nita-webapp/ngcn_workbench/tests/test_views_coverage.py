@@ -6,6 +6,7 @@
 Covers upload, workbook editing, trigger, and error paths that exercise the
 pre-existing Django view functions rather than the REST API ViewSets.
 """
+
 import json
 
 import pytest

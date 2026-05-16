@@ -52,7 +52,9 @@ def add_job(job_name, file_name):
             print(f"Got Jenkins CSRF crumb (field={field})")
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            print("CSRF crumb issuer not found — CSRF likely disabled, proceeding without crumb.")
+            print(
+                "CSRF crumb issuer not found \u2014 CSRF likely disabled, proceeding without crumb."
+            )
         else:
             print(f"Warning: could not fetch CSRF crumb: HTTP {e.code}")
     except Exception as e:
@@ -65,7 +67,9 @@ def add_job(job_name, file_name):
         "Content-Type": "text/xml; charset=utf-8",
     }
     headers.update(crumb_headers)
-    post_req = urllib.request.Request(url, data=xml.encode("utf-8"), headers=headers, method="POST")
+    post_req = urllib.request.Request(
+        url, data=xml.encode("utf-8"), headers=headers, method="POST"
+    )
     try:
         with opener.open(post_req, timeout=30) as resp:
             print(f"Job '{job_name}' created: HTTP {resp.status}")

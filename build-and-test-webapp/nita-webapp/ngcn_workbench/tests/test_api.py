@@ -12,6 +12,7 @@ Coverage:
   - ActionViewSet          (read-only, campus_type_id filter)
   - ActionHistoryViewSet   (read-only, campus_network_id filter + console action)
 """
+
 import io
 import json
 

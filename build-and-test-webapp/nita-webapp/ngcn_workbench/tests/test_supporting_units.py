@@ -6,6 +6,7 @@
 Covers servicestartupmiddleware, statusupdater, model validation logic, and
 django-tables2 table classes that sit outside the main views and API layers.
 """
+
 import json
 from types import SimpleNamespace
 
