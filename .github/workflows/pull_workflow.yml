@@ -29,8 +29,9 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_JAVASCRIPT_ES: true
           VALIDATE_PYTHON_BLACK: true
-          VALIDATE_HTML: true
-          JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
+          # HTML excluded: Django templates contain {% %}/{{ }} syntax that
+          # htmlhint cannot parse; results are meaningless false positives.
+          JAVASCRIPT_ES_CONFIG_FILE: eslint.config.mjs
           FILTER_REGEX_EXCLUDE: .*(components/|jquery-|jquery\.event|bootstrap\.min|ui_1\.11\.4|\.min\.js|\.min\.css).*
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

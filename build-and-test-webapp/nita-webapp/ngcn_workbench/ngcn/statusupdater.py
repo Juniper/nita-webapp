@@ -43,7 +43,9 @@ class StatusUpdater:
     def getBuildStatus(self, build_name, build_no):
         if self.SERVER is None:
             StatusUpdater.SERVER = jenkins.Jenkins(
-                JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
+                JENKINS_SERVER_URL,
+                username=JENKINS_SERVER_USER,
+                password=JENKINS_SERVER_PASS,
             )
         buildStatus = None
         RESULT = "result"

@@ -168,7 +168,9 @@ def test_jenkins_console_log_view_uses_fallback_message(
 
 @pytest.mark.django_db
 def test_add_campus_network_view_creates_network(auth_client, campus_type, monkeypatch):
-    monkeypatch.setattr(views, "_make_jenkins_server", lambda: FakeServer(build_number=11))
+    monkeypatch.setattr(
+        views, "_make_jenkins_server", lambda: FakeServer(build_number=11)
+    )
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -412,8 +414,13 @@ def test_trigger_action_uses_expected_build_dir(
     recorded_updates = {}
 
     monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
-    monkeypatch.setattr("jenkinsapi.utils.crumb_requester.CrumbRequester", lambda *args, **kwargs: object())
-    monkeypatch.setattr("jenkinsapi.jenkins.Jenkins", lambda *args, **kwargs: fake_job_runner)
+    monkeypatch.setattr(
+        "jenkinsapi.utils.crumb_requester.CrumbRequester",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "jenkinsapi.jenkins.Jenkins", lambda *args, **kwargs: fake_job_runner
+    )
     monkeypatch.setattr(
         views, "create_workbook_from_db", lambda _campus_network_id: "/tmp/temp.xlsx"
     )

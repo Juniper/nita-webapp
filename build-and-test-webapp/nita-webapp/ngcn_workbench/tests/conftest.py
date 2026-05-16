@@ -4,7 +4,13 @@
 """pytest fixtures shared across the entire NITA Webapp test suite."""
 import pytest
 from django.contrib.auth import get_user_model
-from ngcn.models import Action, ActionCategory, ActionProperty, CampusNetwork, CampusType
+from ngcn.models import (
+    Action,
+    ActionCategory,
+    ActionProperty,
+    CampusNetwork,
+    CampusType,
+)
 
 
 @pytest.fixture

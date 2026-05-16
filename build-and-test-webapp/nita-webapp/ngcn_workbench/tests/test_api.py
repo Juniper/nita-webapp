@@ -23,6 +23,7 @@ from rest_framework.test import APIClient
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
 
+
 class _FakeJob:
     def __init__(self):
         self.calls = []
@@ -65,6 +66,7 @@ class _FakeStorage:
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def api_client(user):
     client = APIClient()
@@ -85,6 +87,7 @@ def action_history(db, action, campus_network):
 
 
 # ── Authentication ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_unauthenticated_request_is_rejected():
@@ -116,6 +119,7 @@ def test_token_endpoint_rejects_bad_credentials(client):
 
 # ── ActionCategoryViewSet ──────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_action_category_list(api_client, action_category):
     response = api_client.get("/api/v1/action-categories/")
@@ -133,6 +137,7 @@ def test_action_category_retrieve(api_client, action_category):
 
 # ── CampusTypeViewSet ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_network_type_list(api_client, campus_type):
     response = api_client.get("/api/v1/network-types/")
@@ -142,7 +147,9 @@ def test_network_type_list(api_client, campus_type):
 
 
 @pytest.mark.django_db
-def test_network_type_retrieve_includes_nested_roles_and_resources(api_client, campus_type):
+def test_network_type_retrieve_includes_nested_roles_and_resources(
+    api_client, campus_type
+):
     response = api_client.get(f"/api/v1/network-types/{campus_type.id}/")
     assert response.status_code == 200
     data = response.json()
@@ -193,6 +200,7 @@ def test_network_type_upload_without_file_returns_400(api_client):
 
 
 # ── CampusNetworkViewSet — CRUD ────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_network_list(api_client, campus_network):
@@ -247,6 +255,7 @@ def test_network_delete(api_client, campus_network):
 
 # ── CampusNetworkViewSet — workbook actions ────────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch):
     sheets = [{"name": "hosts", "hosts": [{"host": "10.0.0.1"}]}]
@@ -281,7 +290,9 @@ def test_upload_workbook_success(api_client, campus_network, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_upload_workbook_invalid_host_returns_400(api_client, campus_network, monkeypatch):
+def test_upload_workbook_invalid_host_returns_400(
+    api_client, campus_network, monkeypatch
+):
     monkeypatch.setattr(api_views, "parse_workbook", lambda f, pk: "invalid_host")
     response = api_client.post(
         f"/api/v1/networks/{campus_network.id}/workbook/upload/",
@@ -313,7 +324,9 @@ def test_save_workbook_success(api_client, campus_network, monkeypatch):
         saved["pk"] = pk
         saved["data"] = data
 
-    monkeypatch.setattr(api_views.GridDataManager, "get_sheets_by_campus_network", fake_get_sheets)
+    monkeypatch.setattr(
+        api_views.GridDataManager, "get_sheets_by_campus_network", fake_get_sheets
+    )
     monkeypatch.setattr(api_views.GridDataManager, "create_or_update_db", fake_save)
 
     payload = json.dumps({"data": [{"name": "hosts", "hosts": [{"host": "10.0.0.2"}]}]})
@@ -332,7 +345,9 @@ def test_clear_workbook_returns_204(api_client, campus_network, monkeypatch):
     monkeypatch.setattr(
         api_views.GridDataManager, "delete_workbook", lambda self, pk: None
     )
-    response = api_client.delete(f"/api/v1/networks/{campus_network.id}/workbook/clear/")
+    response = api_client.delete(
+        f"/api/v1/networks/{campus_network.id}/workbook/clear/"
+    )
     assert response.status_code == 204
 
 
@@ -342,11 +357,14 @@ def test_download_workbook_error_returns_500(api_client, campus_network, monkeyp
         raise Exception("no workbook data")
 
     monkeypatch.setattr(api_views, "create_workbook", _raise)
-    response = api_client.get(f"/api/v1/networks/{campus_network.id}/workbook/download/")
+    response = api_client.get(
+        f"/api/v1/networks/{campus_network.id}/workbook/download/"
+    )
     assert response.status_code == 500
 
 
 # ── CampusNetworkViewSet — trigger action ─────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_trigger_action_returns_202_and_creates_history(
@@ -376,7 +394,9 @@ def test_trigger_action_returns_202_and_creates_history(
 
 
 @pytest.mark.django_db
-def test_trigger_action_with_no_workbook_returns_409(api_client, campus_network, action):
+def test_trigger_action_with_no_workbook_returns_409(
+    api_client, campus_network, action
+):
     response = api_client.post(
         f"/api/v1/networks/{campus_network.id}/trigger/{action.id}/"
     )
@@ -390,6 +410,7 @@ def test_trigger_action_with_unknown_action_returns_404(api_client, campus_netwo
 
 
 # ── ActionViewSet ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_action_list(api_client, action):
@@ -416,6 +437,7 @@ def test_action_list_filter_returns_empty_for_unknown_campus_type(api_client):
 
 # ── ActionHistoryViewSet ───────────────────────────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_action_history_list(api_client, action_history):
     response = api_client.get("/api/v1/action-history/")
@@ -436,7 +458,9 @@ def test_action_history_retrieve_includes_derived_fields(api_client, action_hist
 
 
 @pytest.mark.django_db
-def test_action_history_filter_by_campus_network(api_client, action_history, campus_network):
+def test_action_history_filter_by_campus_network(
+    api_client, action_history, campus_network
+):
     response = api_client.get(
         f"/api/v1/action-history/?campus_network_id={campus_network.id}"
     )

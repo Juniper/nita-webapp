@@ -67,6 +67,7 @@ logger = logging.getLogger(__name__)
 
 class ActionCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionCategory objects."""
+
     queryset = ActionCategory.objects.all()
     serializer_class = ActionCategorySerializer
 
@@ -78,6 +79,7 @@ class CampusTypeViewSet(
     viewsets.GenericViewSet,
 ):
     """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/."""
+
     serializer_class = CampusTypeSerializer
 
     def get_queryset(self):
@@ -88,10 +90,28 @@ class CampusTypeViewSet(
         return qs
 
     @extend_schema(
-        request={"multipart/form-data": {"type": "object", "properties": {"app_zip_file": {"type": "string", "format": "binary"}}}},
-        responses={200: {"type": "object", "properties": {"result": {"type": "string"}, "name": {"type": "string"}}}},
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {"app_zip_file": {"type": "string", "format": "binary"}},
+            }
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "result": {"type": "string"},
+                    "name": {"type": "string"},
+                },
+            }
+        },
     )
-    @action(detail=False, methods=["post"], parser_classes=[MultiPartParser], url_path="upload")
+    @action(
+        detail=False,
+        methods=["post"],
+        parser_classes=[MultiPartParser],
+        url_path="upload",
+    )
     def upload(self, request):
         """Upload a network-type zip file to register a new CampusType."""
         zip_file = request.FILES.get("app_zip_file")
@@ -101,6 +121,7 @@ class CampusTypeViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
         from django.core.files.storage import default_storage
+
         if default_storage.exists(zip_file.name):
             default_storage.delete(zip_file.name)
         file_name = default_storage.save(zip_file.name, zip_file)
@@ -140,14 +161,25 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         returns ``202 Accepted`` with ``action_history_id`` immediately.
         Poll ``GET /api/v1/action-history/{id}/`` for status.
     """
+
     queryset = CampusNetwork.objects.all()
     serializer_class = CampusNetworkSerializer
 
     @extend_schema(
-        request={"multipart/form-data": {"type": "object", "properties": {"up_file": {"type": "string", "format": "binary"}}}},
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {"up_file": {"type": "string", "format": "binary"}},
+            }
+        },
         responses={200: WorkbookSerializer},
     )
-    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser], url_path="workbook/upload")
+    @action(
+        detail=True,
+        methods=["post"],
+        parser_classes=[MultiPartParser],
+        url_path="workbook/upload",
+    )
     def upload_workbook(self, request, pk=None):
         """Upload an Excel workbook to populate configuration data for this network."""
         up_file = request.FILES.get("up_file")
@@ -163,7 +195,10 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 sheets = dm.get_sheets_by_campus_network(pk)
                 return Response({"workbook": sheets, "status": "success"})
             return Response(
-                {"status": "failure", "message": "Invalid data in host column in Excel file."},
+                {
+                    "status": "failure",
+                    "message": "Invalid data in host column in Excel file.",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as exc:
@@ -189,17 +224,25 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
     @extend_schema(
-        request={"application/json": {"type": "object", "properties": {"data": {"type": "array"}}}},
-        responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"data": {"type": "array"}},
+            }
+        },
+        responses={
+            200: {"type": "object", "properties": {"status": {"type": "string"}}}
+        },
     )
     @action(detail=True, methods=["post"], url_path="workbook/save")
     def save_workbook(self, request, pk=None):
         """Save updated configuration grid data for this network."""
         try:
             import collections
-            grid_list = json.JSONDecoder(object_pairs_hook=collections.OrderedDict).decode(
-                request.body.decode("utf-8")
-            )
+
+            grid_list = json.JSONDecoder(
+                object_pairs_hook=collections.OrderedDict
+            ).decode(request.body.decode("utf-8"))
             dm = GridDataManager()
             sheets = dm.get_sheets_by_campus_network(pk)
             for grid in grid_list["data"]:
@@ -251,7 +294,15 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
     @extend_schema(
-        responses={202: {"type": "object", "properties": {"status": {"type": "string"}, "action_history_id": {"type": "integer"}}}},
+        responses={
+            202: {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                    "action_history_id": {"type": "integer"},
+                },
+            }
+        },
     )
     @action(detail=True, methods=["post"], url_path=r"trigger/(?P<action_id>[0-9]+)")
     def trigger(self, request, pk=None, action_id=None):
@@ -278,7 +329,10 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
             if Workbook.objects.filter(campus_network_id=pk).count() == 0:
                 return Response(
-                    {"status": "failure", "reason": "No data configured for this network."},
+                    {
+                        "status": "failure",
+                        "reason": "No data configured for this network.",
+                    },
                     status=status.HTTP_409_CONFLICT,
                 )
 
@@ -290,7 +344,9 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             configuration_data = create_new_inv(workbook_name)
 
             if campus_network.dynamic_ansible_workspace:
-                build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
+                build_dir = (
+                    "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
+                )
             else:
                 build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
 
@@ -345,6 +401,7 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     Supports ``?campus_type_id=<id>`` query parameter to filter actions
     that belong to a specific network type.
     """
+
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
 
@@ -363,6 +420,7 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     for a specific network.  The ``/console/`` action proxies the Jenkins
     console log for a given history entry.
     """
+
     queryset = ActionHistory.objects.all().order_by("-timestamp")
     serializer_class = ActionHistorySerializer
 
@@ -374,7 +432,9 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
     @extend_schema(
-        responses={"200": {"type": "object", "properties": {"console": {"type": "string"}}}},
+        responses={
+            "200": {"type": "object", "properties": {"console": {"type": "string"}}}
+        },
     )
     @action(detail=True, methods=["get"], url_path="console")
     def console(self, request, pk=None):
@@ -387,7 +447,9 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
         server = _make_jenkins_server()
         try:
-            output = server.get_build_console_output(job_url, history.jenkins_job_build_no)
+            output = server.get_build_console_output(
+                job_url, history.jenkins_job_build_no
+            )
             ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
             return Response({"console": ansi_escape.sub("", output)})
         except Exception:

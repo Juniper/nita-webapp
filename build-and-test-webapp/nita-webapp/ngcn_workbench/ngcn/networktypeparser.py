@@ -70,6 +70,7 @@ class NetworkTypeParser:
                 # Intentionally imported here rather than at module level.
                 from jenkinsapi.jenkins import Jenkins
                 from jenkinsapi.utils.crumb_requester import CrumbRequester
+
                 server = jenkins.Jenkins(
                     JENKINS_SERVER_URL,
                     username=JENKINS_SERVER_USER,
@@ -110,7 +111,9 @@ class NetworkTypeParser:
                     if db_status:
                         try:
                             ct = CampusType.objects.get(name=app_name)
-                            result = JsonResponse({"result": "success", "name": ct.name, "id": ct.id})
+                            result = JsonResponse(
+                                {"result": "success", "name": ct.name, "id": ct.id}
+                            )
                         except CampusType.DoesNotExist:
                             result = JsonResponse({"result": "success"})
                     else:
@@ -232,9 +235,9 @@ class NetworkTypeParser:
             if (archive_member_list[0].find(app_name + "/") != 0) and (
                 app_name not in archive_member_list
             ):
-                result[
-                    "message"
-                ] = "Zip file name and the project directory name should be same"
+                result["message"] = (
+                    "Zip file name and the project directory name should be same"
+                )
                 result["status"] = False
                 logger.error(result)
                 return result

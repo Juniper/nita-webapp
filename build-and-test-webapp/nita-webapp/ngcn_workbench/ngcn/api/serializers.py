@@ -38,6 +38,7 @@ from ngcn.models import (
 
 class ActionCategorySerializer(serializers.ModelSerializer):
     """Serializer for ActionCategory (build / test / deploy labels)."""
+
     class Meta:
         model = ActionCategory
         fields = "__all__"
@@ -45,6 +46,7 @@ class ActionCategorySerializer(serializers.ModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for Role (Ansible role assigned to a network type)."""
+
     class Meta:
         model = Role
         fields = "__all__"
@@ -52,6 +54,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
 class ResourceSerializer(serializers.ModelSerializer):
     """Serializer for Resource (resource allocated to a network type)."""
+
     class Meta:
         model = Resource
         fields = "__all__"
@@ -59,6 +62,7 @@ class ResourceSerializer(serializers.ModelSerializer):
 
 class CampusTypeSerializer(serializers.ModelSerializer):
     """Serializer for CampusType.  Includes nested roles and resources lists."""
+
     roles = RoleSerializer(many=True, read_only=True)
     resources = ResourceSerializer(many=True, read_only=True)
 
@@ -69,6 +73,7 @@ class CampusTypeSerializer(serializers.ModelSerializer):
 
 class ActionPropertySerializer(serializers.ModelSerializer):
     """Serializer for ActionProperty (shell command + workspace configuration)."""
+
     class Meta:
         model = ActionProperty
         fields = "__all__"
@@ -76,6 +81,7 @@ class ActionPropertySerializer(serializers.ModelSerializer):
 
 class ActionSerializer(serializers.ModelSerializer):
     """Serializer for Action.  Nests ActionProperty and ActionCategory inline."""
+
     action_property = ActionPropertySerializer(read_only=True)
     action_category = ActionCategorySerializer(read_only=True)
 
@@ -86,9 +92,8 @@ class ActionSerializer(serializers.ModelSerializer):
 
 class CampusNetworkSerializer(serializers.ModelSerializer):
     """Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience."""
-    campus_type_name = serializers.CharField(
-        source="campus_type.name", read_only=True
-    )
+
+    campus_type_name = serializers.CharField(source="campus_type.name", read_only=True)
 
     class Meta:
         model = CampusNetwork
@@ -101,9 +106,8 @@ class ActionHistorySerializer(serializers.ModelSerializer):
     Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
     string fields so consumers can display context without extra look-ups.
     """
-    action_name = serializers.CharField(
-        source="action_id.action_name", read_only=True
-    )
+
+    action_name = serializers.CharField(source="action_id.action_name", read_only=True)
     category_name = serializers.CharField(
         source="category_id.category_name", read_only=True
     )
@@ -122,13 +126,16 @@ class WorksheetsSerializer(serializers.ModelSerializer):
     The ``data`` column is stored as a JSON string in the database; this
     serializer transparently parses it back to a Python object on read.
     """
+
     data = serializers.SerializerMethodField()
 
     class Meta:
         model = Worksheets
         fields = ["id", "name", "data"]
 
-    @extend_schema_field(field={"oneOf": [{"type": "object"}, {"type": "array"}, {"type": "string"}]})
+    @extend_schema_field(
+        field={"oneOf": [{"type": "object"}, {"type": "array"}, {"type": "string"}]}
+    )
     def get_data(self, obj):
         try:
             return json.loads(obj.data) if isinstance(obj.data, str) else obj.data
@@ -138,6 +145,7 @@ class WorksheetsSerializer(serializers.ModelSerializer):
 
 class WorkbookSerializer(serializers.ModelSerializer):
     """Serializer for a Workbook together with all of its Worksheets."""
+
     sheets = WorksheetsSerializer(source="worksheets_set", many=True, read_only=True)
 
     class Meta:
