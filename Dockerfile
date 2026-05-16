@@ -30,6 +30,11 @@ COPY build-and-test-webapp/ build-and-test-webapp/
 RUN mkdir /var/log/nita-webapp
 RUN touch /var/log/nita-webapp/server.log
 
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser /app /var/log/nita-webapp
+
+USER appuser
+
 LABEL net.juniper.framework="NITA"
 
 EXPOSE 8000
