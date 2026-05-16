@@ -33,3 +33,6 @@ RUN touch /var/log/nita-webapp/server.log
 LABEL net.juniper.framework="NITA"
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget -qO- http://localhost:8000/api/v1/auth/token/ || exit 1
