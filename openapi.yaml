@@ -5,6 +5,12 @@ openapi: 3.0.3
 info:
   title: NITA Webapp API
   version: 1.0.0
+servers:
+  - url: https://{host}
+    description: NITA Webapp (HTTPS)
+    variables:
+      host:
+        default: localhost
 security:
   - cookieAuth: []
   - tokenAuth: []
