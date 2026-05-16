@@ -51,9 +51,6 @@ jobs:
           # installed so the runtime uses a fixed pkg_resources.
           pip install --upgrade setuptools
 
-      - name: Install Playwright browser
-        run: playwright install chromium --with-deps
-
       - name: Validate Django project
         run: python manage.py check
 
@@ -61,22 +58,3 @@ jobs:
         run: |
           cd ../../../
           pytest -v
-
-      - name: Upload GUI screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-gui-screenshots
-          path: ci-screenshots/
-          if-no-files-found: ignore
-
-      - name: Write screenshots to job summary
-        if: always()
-        run: |
-          if compgen -G "$GITHUB_WORKSPACE/ci-screenshots/*.png" > /dev/null 2>&1; then
-            echo "## API GUI Snapshots" >> "$GITHUB_STEP_SUMMARY"
-            for f in "$GITHUB_WORKSPACE/ci-screenshots/"*.png; do
-              name=$(basename "$f" .png | sed 's/_/ /g')
-              echo "### ${name}" >> "$GITHUB_STEP_SUMMARY"
-            done
-          fi

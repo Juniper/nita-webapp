@@ -139,7 +139,6 @@ def test_action_category_retrieve(api_client, action_category):
 # ── CampusTypeViewSet ──────────────────────────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campustype/")
 @pytest.mark.django_db
 def test_network_type_list(api_client, campus_type):
     response = api_client.get("/api/v1/network-types/")
@@ -148,7 +147,6 @@ def test_network_type_list(api_client, campus_type):
     assert campus_type.name in names
 
 
-@pytest.mark.screenshot("/campustype/{campus_type}/")
 @pytest.mark.django_db
 def test_network_type_retrieve_includes_nested_roles_and_resources(
     api_client, campus_type
@@ -167,7 +165,6 @@ def test_network_type_post_is_disabled(api_client):
     assert response.status_code == 405
 
 
-@pytest.mark.screenshot("/campustype/")
 @pytest.mark.django_db
 def test_network_type_delete(api_client, campus_type):
     response = api_client.delete(f"/api/v1/network-types/{campus_type.id}/")
@@ -175,7 +172,6 @@ def test_network_type_delete(api_client, campus_type):
     assert not CampusType.objects.filter(id=campus_type.id).exists()
 
 
-@pytest.mark.screenshot("/campustype/")
 @pytest.mark.django_db
 def test_network_type_upload_returns_parser_result(api_client, monkeypatch):
     import django.core.files.storage as django_storage
@@ -207,7 +203,6 @@ def test_network_type_upload_without_file_returns_400(api_client):
 # ── CampusNetworkViewSet — CRUD ────────────────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campusnetwork/")
 @pytest.mark.django_db
 def test_network_list(api_client, campus_network):
     response = api_client.get("/api/v1/networks/")
@@ -216,7 +211,6 @@ def test_network_list(api_client, campus_network):
     assert campus_network.name in names
 
 
-@pytest.mark.screenshot("/campusnetwork/{campus_network}/")
 @pytest.mark.django_db
 def test_network_retrieve_includes_campus_type_name(api_client, campus_network):
     response = api_client.get(f"/api/v1/networks/{campus_network.id}/")
@@ -226,7 +220,6 @@ def test_network_retrieve_includes_campus_type_name(api_client, campus_network):
     assert data["campus_type_name"] == campus_network.campus_type.name
 
 
-@pytest.mark.screenshot("/campusnetwork/")
 @pytest.mark.django_db
 def test_network_create(api_client, campus_type):
     response = api_client.post(
@@ -243,7 +236,6 @@ def test_network_create(api_client, campus_type):
     assert CampusNetwork.objects.filter(name="new-net").exists()
 
 
-@pytest.mark.screenshot("/campusnetwork/{campus_network}/")
 @pytest.mark.django_db
 def test_network_partial_update(api_client, campus_network):
     response = api_client.patch(
@@ -255,7 +247,6 @@ def test_network_partial_update(api_client, campus_network):
     assert campus_network.description == "Updated description"
 
 
-@pytest.mark.screenshot("/campusnetwork/")
 @pytest.mark.django_db
 def test_network_delete(api_client, campus_network):
     response = api_client.delete(f"/api/v1/networks/{campus_network.id}/")
@@ -266,7 +257,6 @@ def test_network_delete(api_client, campus_network):
 # ── CampusNetworkViewSet — workbook actions ────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/configuration_view/")
 @pytest.mark.django_db
 def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch):
     sheets = [{"name": "hosts", "hosts": [{"host": "10.0.0.1"}]}]
@@ -282,7 +272,6 @@ def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch
     assert data["workbook"] == sheets
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/configuration_view/")
 @pytest.mark.django_db
 def test_upload_workbook_success(api_client, campus_network, monkeypatch):
     sheets = [{"name": "hosts", "hosts": []}]
@@ -324,7 +313,6 @@ def test_upload_workbook_without_file_returns_400(api_client, campus_network):
     assert response.status_code == 400
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/configuration_view/")
 @pytest.mark.django_db
 def test_save_workbook_success(api_client, campus_network, monkeypatch):
     sheets = [{"name": "hosts", "hosts": [{"host": "10.0.0.1"}]}]
@@ -353,7 +341,6 @@ def test_save_workbook_success(api_client, campus_network, monkeypatch):
     assert int(saved["pk"]) == campus_network.id
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/configuration_view/")
 @pytest.mark.django_db
 def test_clear_workbook_returns_204(api_client, campus_network, monkeypatch):
     monkeypatch.setattr(
@@ -380,7 +367,6 @@ def test_download_workbook_error_returns_500(api_client, campus_network, monkeyp
 # ── CampusNetworkViewSet — trigger action ─────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/action_history/")
 @pytest.mark.django_db
 def test_trigger_action_returns_202_and_creates_history(
     api_client, campus_network, action, monkeypatch
@@ -427,7 +413,6 @@ def test_trigger_action_with_unknown_action_returns_404(api_client, campus_netwo
 # ── ActionViewSet ──────────────────────────────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campustype/{campus_type}/")
 @pytest.mark.django_db
 def test_action_list(api_client, action):
     response = api_client.get("/api/v1/actions/")
@@ -436,7 +421,6 @@ def test_action_list(api_client, action):
     assert action.action_name in names
 
 
-@pytest.mark.screenshot("/campustype/{campus_type}/")
 @pytest.mark.django_db
 def test_action_list_filter_by_campus_type(api_client, campus_type, action):
     response = api_client.get(f"/api/v1/actions/?campus_type_id={campus_type.id}")
@@ -455,7 +439,6 @@ def test_action_list_filter_returns_empty_for_unknown_campus_type(api_client):
 # ── ActionHistoryViewSet ───────────────────────────────────────────────────────
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/action_history/")
 @pytest.mark.django_db
 def test_action_history_list(api_client, action_history):
     response = api_client.get("/api/v1/action-history/")
@@ -464,7 +447,6 @@ def test_action_history_list(api_client, action_history):
     assert action_history.id in ids
 
 
-@pytest.mark.screenshot("/action_history/{action_history}/")
 @pytest.mark.django_db
 def test_action_history_retrieve_includes_derived_fields(api_client, action_history):
     response = api_client.get(f"/api/v1/action-history/{action_history.id}/")
@@ -476,7 +458,6 @@ def test_action_history_retrieve_includes_derived_fields(api_client, action_hist
     assert data["category_name"] == action_history.category_id.category_name
 
 
-@pytest.mark.screenshot("/campus_network/{campus_network}/action_history/")
 @pytest.mark.django_db
 def test_action_history_filter_by_campus_network(
     api_client, action_history, campus_network
@@ -492,7 +473,6 @@ def test_action_history_filter_by_campus_network(
     assert response.json()["results"] == []
 
 
-@pytest.mark.screenshot("/action_history/{action_history}/")
 @pytest.mark.django_db
 def test_action_history_console_returns_ansi_stripped_output(
     api_client, action_history, monkeypatch
@@ -507,7 +487,6 @@ def test_action_history_console_returns_ansi_stripped_output(
     assert "build output" in data["console"]
 
 
-@pytest.mark.screenshot("/action_history/{action_history}/")
 @pytest.mark.django_db
 def test_action_history_console_returns_fallback_when_jenkins_unavailable(
     api_client, action_history, monkeypatch
