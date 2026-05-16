@@ -5,6 +5,9 @@ openapi: 3.0.3
 info:
   title: NITA Webapp API
   version: 1.0.0
+security:
+  - cookieAuth: []
+  - tokenAuth: []
 paths:
   /api/v1/action-categories/:
     get:
