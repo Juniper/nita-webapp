@@ -73,9 +73,9 @@ jobs:
       - name: Write screenshots to job summary
         if: always()
         run: |
-          if compgen -G "ci-screenshots/*.png" > /dev/null 2>&1; then
+          if compgen -G "$GITHUB_WORKSPACE/ci-screenshots/*.png" > /dev/null 2>&1; then
             echo "## API GUI Snapshots" >> "$GITHUB_STEP_SUMMARY"
-            for f in ci-screenshots/*.png; do
+            for f in "$GITHUB_WORKSPACE/ci-screenshots/"*.png; do
               name=$(basename "$f" .png | sed 's/_/ /g')
               echo "### ${name}" >> "$GITHUB_STEP_SUMMARY"
             done

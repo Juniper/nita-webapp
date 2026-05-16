@@ -3,6 +3,9 @@
 
 """pytest fixtures shared across the entire NITA Webapp test suite."""
 
+import re
+from pathlib import Path
+
 import pytest
 from django.contrib.auth import get_user_model
 from ngcn.models import (
@@ -12,6 +15,7 @@ from ngcn.models import (
     CampusNetwork,
     CampusType,
 )
+from playwright.sync_api import sync_playwright
 
 
 @pytest.fixture
@@ -74,11 +78,6 @@ def campus_network(db, campus_type):
 
 # ── GUI screenshot infrastructure ─────────────────────────────────────────────
 
-import re  # noqa: E402
-from pathlib import Path  # noqa: E402
-
-from playwright.sync_api import sync_playwright  # noqa: E402
-
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
@@ -134,8 +133,14 @@ def _screenshot_on_pass(request, screenshot_dir):
     """
     marker = request.node.get_closest_marker("screenshot")
     if marker is not None:
-        _live = request.getfixturevalue("live_server")
-        _page = request.getfixturevalue("_browser_page")
+        # Request live_server and _browser_page NOW (before yield) so they
+        # remain active during teardown (pytest finalises in reverse-setup order).
+        # Swallow errors so a missing browser binary never breaks the test.
+        try:
+            _live = request.getfixturevalue("live_server")
+            _page = request.getfixturevalue("_browser_page")
+        except Exception:
+            _live = _page = None
     else:
         _live = _page = None
 

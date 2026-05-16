@@ -90,7 +90,18 @@ jobs:
           pip install -r /tmp/requirements-ci.txt
           pip install -r ../../../requirements-test.txt
 
+      - name: Install Playwright browser
+        run: playwright install chromium --with-deps
+
       - name: Run pytest suite
         run: |
           cd ../../../
           pytest -q
+
+      - name: Upload GUI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-gui-screenshots
+          path: ci-screenshots/
+          if-no-files-found: ignore
