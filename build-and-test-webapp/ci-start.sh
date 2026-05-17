@@ -50,6 +50,9 @@ else:
     print('superuser created')
 "
 
+echo "Collecting static files..."
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py collectstatic --noinput
+
 # ── Start Django server ───────────────────────────────────────────────────────
 echo "Starting Django development server on 0.0.0.0:8000..."
 exec python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py runserver 0.0.0.0:8000
