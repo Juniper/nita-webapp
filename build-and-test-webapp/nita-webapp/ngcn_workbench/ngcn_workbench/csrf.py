@@ -21,6 +21,10 @@ from django.middleware.csrf import CsrfViewMiddleware
 class LabCsrfMiddleware(CsrfViewMiddleware):
     """CSRF middleware that validates the token but skips the host origin check."""
 
-    def _check_referer(self, request):  # noqa: D401
-        """Accept any Origin/Referer host; rely solely on the CSRF token."""
+    def _origin_verified(self, request):
+        """Accept any Origin header value; rely solely on the CSRF token."""
+        return True
+
+    def _check_referer(self, request):
+        """Accept any Referer host; rely solely on the CSRF token."""
         return None
