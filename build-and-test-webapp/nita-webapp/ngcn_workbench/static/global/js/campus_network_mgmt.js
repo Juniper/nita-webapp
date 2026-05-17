@@ -175,6 +175,9 @@ function editCampusNetworkBySelection(){
 	var campusNetworkId = "";
     var ids = $.map(table2.rows('.selected').data(), function (item) {
         campusNetworkId =  item.id;
+    });
+    $('#campus_network_form').data('load_summary',false);
+    editCampusNetwork(campusNetworkId);
 }
 
 function editCampusNetworkbyId(campusNetworkId){
@@ -219,7 +222,9 @@ function deleteCampusNetworks() {
 	var campusNetworkId;
     var ids = $.map(table2.rows('.selected').data(), function (item) {
         campusNetworkId=item.id;
-
+    });
+    deleteCampusNetworksbyId(campusNetworkId);
+}
 
 function deleteCampusNetworksbyId(campusNetworkId) {
     var url = "/campusnetwork/delete/"
