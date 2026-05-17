@@ -200,7 +200,7 @@ def campusTypeView(request, campus_type_id):
             },
         )
 
-        logger.debug("campusTypeView: " + r)
+        logger.debug("campusTypeView: render complete")
     except BaseException as e:
         logger.error(f"campusTypeView: render error {e}")
     return r

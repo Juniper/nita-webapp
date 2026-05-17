@@ -114,6 +114,15 @@ python build-and-test-webapp/add_jenkins_job.py jenkins 8080 network_type_valida
 echo ""
 echo "##############################################"
 echo ""
+echo "        Collecting static files"
+echo ""
+echo "##############################################"
+
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py collectstatic --noinput
+
+echo ""
+echo "##############################################"
+echo ""
 echo "        Starting the server "
 echo ""
 echo "##############################################"
