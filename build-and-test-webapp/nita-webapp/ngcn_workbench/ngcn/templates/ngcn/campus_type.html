@@ -11,27 +11,71 @@
 <link rel="stylesheet" type="text/css" href="{% static 'components/loader/css/loader.css' %}" />
 
 <script>
+var CAMPUS_TYPE_ID = {{ campus_type_id }};
+
 jQuery(document).ready(function($) {
     $('#main_pane').css("display","none");
-    setTimeout(
-              function()
-              {
-                  if ( campus_network_table != null && typeof campus_network_table != undefined ) {
-                      campus_network_table.destroy();
-                      }
-                    campus_network_table = $('#CampusNetwork').DataTable({
-                      "paging":   true,
-                      "ordering": false,
-                      "info":     false,
-                      "bFilter": false,
-                      "bInfo": false,
-                      "pageLength": 5,
-                      "bLengthChange": false,
-                      "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
-                  });
 
-                  $('#main_pane').css("display","unset");
-        }, 100);
+    $.ajax({
+        type: "GET",
+        url: "/api/v1/network-types/" + CAMPUS_TYPE_ID + "/",
+        success: function(data) {
+            $('#ct-name').text(data.name);
+            $('#ct-zip').text(data.app_zip_name);
+            $('#ct-description').text(data.description);
+        }
+    });
+
+    setTimeout(function() {
+        if ( campus_network_table != null && typeof campus_network_table != undefined ) {
+            campus_network_table.destroy();
+        }
+        campus_network_table = $('#CampusNetwork').DataTable({
+            "paging":   true,
+            "ordering": false,
+            "info":     false,
+            "bFilter": false,
+            "bInfo": false,
+            "pageLength": 5,
+            "bLengthChange": false,
+            "ajax": {
+                "url": "/api/v1/networks/?campus_type_id=" + CAMPUS_TYPE_ID + "&page_size=1000",
+                "dataSrc": "results"
+            },
+            "columns": [
+                {"data": "id"},
+                {"data": "name"},
+                {"data": "description"},
+                {"data": "status"}
+            ],
+            "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+        });
+
+        if ( action_table != null && typeof action_table != undefined ) {
+            action_table.destroy();
+        }
+        action_table = $('#Action').DataTable({
+            "paging":   true,
+            "ordering": false,
+            "info":     false,
+            "bFilter": false,
+            "bInfo": false,
+            "bLengthChange": false,
+            "ajax": {
+                "url": "/api/v1/actions/?campus_type_id=" + CAMPUS_TYPE_ID + "&page_size=1000",
+                "dataSrc": "results"
+            },
+            "columns": [
+                {"data": "id"},
+                {"data": "action_name"},
+                {"data": "action_category.category_name"},
+                {"data": "jenkins_url"}
+            ],
+            "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+        });
+
+        $('#main_pane').css("display","unset");
+    }, 100);
 });
 </script>
 <style>
