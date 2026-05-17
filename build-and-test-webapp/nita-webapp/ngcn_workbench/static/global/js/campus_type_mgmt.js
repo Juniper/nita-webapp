@@ -62,18 +62,18 @@ jQuery(document).ready(function($) {
                                           "rowCallback": function(row, data) {
                                               $(row).addClass('select-row').attr('data-id', data.id);
                                           }
-        		var url = $('#campus-type-form').attr('action')
-        		var status_text1="added"
-        		var status_text2="adding"
-    			$("#error_content_div").css("display","none");
-        	 //   if(this.action.indexOf("edit"))
-        	   /* if(url.indexOf("edit") != -1)
-        	    {
-        	    	status_text1="changed"
-                	status_text2="changing"
-        	    }*/
+                                  });
+                          }, 500);
 
-       			var csrftoken = getCookie('csrftoken');
+        $('#campus-type-form').on('submit', function(event) {
+                event.preventDefault();
+                var formData = new FormData(this);
+        	var url = $('#campus-type-form').attr('action')
+        	var status_text1="added"
+        	var status_text2="adding"
+    		$("#error_content_div").css("display","none");
+
+       		var csrftoken = getCookie('csrftoken');
         	    $.ajax({
         	            beforeSend: function(xhr, settings) {
         	                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
