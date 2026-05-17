@@ -80,38 +80,8 @@ logger = logging.getLogger(__name__)
 
 @login_required(login_url="/admin/login/")
 def treeView(request):
-
-    campusTypeJson = {}
-    campusTypeJson["name"] = _("network_type_heading") + "s"
-    campusTypeJson["id"] = "campus_type"
-    campusTypeJson["children"] = []
-
-    campusTypeList = CampusType.objects.all()
-    for campusType in campusTypeList:
-        lable = campusType.name
-        type_id = "campustype_" + str(campusType.id)
-        record = {"name": str(lable), "id": str(type_id)}
-        campusTypeJson["children"].append(record)
-
-    campusNetJson = {}
-    campusNetJson["name"] = _("network_heading") + "s"
-    campusNetJson["id"] = "campus_network"
-    campusNetJson["children"] = []
-
-    campusNetList = CampusNetwork.objects.all()
-    for campusNet in campusNetList:
-        lable = campusNet.name
-        net_id = "campusnetwork_" + str(campusNet.id)
-        record = {"name": str(lable), "id": str(net_id)}
-        campusNetJson["children"].append(record)
-
-    treeJson = []
-    treeJson.append(campusTypeJson)
-    treeJson.append(campusNetJson)
-
-    logger.info(treeJson)
-
-    return render(request, "ngcn/tree_view.html", {"data": treeJson})
+    """Return the tree-pane HTML shell; tree data is loaded via the REST API."""
+    return render(request, "ngcn/tree_view.html")
 
 
 def getTreeData(request):
@@ -155,63 +125,18 @@ def indexView(request):
 
 
 def campusTypeMgmtView(request):
-    logger.debug("campusTypeMgmtView: entered")
-    queryset = CampusType.objects.all()
-    table = CampusTypeTable(queryset)
-    RequestConfig(request, paginate=False).configure(table)
-    return render(request, "ngcn/campus_type_mgmt.html", {"table": table})
+    """Return the network-type management shell; table data loaded via REST API."""
+    return render(request, "ngcn/campus_type_mgmt.html")
 
 
 def campusTypeView(request, campus_type_id):
-    logger.debug("campusTypeView: entered")
-    r = ""
-    try:
-        queryset = CampusType.objects.filter(id=campus_type_id)
-        json_data = json.loads(
-            serializers.serialize(
-                "json", queryset, fields=("name", "app_zip_name", "description")
-            )
-        )
-        form = json_data[0]["fields"]
-        campus_networks = CampusNetwork.objects.filter(campus_type=campus_type_id)
-        table = CampusNetworkTable(campus_networks)
-        table.exclude = ("campus_type",)
-        action_list_queryset = Action.objects.filter(campus_type_id=campus_type_id)
-        action_list_table = ActionListTable(action_list_queryset)
-
-        # roles_queryset = Role.objects.all().filter(campustype=CampusType.objects.get(id=campus_type_id))
-        # roles_table = RolesTable(roles_queryset)
-
-        # resources_queryset = Resource.objects.all().filter(campustype=CampusType.objects.get(id=campus_type_id))
-        # resources_table = ResourcesTable(resources_queryset)
-        RequestConfig(request, paginate=False).configure(table)
-
-        logger.debug("campusTypeView: render the campus_type.html template")
-        r = render(
-            request,
-            "ngcn/campus_type.html",
-            {
-                "form": form,
-                "campus_network_table": table,
-                "action_list_table": action_list_table,
-                #'roles_table' :roles_table,
-                #'resources_table' :resources_table,
-                "campus_type_id": campus_type_id,
-            },
-        )
-
-        logger.debug("campusTypeView: render complete")
-    except BaseException as e:
-        logger.error(f"campusTypeView: render error {e}")
-    return r
+    """Return the network-type detail shell; all data loaded via REST API."""
+    return render(request, "ngcn/campus_type.html", {"campus_type_id": campus_type_id})
 
 
 def campusNetworkMgmtView(request):
-    queryset = CampusNetwork.objects.all()
-    table = CampusNetworkTable(queryset)
-    RequestConfig(request, paginate=False).configure(table)
-    logger.debug("campusNetworkMgmtView: exit")
-    return render(request, "ngcn/campus_network_mgmt.html", {"table": table})
+    """Return the network management shell; table data loaded via REST API."""
+    return render(request, "ngcn/campus_network_mgmt.html")
 
 
 def campusNetworkView(request, campus_network_id):
@@ -294,31 +219,11 @@ def configurationView(request, campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def campusNetworkSummaryView(request, campus_network_id):
-    queryset = CampusNetwork.objects.filter(id=campus_network_id)
-    json_data = json.loads(
-        serializers.serialize(
-            "json", queryset, fields=("name", "status", "description")
-        )
-    )
-    campus_network = CampusNetwork.objects.get(id=campus_network_id)
-    campusTypeName = CampusType.objects.get(pk=campus_network.campus_type_id).name
-    form = json_data[0]["fields"]
-    form["ct_name"] = campusTypeName
-    #     print form
-    action_list_queryset = Action.objects.filter(
-        campus_type_id=campus_network.campus_type.id
-    )
-    action_list_table = CampusNetworkActionListTable(
-        action_list_queryset, campus_network.name
-    )
+    """Return the network summary shell; all data loaded via REST API."""
     return render(
         request,
         "ngcn/campus_network/summary.html",
-        {
-            "form": form,
-            "action_list_table": action_list_table,
-            "campus_network_id": campus_network_id,
-        },
+        {"campus_network_id": campus_network_id},
     )
 
 

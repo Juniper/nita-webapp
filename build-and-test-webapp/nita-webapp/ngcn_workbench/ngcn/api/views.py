@@ -143,7 +143,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     """Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
 
     Standard CRUD
-        ``GET /api/v1/networks/``                — paginated list
+        ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
         ``POST /api/v1/networks/``               — create
         ``GET /api/v1/networks/{id}/``           — retrieve
         ``PUT/PATCH /api/v1/networks/{id}/``     — update
@@ -164,6 +164,13 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
     queryset = CampusNetwork.objects.all()
     serializer_class = CampusNetworkSerializer
+
+    def get_queryset(self):
+        qs = CampusNetwork.objects.all()
+        campus_type_id = self.request.query_params.get("campus_type_id")
+        if campus_type_id:
+            qs = qs.filter(campus_type_id=campus_type_id)
+        return qs
 
     @extend_schema(
         request={

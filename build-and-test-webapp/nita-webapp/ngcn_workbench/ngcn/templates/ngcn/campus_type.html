@@ -63,36 +63,33 @@ jQuery(document).ready(function($) {
             <fieldset  class="scheduler-border">
                 <legend class="scheduler-border" style="padding-left:5px"><h3>Summary</h3></legend>
                 <div style="padding:0px 0px 0px 0px" class="col-md-4">
-                    {% if form  %}
-
                     <table>
                         <tr>
                             <td><label>Name : </label></td>
-                            <td>{{ form.name }}</td>
+                            <td id="ct-name"></td>
                         </tr>
                         <tr>
                             <td><label>Application Zip : </label></td>
-                            <td>{{ form.app_zip_name }}</td>
+                            <td id="ct-zip"></td>
                         </tr>
                         <tr>
                             <td><label>Description : </label></td>
-                            <td>{{ form.description }}</td>
+                            <td id="ct-description"></td>
                         </tr>
                     </table>
-                    {% endif %}
                  </div>
                 <div style="text-align: left; padding:10px 2px 23px 0;" class="col-md-3">
-                    <!-- <button id="edit_campus-btn" type="button" class="btn btn-default btn-sm" onclick="editCampusTypebyId({{ campus_type_id }})"> <span class="fa fa-pencil-square-o fa-custom"></span> Edit</button> -->
-                    <button id="del_campus-btn" type="button" class="btn btn-default btn-sm" onclick="deleteCampusType()"><span class="fa fa-trash fa-custom"></span> Delete</button>
+                    <button id="del_campus-btn" type="button" class="btn btn-default btn-sm" onclick="deleteCampusTypesbyId(CAMPUS_TYPE_ID)"><span class="fa fa-trash fa-custom"></span> Delete</button>
                  </div>
              </fieldset>
                <div>
-                {% load django_tables2 %}
-                {% if action_list_table %}
                     <div id="actions-by-campus-type">
                     <h3 style="padding-left:2px; padding-bottom:3px">Actions</h3>
-                    {% render_table  action_list_table %}</div>
-                {% endif %}
+                    <table id="Action" class="table table-condensed table-bordered">
+                        <thead><tr><th>Id</th><th>Name</th><th>Category</th><th>Jenkins URL</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
             </div>
 
             <!-- <div class="col-md-12" style="padding-left:0px !important">
@@ -112,12 +109,13 @@ jQuery(document).ready(function($) {
             </div> -->
 
                <div>
-                {% load django_tables2 %}
-                {% if campus_network_table %}
-                    <div id="campus-network-by-campus-type" >
+                    <div id="campus-network-by-campus-type">
                     <h3 style="padding-left:2px; padding-bottom:3px">{% trans "network_heading" %}s</h3>
-                    {% render_table  campus_network_table %}</div>
-                {% endif %}
+                    <table id="CampusNetwork" class="table table-condensed table-hover table-bordered">
+                        <thead><tr><th>Id</th><th>Name</th><th>Description</th><th>Status</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
             </div>
          </div>
     </div>
@@ -165,7 +163,7 @@ jQuery(document).ready(function($) {
                                     <button id="campus-type-delete-cancel" type="button" class="btn btn-info btn-sm" data-dismiss="modal">Cancel</button>
                                 </div>
                                 <div class="col-md-6 text-right">
-                                    <button id="campus-type-delete" type="button" onclick="deleteCampusTypesbyId({{ campus_type_id }})" data-dismiss="modal" class="btn btn-danger btn-sm">Delete</button>
+                                    <button id="campus-type-delete" type="button" onclick="deleteCampusTypesbyId(CAMPUS_TYPE_ID)" data-dismiss="modal" class="btn btn-danger btn-sm">Delete</button>
                                 </div>
                             </div>
                          </div>

@@ -7,7 +7,7 @@ jQuery(document).ready(function($) {
         $('#del_network').prop('disabled', true)
 	    $('#edit_network').prop('disabled', true)
 
-	        $('#CampusNetwork tr').on('click', function() {
+	        $(document).on('click', '#CampusNetwork tbody tr', function() {
 			  if($(this).hasClass('selected'))
 			  {
 				 $(this).removeClass('selected');
@@ -48,7 +48,21 @@ jQuery(document).ready(function($) {
         				  "bFilter": false,
         				  "bInfo": false,
         				  "bLengthChange": false,
-        				  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+        				  "ajax": {
+        				      "url": "/api/v1/networks/?page_size=1000",
+        				      "dataSrc": "results"
+        				  },
+        				  "columns": [
+        				      {"data": "id"},
+        				      {"data": "name"},
+        				      {"data": "description"},
+        				      {"data": "status"},
+        				      {"data": "campus_type_name"}
+        				  ],
+        				  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }],
+        				  "rowCallback": function(row, data) {
+        				      $(row).addClass('select-row').attr('data-id', data.id);
+        				  }
         			  });
         			  $('#main_pane').css("display","unset");
         		  }, 100);
@@ -160,10 +174,7 @@ function addCampusNetwork(save)
 function editCampusNetworkBySelection(){
 	var campusNetworkId = "";
     var ids = $.map(table2.rows('.selected').data(), function (item) {
-    	campusNetworkId =  item[0];
-    });
-    $('#campus_network_form').data('load_summary',false);
-    editCampusNetwork(campusNetworkId);
+        campusNetworkId =  item.id;
 }
 
 function editCampusNetworkbyId(campusNetworkId){
@@ -207,10 +218,7 @@ function deleteCampusNetwork()
 function deleteCampusNetworks() {
 	var campusNetworkId;
     var ids = $.map(table2.rows('.selected').data(), function (item) {
-    	campusNetworkId=item[0];
-    });
-    deleteCampusNetworksbyId(campusNetworkId);
-}
+        campusNetworkId=item.id;
 
 
 function deleteCampusNetworksbyId(campusNetworkId) {

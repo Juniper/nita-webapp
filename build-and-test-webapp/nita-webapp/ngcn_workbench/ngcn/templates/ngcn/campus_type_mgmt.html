@@ -42,10 +42,16 @@
                     </button>
                 </div>
                 <div style="padding-top:5px">
-                    {% load django_tables2 %}
-                      {% if table  %}
-                    {% render_table table %}
-                    {% endif %}
+                    <table id="CampusType" class="table table-condensed table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Id</th>
+                                <th>{% trans "network_type_heading" %} Name</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
              </div>
                <div id="campus_type_adjucent_pane" class="col-md-4"></div>

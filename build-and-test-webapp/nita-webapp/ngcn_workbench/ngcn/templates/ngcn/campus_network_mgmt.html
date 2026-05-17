@@ -45,10 +45,18 @@
                     </button>
                 </div>
                 <div style="padding-top:5px">
-                    {% load django_tables2 %}
-                      {% if table  %}
-                    {% render_table table %}
-                    {% endif %}
+                    <table id="CampusNetwork" class="table table-condensed table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Id</th>
+                                <th>{% trans "network_heading" %} Name</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Network Type</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
              </div>
              <div id="campus_network_adjacent_pane" class="col-md-3"></div>

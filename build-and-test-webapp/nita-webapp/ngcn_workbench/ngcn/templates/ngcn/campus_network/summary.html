@@ -7,45 +7,48 @@
 {% load static %}
 {% load i18n %}
 <title>{% trans "network_heading" %} Summary</title>
-
+<script src="{% static 'components/data-table/js/jquery.dataTables.js' %}"></script>
+<script>
+var CAMPUS_NETWORK_ID = {{ campus_network_id }};
+</script>
 </head>
 <body>
     <div>
 
         <div class="col-md-12" style="padding-left:0px; padding-top:3px">
         <div class="col-md-5" style="padding-left:0px">
-            {% load django_tables2 %}
-            {% if form  %}
             <table>
                 <tr>
                     <td><label>Name : </label></td>
-                    <td>{{ form.name }}</td>
+                    <td id="net-name"></td>
                 </tr>
                 <tr>
                     <td><label>Description : </label></td>
-                    <td>{{ form.description }}</td>
+                    <td id="net-description"></td>
                 </tr>
                 <tr>
                     <td><label>Associated {% trans "network_type_heading" %} : </label></td>
-                    <td>{{ form.ct_name }}</td>
+                    <td id="net-type"></td>
                 </tr>
                 <tr>
                     <td><label>Status : </label></td>
-                    <td>{{ form.status }}</td>
+                    <td id="net-status"></td>
                 </tr>
             </table>
-            {% endif %}
             </div>
             <div style="text-align: left; padding:10px 2px 23px 0;" class="col-md-3">
-                <button id="edit-network-btn" type="button" class="btn btn-default btn-sm" onclick="editCampusNetworkbyId({{ campus_network_id }})"> <span class="fa fa-pencil-square-o fa-custom"></span> Edit</button>
+                <button id="edit-network-btn" type="button" class="btn btn-default btn-sm" onclick="editCampusNetworkbyId(CAMPUS_NETWORK_ID)"> <span class="fa fa-pencil-square-o fa-custom"></span> Edit</button>
                 <button id="del_network-btn" type="button" class="btn btn-default btn-sm" onclick="deleteCampusNetwork()"><span class="fa fa-trash fa-custom"></span> Delete</button>
              </div>
         </div>
          <div class="col-md-12">
-            {% if action_list_table %}
-                <h3 style="padding-top:5px">Actions</h3>
-                <div id="action-list" style="padding-top:5px"> {% render_table  action_list_table %}</div>
-            {% endif %}
+            <h3 style="padding-top:5px">Actions</h3>
+            <div id="action-list" style="padding-top:5px">
+                <table id="NetworkAction" class="table table-condensed table-bordered">
+                    <thead><tr><th>Id</th><th>Name</th><th>Category</th><th>Jenkins URL</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
      </div>
             <form id="campus_network_form" action="/campusnetwork/add/" method="post" role="form">
@@ -104,23 +107,48 @@
 <script src="{% static 'global/js/campus_network_mgmt.js' %}"></script>
 <script>
 jQuery(document).ready(function($) {
-setTimeout(
-          function()
-          {
-              if ( campus_network_summary_table != null && typeof campus_network_summary_table != undefined ) {
-                  campus_network_summary_table.destroy();
-                  }
-                  campus_network_summary_table = $('#Action').DataTable({
-                  "paging":   true,
-                  "ordering": false,
-                  "info":     false,
-                  "bFilter": false,
-                  "bInfo": false,
-                  "pageLength": 5,
-                  "bLengthChange": false,
-                  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
-              });
-          }, 100);
+    var csrftoken = getCookie('csrftoken');
+    var headers = {'X-CSRFToken': csrftoken};
+
+    // Load network summary from API
+    $.ajax({
+        url: '/api/v1/networks/' + CAMPUS_NETWORK_ID + '/',
+        headers: headers,
+        success: function(data) {
+            $('#net-name').text(data.name);
+            $('#net-description').text(data.description || '');
+            $('#net-type').text(data.campus_type_name || '');
+            $('#net-status').text(data.status || '');
+        }
+    });
+
+    setTimeout(function() {
+        // Actions table — load from API filtered by the network's campus type
+        $.ajax({
+            url: '/api/v1/networks/' + CAMPUS_NETWORK_ID + '/',
+            headers: headers,
+            success: function(net) {
+                if (campus_network_summary_table != null && typeof campus_network_summary_table != undefined) {
+                    campus_network_summary_table.destroy();
+                }
+                campus_network_summary_table = $('#NetworkAction').DataTable({
+                    "paging": true, "ordering": false, "info": false,
+                    "bFilter": false, "bInfo": false, "pageLength": 5, "bLengthChange": false,
+                    "ajax": {
+                        "url": '/api/v1/actions/?campus_type_id=' + net.campus_type + '&page_size=1000',
+                        "dataSrc": "results"
+                    },
+                    "columns": [
+                        {"data": "id"},
+                        {"data": "action_name"},
+                        {"data": function(row) { return row.action_category ? row.action_category.category_name : ''; }},
+                        {"data": function(row) { return row.jenkins_url + '-' + net.name; }}
+                    ],
+                    "aoColumnDefs": [{"bVisible": false, "aTargets": [0]}]
+                });
+            }
+        });
+    }, 100);
 });
 </script>
 </body>
