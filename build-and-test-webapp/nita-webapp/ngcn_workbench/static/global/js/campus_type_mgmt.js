@@ -63,11 +63,12 @@ jQuery(document).ready(function($) {
                                               $(row).addClass('select-row').attr('data-id', data.id);
                                           }
                                   });
-                          }, 500);
+                                  $('#main_pane').css("display","unset");
+                          }, 100);
 
-        $('#campus-type-form').on('submit', function(event) {
-                event.preventDefault();
-                var formData = new FormData(this);
+        $('#campus-type-form').submit(function(event){
+                showLoader();
+                var formData = new FormData($(this)[0]);
         	var url = $('#campus-type-form').attr('action')
         	var status_text1="added"
         	var status_text2="adding"
