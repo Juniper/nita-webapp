@@ -165,10 +165,14 @@ LOCALE_PATHS = [os.path.join(BASE_DIR, "ngcn/locale"), os.path.join(BASE_DIR, "l
 
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": True,
+    # False so Django's own loggers (django.request, django.security) still emit
+    "disable_existing_loggers": False,
     "formatters": {
         "standard": {
             "format": "[ %(asctime)s %(levelname)s %(filename)s:%(lineno)s - %(funcName)s() ] %(message)s"
+        },
+        "console": {
+            "format": "%(levelname)s %(name)s %(message)s",
         },
     },
     "handlers": {
@@ -179,7 +183,22 @@ LOGGING = {
             "maxBytes": 1024 * 1024 * 5,  # 5 MB
             "backupCount": 5,
             "formatter": "standard",
-        }
+        },
+        # Console handler — respects DJANGO_LOG_LEVEL (default WARNING).
+        # Set DJANGO_LOG_LEVEL=DEBUG in the k8s deployment for verbose output.
+        "console": {
+            "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+        },
     },
-    "loggers": {"ngcn": {"handlers": ["default"], "level": "DEBUG", "propagate": True}},
+    "loggers": {
+        # Application logger: file + console
+        "ngcn": {"handlers": ["default", "console"], "level": "DEBUG", "propagate": False},
+        # Django core: console only (errors + warnings surface in kubectl logs)
+        "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # HTTP 500/400 errors — always log at ERROR so they appear in kubectl logs
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
 }
