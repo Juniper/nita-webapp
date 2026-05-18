@@ -18,7 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.core.files.storage import default_storage
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
@@ -130,8 +130,13 @@ def campusTypeMgmtView(request):
 
 
 def campusTypeView(request, campus_type_id):
-    """Return the network-type detail shell; all data loaded via REST API."""
-    return render(request, "ngcn/campus_type.html", {"campus_type_id": campus_type_id})
+    """Return the selected network-type detail shell."""
+    campus_type = get_object_or_404(CampusType, pk=campus_type_id)
+    return render(
+        request,
+        "ngcn/campus_type.html",
+        {"campus_type_id": campus_type_id, "campus_type": campus_type},
+    )
 
 
 def campusNetworkMgmtView(request):

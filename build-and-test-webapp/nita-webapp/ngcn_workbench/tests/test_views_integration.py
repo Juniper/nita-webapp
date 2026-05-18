@@ -57,6 +57,51 @@ def test_add_campus_type_view_uses_parser_and_storage(auth_client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_campus_type_view_renders_selected_summary_values(client, campus_type):
+    response = client.get(reverse("campustype", kwargs={"campus_type_id": campus_type.id}))
+
+    assert response.status_code == 200
+    html = response.content.decode("utf-8")
+    assert f"var CAMPUS_TYPE_ID = {campus_type.id};" in html
+    assert campus_type.name in html
+    assert campus_type.app_zip_name in html
+    assert campus_type.description in html
+
+
+@pytest.mark.django_db
+def test_campus_type_view_renders_values_for_a_different_selection(client):
+    first_campus_type = CampusType.objects.create(
+        name="sample_type_one",
+        description="Sample type one",
+        app_zip_name="sample-one.zip",
+    )
+    second_campus_type = CampusType.objects.create(
+        name="sample_type_two",
+        description="Sample type two",
+        app_zip_name="sample-two.zip",
+    )
+
+    first_response = client.get(
+        reverse("campustype", kwargs={"campus_type_id": first_campus_type.id})
+    )
+    second_response = client.get(
+        reverse("campustype", kwargs={"campus_type_id": second_campus_type.id})
+    )
+
+    first_html = first_response.content.decode("utf-8")
+    second_html = second_response.content.decode("utf-8")
+
+    assert first_campus_type.name in first_html
+    assert first_campus_type.app_zip_name in first_html
+    assert first_campus_type.description in first_html
+    assert second_campus_type.name in second_html
+    assert second_campus_type.app_zip_name in second_html
+    assert second_campus_type.description in second_html
+    assert first_campus_type.name not in second_html
+    assert second_campus_type.name not in first_html
+
+
+@pytest.mark.django_db
 def test_trigger_action_returns_failure_when_no_workbook(
     auth_client, action, campus_network
 ):
