@@ -307,7 +307,9 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 "properties": {"data": {"type": "array"}},
             }
         },
-        responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
+        responses={
+            200: {"type": "object", "properties": {"status": {"type": "string"}}}
+        },
     )
     @action(detail=True, methods=["post"], url_path="workbook/save")
     def save_workbook(self, request, pk=None):
@@ -349,7 +351,10 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={
-            (200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiResponse(
+            (
+                200,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ): OpenApiResponse(
                 response=OpenApiTypes.BINARY,
                 description="Excel workbook",
             )

@@ -10,7 +10,9 @@ from rest_framework.authtoken.views import ObtainAuthToken
 
 class TokenAuthSchema(AutoSchema):
     def get_operation(self, path, path_regex, path_prefix, method, registry):
-        operation = super().get_operation(path, path_regex, path_prefix, method, registry)
+        operation = super().get_operation(
+            path, path_regex, path_prefix, method, registry
+        )
         operation["security"] = []
         return operation
 
@@ -19,6 +21,7 @@ class TokenAuthView(ObtainAuthToken):
     schema = TokenAuthSchema()
 
     pass
+
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
