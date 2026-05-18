@@ -77,7 +77,7 @@ WORKBOOK_ITEM_SCHEMA = {
         "data": {
             "oneOf": [
                 {"type": "object"},
-                {"type": "array"},
+                {"type": "array", "maxItems": 1000},
                 {"type": "string"},
             ]
         },
@@ -89,7 +89,7 @@ WORKBOOK_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
         "status": {"type": "string"},
-        "workbook": {"type": "array", "items": WORKBOOK_ITEM_SCHEMA},
+        "workbook": {"type": "array", "maxItems": 1000, "items": WORKBOOK_ITEM_SCHEMA},
     },
     "required": ["status", "workbook"],
 }

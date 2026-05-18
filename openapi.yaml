@@ -548,6 +548,7 @@ paths:
                     type: string
                   workbook:
                     type: array
+                    maxItems: 1000
                     items:
                       type: object
                       properties:
@@ -557,6 +558,7 @@ paths:
                           oneOf:
                           - type: object
                           - type: array
+                            maxItems: 1000
                           - type: string
                       required:
                       - name
@@ -680,6 +682,7 @@ paths:
                     type: string
                   workbook:
                     type: array
+                    maxItems: 1000
                     items:
                       type: object
                       properties:
@@ -689,6 +692,7 @@ paths:
                           oneOf:
                           - type: object
                           - type: array
+                            maxItems: 1000
                           - type: string
                       required:
                       - name
