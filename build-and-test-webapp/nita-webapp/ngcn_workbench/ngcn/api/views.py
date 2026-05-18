@@ -30,7 +30,13 @@ import traceback
 
 from django.http import FileResponse
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    OpenApiTypes,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
@@ -64,6 +70,49 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
+WORKBOOK_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "data": {
+            "oneOf": [
+                {"type": "object"},
+                {"type": "array"},
+                {"type": "string"},
+            ]
+        },
+    },
+    "required": ["name", "data"],
+}
+
+WORKBOOK_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string"},
+        "workbook": {"type": "array", "items": WORKBOOK_ITEM_SCHEMA},
+    },
+    "required": ["status", "workbook"],
+}
+
+NETWORK_TYPE_UPLOAD_SUCCESS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "result": {"type": "string"},
+        "name": {"type": "string"},
+        "id": {"type": "integer"},
+    },
+    "required": ["result"],
+}
+
+NETWORK_TYPE_UPLOAD_FAILURE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "result": {"type": "string"},
+        "reason": {"type": "string"},
+    },
+    "required": ["result", "reason"],
+}
+
 
 class ActionCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionCategory objects."""
@@ -72,6 +121,19 @@ class ActionCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActionCategorySerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "name",
+                type=str,
+                location="query",
+                required=False,
+                description="Filter by network type name.",
+            )
+        ]
+    )
+)
 class CampusTypeViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -97,13 +159,8 @@ class CampusTypeViewSet(
             }
         },
         responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "result": {"type": "string"},
-                    "name": {"type": "string"},
-                },
-            }
+            200: NETWORK_TYPE_UPLOAD_SUCCESS_SCHEMA,
+            400: NETWORK_TYPE_UPLOAD_FAILURE_SCHEMA,
         },
     )
     @action(
@@ -139,6 +196,19 @@ class CampusTypeViewSet(
         return Response(data, status=http_status)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "campus_type_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by campus type ID.",
+            )
+        ]
+    )
+)
 class CampusNetworkViewSet(viewsets.ModelViewSet):
     """Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
 
@@ -179,7 +249,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 "properties": {"up_file": {"type": "string", "format": "binary"}},
             }
         },
-        responses={200: WorkbookSerializer},
+        responses={200: WORKBOOK_RESPONSE_SCHEMA},
     )
     @action(
         detail=True,
@@ -215,7 +285,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @extend_schema(responses={200: WorkbookSerializer})
+    @extend_schema(responses={200: WORKBOOK_RESPONSE_SCHEMA})
     @action(detail=True, methods=["get"], url_path="workbook")
     def get_workbook(self, request, pk=None):
         """Return the current configuration grid data for this network."""
@@ -237,9 +307,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 "properties": {"data": {"type": "array"}},
             }
         },
-        responses={
-            200: {"type": "object", "properties": {"status": {"type": "string"}}}
-        },
+        responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
     )
     @action(detail=True, methods=["post"], url_path="workbook/save")
     def save_workbook(self, request, pk=None):
@@ -279,6 +347,14 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @extend_schema(
+        responses={
+            (200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiResponse(
+                response=OpenApiTypes.BINARY,
+                description="Excel workbook",
+            )
+        }
+    )
     @action(detail=True, methods=["get"], url_path="workbook/download")
     def download_workbook(self, request, pk=None):
         """Download the configuration data as an Excel file."""
@@ -301,6 +377,16 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
     @extend_schema(
+        request=None,
+        parameters=[
+            OpenApiParameter(
+                "action_id",
+                type=int,
+                location="path",
+                required=True,
+                description="A unique integer value identifying the action to trigger.",
+            )
+        ],
         responses={
             202: {
                 "type": "object",
@@ -402,6 +488,19 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "campus_type_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by campus type ID.",
+            )
+        ]
+    )
+)
 class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for Action objects.
 
@@ -420,6 +519,19 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "campus_network_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by campus network ID.",
+            )
+        ]
+    )
+)
 class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
