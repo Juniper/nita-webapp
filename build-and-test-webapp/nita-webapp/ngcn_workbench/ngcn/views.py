@@ -1,75 +1,60 @@
-"""********************************************************
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
-
-import os
+import collections
+import configparser
 import json
+import logging
+import os
+import re
+import traceback
+from collections import OrderedDict
+
+import django_tables2 as tables
 import jenkins
 import yaml
-from yaml.constructor import Constructor
-import collections
-from collections import OrderedDict
-import traceback
-import logging
-import configparser
-import re
-
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.files.storage import default_storage
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.utils import timezone
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
-from django.core.files.storage import default_storage
 from django.views.generic import View
-from django.contrib.auth.decorators import login_required
-from django.conf import settings
-
-from openpyxl import load_workbook
-from openpyxl import Workbook as open_workbook
-from openpyxl.styles import Font, NamedStyle, PatternFill, Border, Side, Alignment
-from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.utils.crumb_requester import CrumbRequester
 from django_tables2 import RequestConfig
-import django_tables2 as tables
+from openpyxl import Workbook as open_workbook
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment, Border, Font, NamedStyle, PatternFill, Side
+from yaml.constructor import Constructor
 
+from ngcn.forms import (
+    CampusNetworkForm,
+    CampusTypeForm,
+    EditCampusNetworkForm,
+    UploadFileForm,
+)
 from ngcn.models import (
-    CampusType,
-    CampusNetwork,
-    ActionHistory,
-    ActionCategory,
-    Workbook,
-    Worksheets,
     Action,
+    ActionCategory,
+    ActionHistory,
+    CampusNetwork,
+    CampusType,
     Resource,
     Role,
+    Workbook,
+    Worksheets,
 )
+from ngcn.networktypeparser import NetworkTypeParser
 from ngcn.tables import (
-    CampusTypeTable,
-    CampusNetworkTable,
     ActionHistoryTable,
     ActionListTable,
     CampusNetworkActionListTable,
+    CampusNetworkTable,
+    CampusTypeTable,
 )
-from ngcn.forms import (
-    CampusNetworkForm,
-    UploadFileForm,
-    CampusTypeForm,
-    EditCampusNetworkForm,
-)
-from ngcn.networktypeparser import NetworkTypeParser
-from ngcn.utils import ServerProperties
-from ngcn.utils import wait_and_get_build_status
+from ngcn.utils import ServerProperties, wait_and_get_build_status
 
 TEST_ACTION_ID = 3
 
@@ -81,47 +66,22 @@ jenkins_port = config["jenkins.server.details"]["port"]
 JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
 JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
-server = jenkins.Jenkins(
-    JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
-)
+
+
+def _make_jenkins_server():
+    """Return a new jenkins.Jenkins connection."""
+    return jenkins.Jenkins(
+        JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
+    )
+
 
 logger = logging.getLogger(__name__)
 
 
 @login_required(login_url="/admin/login/")
 def treeView(request):
-
-    campusTypeJson = {}
-    campusTypeJson["name"] = _("network_type_heading") + "s"
-    campusTypeJson["id"] = "campus_type"
-    campusTypeJson["children"] = []
-
-    campusTypeList = CampusType.objects.all()
-    for campusType in campusTypeList:
-        lable = campusType.name
-        type_id = "campustype_" + str(campusType.id)
-        record = {"name": str(lable), "id": str(type_id)}
-        campusTypeJson["children"].append(record)
-
-    campusNetJson = {}
-    campusNetJson["name"] = _("network_heading") + "s"
-    campusNetJson["id"] = "campus_network"
-    campusNetJson["children"] = []
-
-    campusNetList = CampusNetwork.objects.all()
-    for campusNet in campusNetList:
-        lable = campusNet.name
-        net_id = "campusnetwork_" + str(campusNet.id)
-        record = {"name": str(lable), "id": str(net_id)}
-        campusNetJson["children"].append(record)
-
-    treeJson = []
-    treeJson.append(campusTypeJson)
-    treeJson.append(campusNetJson)
-
-    logger.info(treeJson)
-
-    return render(request, "ngcn/tree_view.html", {"data": treeJson})
+    """Return the tree-pane HTML shell; tree data is loaded via the REST API."""
+    return render(request, "ngcn/tree_view.html")
 
 
 def getTreeData(request):
@@ -165,63 +125,18 @@ def indexView(request):
 
 
 def campusTypeMgmtView(request):
-    logger.debug("campusTypeMgmtView: entered")
-    queryset = CampusType.objects.all()
-    table = CampusTypeTable(queryset)
-    RequestConfig(request, paginate=False).configure(table)
-    return render(request, "ngcn/campus_type_mgmt.html", {"table": table})
+    """Return the network-type management shell; table data loaded via REST API."""
+    return render(request, "ngcn/campus_type_mgmt.html")
 
 
 def campusTypeView(request, campus_type_id):
-    logger.debug("campusTypeView: entered")
-    r = ""
-    try:
-        queryset = CampusType.objects.filter(id=campus_type_id)
-        json_data = json.loads(
-            serializers.serialize(
-                "json", queryset, fields=("name", "app_zip_name", "description")
-            )
-        )
-        form = json_data[0]["fields"]
-        campus_networks = CampusNetwork.objects.filter(campus_type=campus_type_id)
-        table = CampusNetworkTable(campus_networks)
-        table.exclude = ("campus_type",)
-        action_list_queryset = Action.objects.filter(campus_type_id=campus_type_id)
-        action_list_table = ActionListTable(action_list_queryset)
-
-        # roles_queryset = Role.objects.all().filter(campustype=CampusType.objects.get(id=campus_type_id))
-        # roles_table = RolesTable(roles_queryset)
-
-        # resources_queryset = Resource.objects.all().filter(campustype=CampusType.objects.get(id=campus_type_id))
-        # resources_table = ResourcesTable(resources_queryset)
-        RequestConfig(request, paginate=False).configure(table)
-
-        logger.debug("campusTypeView: render the campus_type.html template")
-        r = render(
-            request,
-            "ngcn/campus_type.html",
-            {
-                "form": form,
-                "campus_network_table": table,
-                "action_list_table": action_list_table,
-                #'roles_table' :roles_table,
-                #'resources_table' :resources_table,
-                "campus_type_id": campus_type_id,
-            },
-        )
-
-        logger.debug("campusTypeView: " + r)
-    except BaseException as e:
-        logger.error("campusTypeView: render error {}".format(e))
-    return r
+    """Return the network-type detail shell; all data loaded via REST API."""
+    return render(request, "ngcn/campus_type.html", {"campus_type_id": campus_type_id})
 
 
 def campusNetworkMgmtView(request):
-    queryset = CampusNetwork.objects.all()
-    table = CampusNetworkTable(queryset)
-    RequestConfig(request, paginate=False).configure(table)
-    logger.debug("campusNetworkMgmtView: exit")
-    return render(request, "ngcn/campus_network_mgmt.html", {"table": table})
+    """Return the network management shell; table data loaded via REST API."""
+    return render(request, "ngcn/campus_network_mgmt.html")
 
 
 def campusNetworkView(request, campus_network_id):
@@ -304,31 +219,11 @@ def configurationView(request, campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def campusNetworkSummaryView(request, campus_network_id):
-    queryset = CampusNetwork.objects.filter(id=campus_network_id)
-    json_data = json.loads(
-        serializers.serialize(
-            "json", queryset, fields=("name", "status", "description")
-        )
-    )
-    campus_network = CampusNetwork.objects.get(id=campus_network_id)
-    campusTypeName = CampusType.objects.get(pk=campus_network.campus_type_id).name
-    form = json_data[0]["fields"]
-    form["ct_name"] = campusTypeName
-    #     print form
-    action_list_queryset = Action.objects.filter(
-        campus_type_id=campus_network.campus_type.id
-    )
-    action_list_table = CampusNetworkActionListTable(
-        action_list_queryset, campus_network.name
-    )
+    """Return the network summary shell; all data loaded via REST API."""
     return render(
         request,
         "ngcn/campus_network/summary.html",
-        {
-            "form": form,
-            "action_list_table": action_list_table,
-            "campus_network_id": campus_network_id,
-        },
+        {"campus_network_id": campus_network_id},
     )
 
 
@@ -436,9 +331,7 @@ def downloadConfigDataView(request, campus_network_id):
     output = excel.read()
     excel.close()
     response = HttpResponse(output, content_type="application/force-download")
-    response["Content-Disposition"] = "attachment; filename=%s" % smart_str(
-        workbook_name
-    )
+    response["Content-Disposition"] = f"attachment; filename={smart_str(workbook_name)}"
     logger.debug("downloadConfigDataView: exit")
     return response
 
@@ -487,6 +380,7 @@ def jenkinsConsoleLogView(request, action_history_id):
     logger.debug(job_url)
     job_id = action_history.jenkins_job_build_no
     logger.debug(job_id)
+    server = _make_jenkins_server()
     try:
         response = server.get_build_console_output(job_url, job_id)
         # logger.debug(response)
@@ -664,7 +558,13 @@ def deleteCampusTypeView(request):
                 }
             )
 
+        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+        # was removed in Python 3.12; lazy import keeps startup path clean).
+        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
+        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+
         action_url = "network_type_validator"
+        server = _make_jenkins_server()
         current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
         crumb = CrumbRequester(
             baseurl=JENKINS_SERVER_URL,
@@ -693,7 +593,7 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url="/admin/login/")
 def addCampusNetworkView(request):
-    global server
+    server = _make_jenkins_server()
     if request.method == "POST":
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
         if form.is_valid():
@@ -796,16 +696,11 @@ def addCampusNetworkView(request):
                         "network_desc": network_desc,
                     },
                 )
-            except jenkins.JenkinsException as e:
+            except Exception as e:
                 msg = str(e)
                 if "Forbidden" in msg:  # most probably crumbs issue
                     # reauthenticate and try once more
-
-                    server = jenkins.Jenkins(
-                        JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
-                    )
+                    server = _make_jenkins_server()
                     server.build_job(
                         action_url,
                         {
@@ -864,7 +759,7 @@ def addCampusNetworkView(request):
 
 @login_required(login_url="/admin/login/")
 def editCampusNetworkView(request, campus_network_id):
-    global server
+    server = _make_jenkins_server()
     if request.method == "POST":
         campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
         POST = request.POST.copy()
@@ -896,16 +791,11 @@ def editCampusNetworkView(request, campus_network_id):
                         "operation": "update",
                     },
                 )
-            except jenkins.JenkinsException as e:
+            except Exception as e:
                 msg = str(e)
                 if "Forbidden" in msg:  # most probably crumbs issue
                     # reauthenticate and try once more
-
-                    server = jenkins.Jenkins(
-                        JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
-                    )
+                    server = _make_jenkins_server()
                     server.build_job(
                         action_url,
                         {
@@ -950,7 +840,7 @@ def editCampusNetworkView(request, campus_network_id):
 
 @login_required(login_url="/admin/login/")
 def deleteCampusNetworkView(request):
-    global server
+    server = _make_jenkins_server()
     if request.method == "POST":
         campus_network_ids = request.POST.get("campus_network_ids")
 
@@ -969,16 +859,12 @@ def deleteCampusNetworkView(request):
                 action_url,
                 {"src": src, "network_name": network_name, "operation": "delete"},
             )
-        except jenkins.JenkinsException as e:
+        except Exception as e:
             msg = str(e)
             if "Forbidden" in msg:  # most probably crumbs issue
                 # reauthenticate and try once more
 
-                server = jenkins.Jenkins(
-                    JENKINS_SERVER_URL,
-                    username=JENKINS_SERVER_USER,
-                    password=JENKINS_SERVER_PASS,
-                )
+                server = _make_jenkins_server()
                 server.build_job(
                     action_url,
                     {"src": src, "network_name": network_name, "operation": "delete"},
@@ -1138,7 +1024,7 @@ def create_workbook_from_db(campus_network_id):
 
         column_index = 1
         # insert the column column_header value
-        for key, cell in zip(keys, ws.iter_cols(min_row=1, max_row=1)):
+        for key, cell in zip(keys, ws.iter_cols(min_row=1, max_row=1), strict=False):
             cell[0].value = key
             column_header[cell[0].column] = key
             column_index += 1
@@ -1244,6 +1130,13 @@ def triggerAction(request, action_id, campus_network_id):
                     "reason": "No data configured",
                 }
             )
+
+        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
+        # was removed in Python 3.12; lazy import keeps startup path clean).
+        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
+        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+
+        server = _make_jenkins_server()
 
         campus_network = CampusNetwork.objects.get(pk=campus_network_id)
         action_url += "-" + campus_network.name

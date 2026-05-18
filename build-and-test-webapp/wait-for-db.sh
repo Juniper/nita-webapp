@@ -1,18 +1,7 @@
 #!/bin/bash
 
-# ********************************************************
-#
-# Project: nita-webapp
-#
-# Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-#
-# Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-#
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-#
-# ********************************************************
 
 echo ""
 echo "##############################################"
@@ -68,7 +57,7 @@ echo "        Django makemigrations"
 echo ""
 echo "##############################################"
 
-python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations --check
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations ngcn
 # python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py makemigrations ngcn --check
 
 echo ""
@@ -121,6 +110,15 @@ echo "##############################################"
 
 python build-and-test-webapp/add_jenkins_job.py jenkins 8080 network_template_mgr build-and-test-webapp/network_template_mgr.xml
 python build-and-test-webapp/add_jenkins_job.py jenkins 8080 network_type_validator build-and-test-webapp/network_type_validator.xml
+
+echo ""
+echo "##############################################"
+echo ""
+echo "        Collecting static files"
+echo ""
+echo "##############################################"
+
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py collectstatic --noinput
 
 echo ""
 echo "##############################################"

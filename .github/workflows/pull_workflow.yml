@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 name: Pull workflow
 
 on:
@@ -5,6 +8,8 @@ on:
     branches:
       - main
   workflow_dispatch:
+
+permissions: read-all
 
 jobs:
   lint:
@@ -14,18 +19,19 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - name: Lint Code Base
-        uses: github/super-linter@v4
+        uses: super-linter/super-linter@v8.6.0
         env:
           # Lint only files changed in the PR to avoid unrelated legacy/vendor churn.
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_JAVASCRIPT_ES: true
           VALIDATE_PYTHON_BLACK: true
-          VALIDATE_HTML: true
-          JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
+          # HTML excluded: Django templates contain {% %}/{{ }} syntax that
+          # htmlhint cannot parse; results are meaningless false positives.
+          JAVASCRIPT_ES_CONFIG_FILE: eslint.config.mjs
           FILTER_REGEX_EXCLUDE: .*(components/|jquery-|jquery\.event|bootstrap\.min|ui_1\.11\.4|\.min\.js|\.min\.css).*
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -39,12 +45,12 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
       - name: Run Microsoft Security DevOps
-        uses: microsoft/security-devops-action@latest
+        uses: microsoft/security-devops-action@v1.12.0
         id: msdo
 
       - name: Upload results to Security tab
@@ -65,12 +71,12 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
-          python-version: "3.8"
+          python-version: "3.12"
 
       - name: Install system dependencies
         run: |
@@ -79,7 +85,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade "pip<24.1"
+          python -m pip install --upgrade pip
           grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
           pip install -r ../../../requirements-test.txt

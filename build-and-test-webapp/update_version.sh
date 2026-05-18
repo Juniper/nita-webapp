@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 
 VERSION=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
 echo $VERSION > VERSION.txt

@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
         echo -n "    nita-cmd backup "
         echo `cat <<EOT
 Backups container mounted volumes and project directories to file in /var/nita_backup

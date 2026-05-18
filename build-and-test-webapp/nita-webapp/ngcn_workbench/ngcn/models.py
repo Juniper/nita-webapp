@@ -1,18 +1,5 @@
-"""********************************************************
-
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
-
-from __future__ import unicode_literals
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 from django.db import models
 from django.utils.translation import gettext as _
@@ -26,9 +13,6 @@ class ActionCategory(models.Model):
     )
 
     def __str__(self):
-        return self.category_name
-
-    def __unicode__(self):
         return self.category_name
 
 
@@ -52,9 +36,6 @@ class CampusType(models.Model):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 class ActionProperty(models.Model):
     shell_command = models.TextField(max_length=255, verbose_name="Shell Command")
@@ -66,9 +47,6 @@ class ActionProperty(models.Model):
     )
 
     def __str__(self):
-        return self.shell_command
-
-    def __unicode__(self):
         return self.shell_command
 
 
@@ -87,9 +65,6 @@ class Action(models.Model):
     )
 
     def __str__(self):
-        return self.action_name
-
-    def __unicode__(self):
         return self.action_name
 
 
@@ -112,9 +87,6 @@ class CampusNetwork(models.Model):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 class ActionHistory(models.Model):
     action_id = models.ForeignKey(
@@ -132,9 +104,6 @@ class ActionHistory(models.Model):
     )
 
     def __str__(self):
-        return self.action_id.action_name
-
-    def __unicode__(self):
         return self.action_id.action_name
 
 
@@ -167,7 +136,4 @@ class Worksheets(models.Model):
         )
 
     def __str__(self):
-        return self.name
-
-    def __unicode__(self):
         return self.name

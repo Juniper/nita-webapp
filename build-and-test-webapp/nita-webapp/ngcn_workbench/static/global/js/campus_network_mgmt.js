@@ -1,16 +1,5 @@
-/* ********************************************************
-
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-******************************************************** */
+// Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 jQuery(document).ready(function($) {
 		$('#main_pane').css("display","none");
 
@@ -18,7 +7,7 @@ jQuery(document).ready(function($) {
         $('#del_network').prop('disabled', true)
 	    $('#edit_network').prop('disabled', true)
 
-	        $('#CampusNetwork tr').on('click', function() {
+	        $(document).on('click', '#CampusNetwork tbody tr', function() {
 			  if($(this).hasClass('selected'))
 			  {
 				 $(this).removeClass('selected');
@@ -59,7 +48,21 @@ jQuery(document).ready(function($) {
         				  "bFilter": false,
         				  "bInfo": false,
         				  "bLengthChange": false,
-        				  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
+        				  "ajax": {
+        				      "url": "/api/v1/networks/?page_size=1000",
+        				      "dataSrc": "results"
+        				  },
+        				  "columns": [
+        				      {"data": "id"},
+        				      {"data": "name"},
+        				      {"data": "description"},
+        				      {"data": "status"},
+        				      {"data": "campus_type_name"}
+        				  ],
+        				  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }],
+        				  "rowCallback": function(row, data) {
+        				      $(row).addClass('select-row').attr('data-id', data.id);
+        				  }
         			  });
         			  $('#main_pane').css("display","unset");
         		  }, 100);
@@ -171,7 +174,7 @@ function addCampusNetwork(save)
 function editCampusNetworkBySelection(){
 	var campusNetworkId = "";
     var ids = $.map(table2.rows('.selected').data(), function (item) {
-    	campusNetworkId =  item[0];
+        campusNetworkId =  item.id;
     });
     $('#campus_network_form').data('load_summary',false);
     editCampusNetwork(campusNetworkId);
@@ -218,11 +221,10 @@ function deleteCampusNetwork()
 function deleteCampusNetworks() {
 	var campusNetworkId;
     var ids = $.map(table2.rows('.selected').data(), function (item) {
-    	campusNetworkId=item[0];
+        campusNetworkId=item.id;
     });
     deleteCampusNetworksbyId(campusNetworkId);
 }
-
 
 function deleteCampusNetworksbyId(campusNetworkId) {
     var url = "/campusnetwork/delete/"

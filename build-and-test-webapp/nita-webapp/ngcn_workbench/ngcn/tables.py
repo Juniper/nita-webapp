@@ -1,26 +1,14 @@
-"""********************************************************
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
+import configparser
 
 import django_tables2 as tables
-from ngcn.models import Action
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
 from django.conf import settings
-from django.utils.translation import gettext as _
-import configparser
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext as _
+
+from ngcn.models import Action, ActionHistory, CampusNetwork, CampusType
 
 config = configparser.ConfigParser()
 config_location = settings.BASE_DIR + "/../"
@@ -138,9 +126,9 @@ class CampusNetworkActionListTable(tables.Table):
     # id = tables.CheckBoxColumn(accessor='pk')
     network_name = None
 
-    def __init__(self, *args, **kwargs):
-        self.network_name = args[1]
-        super(tables.Table, self).__init__(*args, **kwargs)
+    def __init__(self, data, network_name, *args, **kwargs):
+        self.network_name = network_name
+        super().__init__(data, *args, **kwargs)
 
     id = tables.Column(verbose_name="Id")
     action_name = tables.Column(verbose_name="Name")

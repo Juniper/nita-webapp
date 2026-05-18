@@ -1,24 +1,13 @@
-"""********************************************************
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
+import logging
 
 from django import forms
 from django.core.validators import validate_slug
-from django.forms import BaseInlineFormSet
-from django.forms import ModelForm
-from ngcn.models import CampusType, CampusNetwork, Action
-from django.forms import inlineformset_factory
-import logging
+from django.forms import BaseInlineFormSet, ModelForm, inlineformset_factory
+
+from ngcn.models import Action, CampusNetwork, CampusType
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +146,7 @@ class EditCampusNetworkForm(ModelForm):
 
 class CustomInlineFormSet(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
-        super(CustomInlineFormSet, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for form in self.forms:
             form.empty_permitted = False
 

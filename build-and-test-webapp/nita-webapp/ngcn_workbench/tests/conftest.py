@@ -1,11 +1,17 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""pytest fixtures shared across the entire NITA Webapp test suite."""
+
 import pytest
 from django.contrib.auth import get_user_model
-
-from ngcn.models import Action
-from ngcn.models import ActionCategory
-from ngcn.models import ActionProperty
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
+from ngcn.models import (
+    Action,
+    ActionCategory,
+    ActionProperty,
+    CampusNetwork,
+    CampusType,
+)
 
 
 @pytest.fixture

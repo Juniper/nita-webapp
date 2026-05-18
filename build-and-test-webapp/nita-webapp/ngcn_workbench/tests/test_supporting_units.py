@@ -1,21 +1,22 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""Unit tests for supporting modules: middleware, status updater, models, and tables.
+
+Covers servicestartupmiddleware, statusupdater, model validation logic, and
+django-tables2 table classes that sit outside the main views and API layers.
+"""
+
 import json
 from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
-
-from ngcn import servicestartupmiddleware
-from ngcn import statusupdater
-from ngcn.models import Action
-from ngcn.models import ActionHistory
-from ngcn.models import ActionProperty
-from ngcn.models import CampusType
-from ngcn.models import Worksheets
-from ngcn.models import Workbook
+from ngcn import servicestartupmiddleware, statusupdater
+from ngcn.models import ActionHistory, ActionProperty, CampusType, Workbook, Worksheets
 from ngcn.tables import CampusNetworkActionListTable
 from ngcn.templatetags.json_filters import jsonify
-from ngcn.views import GridDataManager
-from ngcn.views import escape_ansi
+from ngcn.views import GridDataManager, escape_ansi
 
 
 @pytest.mark.django_db
@@ -36,7 +37,9 @@ def test_status_startup_service_middleware_calls_updater(monkeypatch):
         statusupdater.StatusUpdater, "getInstance", staticmethod(lambda: fake_updater)
     )
 
-    middleware = servicestartupmiddleware.StatusStartupServiceMiddleware()
+    middleware = servicestartupmiddleware.StatusStartupServiceMiddleware(
+        get_response=lambda request: None
+    )
     middleware.process_request(SimpleNamespace())
 
     assert fake_updater.started is True

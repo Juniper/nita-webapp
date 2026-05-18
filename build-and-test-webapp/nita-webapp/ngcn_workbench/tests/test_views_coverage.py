@@ -1,15 +1,20 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""UI-layer view tests for legacy HTML views (ngcn.views).
+
+Covers upload, workbook editing, trigger, and error paths that exercise the
+pre-existing Django view functions rather than the REST API ViewSets.
+"""
+
 import json
 
-import jenkins
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from openpyxl import Workbook as OpenPyxlWorkbook
-
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import Workbook
 from ngcn import views
+from ngcn.models import ActionHistory, CampusNetwork, Workbook
+from openpyxl import Workbook as OpenPyxlWorkbook
 
 
 class FakeJob:
@@ -110,7 +115,7 @@ def test_save_grid_data_view_updates_workbook(auth_client, campus_network, monke
 
     assert response.status_code == 200
     assert response.content.decode("utf-8") == "Success"
-    assert updated_calls["campus_network_id"] == str(campus_network.id)
+    assert updated_calls["campus_network_id"] == campus_network.id
     assert updated_calls["sheets"] == [{"name": "sheet1", "sheet1": [{"host": "new"}]}]
 
 
@@ -128,8 +133,8 @@ def test_jenkins_console_log_view_strips_ansi(
     )
     monkeypatch.setattr(
         views,
-        "server",
-        FakeServer(console_output="\x1b[31mhello\x1b[0m from jenkins"),
+        "_make_jenkins_server",
+        lambda: FakeServer(console_output="\x1b[31mhello\x1b[0m from jenkins"),
     )
 
     response = auth_client.get(
@@ -152,7 +157,7 @@ def test_jenkins_console_log_view_uses_fallback_message(
         category_id=action.action_category,
         campus_network_id=campus_network,
     )
-    monkeypatch.setattr(views, "server", RaisingServer())
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: RaisingServer())
 
     response = auth_client.get(
         reverse("jenkinsconsoleLog", kwargs={"action_history_id": action_history.id})
@@ -164,7 +169,9 @@ def test_jenkins_console_log_view_uses_fallback_message(
 
 @pytest.mark.django_db
 def test_add_campus_network_view_creates_network(auth_client, campus_type, monkeypatch):
-    monkeypatch.setattr(views, "server", FakeServer(build_number=11))
+    monkeypatch.setattr(
+        views, "_make_jenkins_server", lambda: FakeServer(build_number=11)
+    )
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -195,7 +202,7 @@ def test_add_campus_network_view_cleans_up_on_failure(
     auth_client, campus_type, monkeypatch
 ):
     fake_server = FakeServer(build_number=11)
-    monkeypatch.setattr(views, "server", fake_server)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: False)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -227,18 +234,18 @@ def test_add_campus_network_view_retries_on_forbidden(
 ):
     class ForbiddenServer(FakeServer):
         def build_job(self, job_name, params):
-            raise jenkins.JenkinsException("Forbidden: crumbs required")
+            raise Exception("Forbidden: crumbs required")
 
     initial_server = ForbiddenServer(build_number=11)
     reauth_server = FakeServer(build_number=11)
-    monkeypatch.setattr(views, "server", initial_server)
+    _servers = iter([initial_server, reauth_server])
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: next(_servers))
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
         "getWorkspaceLocation",
         staticmethod(lambda: "/workspace"),
     )
-    monkeypatch.setattr(views.jenkins, "Jenkins", lambda *args, **kwargs: reauth_server)
 
     response = auth_client.post(
         reverse("campusnetworkadd"),
@@ -262,7 +269,7 @@ def test_edit_campus_network_view_updates_hosts(
     auth_client, campus_network, monkeypatch
 ):
     fake_server = FakeServer(build_number=12)
-    monkeypatch.setattr(views, "server", fake_server)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -292,7 +299,7 @@ def test_edit_campus_network_view_reports_failure(
     auth_client, campus_network, monkeypatch
 ):
     fake_server = FakeServer(build_number=12)
-    monkeypatch.setattr(views, "server", fake_server)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: False)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -321,7 +328,7 @@ def test_delete_campus_network_view_deletes_network(
     auth_client, campus_network, monkeypatch
 ):
     fake_server = FakeServer(build_number=13)
-    monkeypatch.setattr(views, "server", fake_server)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: True)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -344,7 +351,7 @@ def test_delete_campus_network_view_reports_failure(
     auth_client, campus_network, monkeypatch
 ):
     fake_server = FakeServer(build_number=13)
-    monkeypatch.setattr(views, "server", fake_server)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
     monkeypatch.setattr(views, "wait_and_get_build_status", lambda *_args: False)
     monkeypatch.setattr(
         views.ServerProperties,
@@ -407,9 +414,14 @@ def test_trigger_action_uses_expected_build_dir(
     configuration_data = {"group_vars/all.yaml": {"build_dir": "/from/yaml"}}
     recorded_updates = {}
 
-    monkeypatch.setattr(views, "server", fake_server)
-    monkeypatch.setattr(views, "CrumbRequester", lambda *args, **kwargs: object())
-    monkeypatch.setattr(views, "Jenkins", lambda *args, **kwargs: fake_job_runner)
+    monkeypatch.setattr(views, "_make_jenkins_server", lambda: fake_server)
+    monkeypatch.setattr(
+        "jenkinsapi.utils.crumb_requester.CrumbRequester",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "jenkinsapi.jenkins.Jenkins", lambda *args, **kwargs: fake_job_runner
+    )
     monkeypatch.setattr(
         views, "create_workbook_from_db", lambda _campus_network_id: "/tmp/temp.xlsx"
     )
@@ -443,7 +455,7 @@ def test_trigger_action_uses_expected_build_dir(
     assert history.status == "Running"
     assert history.jenkins_job_build_no == 21
     assert recorded_updates == {
-        "campus_network_id": str(campus_network.id),
+        "campus_network_id": campus_network.id,
         "status": f"Triggered {action.jenkins_url}-{campus_network.name}",
     }
 

@@ -1,3 +1,6 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 name: Django Build and Test
 
 on:
@@ -6,6 +9,8 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+
+permissions: read-all
 
 jobs:
   django-build-test:
@@ -21,12 +26,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
-          python-version: "3.8"
+          python-version: "3.12"
 
       - name: Install system dependencies
         run: |
@@ -35,12 +40,16 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade "pip<24.1"
+          python -m pip install --upgrade pip setuptools
           grep -v '^nita-yaml-to-excel-22.8/$' ../../../requirements.txt \
-            | sed 's/django-tables2==1\.21\.2/django-tables2==2.3.4/' \
             > /tmp/requirements-ci.txt
           pip install -r /tmp/requirements-ci.txt
           pip install -r ../../../requirements-test.txt
+          # python-jenkins 1.8.0 requires setuptools<66, which downgrades
+          # pkg_resources to a version that still uses pkgutil.ImpImporter,
+          # removed in Python 3.12.  Re-upgrade after all requirements are
+          # installed so the runtime uses a fixed pkg_resources.
+          pip install --upgrade setuptools
 
       - name: Validate Django project
         run: python manage.py check

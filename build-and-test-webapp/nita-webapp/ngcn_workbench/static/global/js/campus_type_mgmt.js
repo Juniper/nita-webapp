@@ -1,16 +1,5 @@
-/* ********************************************************
-
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-******************************************************** */
+// Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 jQuery(document).ready(function($) {
 
 		$('#main_pane').css("display","none");
@@ -18,118 +7,74 @@ jQuery(document).ready(function($) {
         $('#del_campus').prop('disabled', true)
 	    $('#edit_campus').prop('disabled', true)
 
-        $('#CampusType tr').on('click', function() {
-		  if($(this).hasClass('selected'))
-		  {
-			 $(this).removeClass('selected');
+        $(document).on('click', '#CampusType tbody tr', function() {
+                  if($(this).hasClass('selected'))
+                  {
+                         $(this).removeClass('selected');
 
-    	  }
-		  else
-		  {
-    	     $(this).addClass('selected').siblings().removeClass('selected');
-    	  }
+          }
+                  else
+                  {
+             $(this).addClass('selected').siblings().removeClass('selected');
+          }
 
-		  var count = 0
-		  $.map(table.rows('.selected').data(), function (item) {
-		    	count++
-		    });
+                  var count = 0
+                  $.map(table.rows('.selected').data(), function (item) {
+                        count++
+                    });
 
-		  if(count == 0)
-	      {
-			  $('#del_campus').prop('disabled', true)
-			  $('#edit_campus').prop('disabled', true)
-	      }
-		  else
-		  {
-			  $('#del_campus').prop('disabled', false)
-			  $('#edit_campus').prop('disabled', false)
-		  }
-    	});
+                  if(count == 0)
+              {
+                          $('#del_campus').prop('disabled', true)
+                          $('#edit_campus').prop('disabled', true)
+              }
+                  else
+                  {
+                          $('#del_campus').prop('disabled', false)
+                          $('#edit_campus').prop('disabled', false)
+                  }
+        });
 
         setTimeout(
-        		  function()
-        		  {
-        			  if ( campus_type_actions_table != null && typeof campus_type_actions_table != undefined ) {
-        				  campus_type_actions_table.destroy();
-        			  	}
+                          function()
+                          {
+                                  if ( table != null && typeof table != undefined ) {
+                                          table.destroy();
+                                        }
 
-        			  campus_type_actions_table = $('#Action').DataTable({
-    					  "paging":   true,
-    					  "ordering": false,
-    					  "info":     false,
-    					  "bFilter": false,
-    					  "bInfo": false,
-    					  "pageLength": 3,
-    					  "bLengthChange": false,
-
-    				  });
-
-        			  if ( roles_table != null && typeof roles_table != undefined ) {
-        				  roles_table.destroy();
-        			  	}
-
-        			  roles_table = $('#Roles').DataTable({
-    					  "paging":   true,
-    					  "ordering": false,
-    					  "info":     false,
-    					  "bFilter": false,
-    					  "bInfo": false,
-    					  "pageLength": 3,
-    					  "bLengthChange": false,
-    					  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] },{ "bVisible": false, "aTargets": [2] } ,{ "bVisible": false, "aTargets": [3] }
-    					  ,{ "bVisible": false, "aTargets": [4] },{ "bVisible": false, "aTargets": [5] },{ "bVisible": false, "aTargets": [6] }]
-
-    				  });
-
-        			  if ( resources_table != null && typeof resources_table != undefined ) {
-        				  resources_table.destroy();
-        			  	}
-
-        			  resources_table = $('#Resources').DataTable({
-    					  "paging":   true,
-    					  "ordering": false,
-    					  "info":     false,
-    					  "bFilter": false,
-    					  "bInfo": false,
-    					  "pageLength": 3,
-    					  "bLengthChange": false,
-    					  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] },{ "bVisible": false, "aTargets": [2] } ,{ "bVisible": false, "aTargets": [3] }
-    					  ,{ "bVisible": false, "aTargets": [4] },{ "bVisible": false, "aTargets": [5] },{ "bVisible": false, "aTargets": [6] }]
-
-    				  });
-
-    				  if ( table != null && typeof table != undefined ) {
-        				  table.destroy();
-        			  	}
-
-    				  table = $('#CampusType').DataTable({
-    					  "paging":   true,
-    					  "ordering": false,
-    					  "info":     false,
-    					  "bFilter": false,
-    					  "bInfo": false,
-    					  "bLengthChange": false,
-    					  "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
-
-    				  });
-    				  $('#main_pane').css("display","unset");
-        		  }, 100);
+                                  table = $('#CampusType').DataTable({
+                                          "paging":   true,
+                                          "ordering": false,
+                                          "info":     false,
+                                          "bFilter": false,
+                                          "bInfo": false,
+                                          "bLengthChange": false,
+                                          "ajax": {
+                                              "url": "/api/v1/network-types/?page_size=1000",
+                                              "dataSrc": "results"
+                                          },
+                                          "columns": [
+                                              {"data": "id"},
+                                              {"data": "name"},
+                                              {"data": "description"}
+                                          ],
+                                          "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }],
+                                          "rowCallback": function(row, data) {
+                                              $(row).addClass('select-row').attr('data-id', data.id);
+                                          }
+                                  });
+                                  $('#main_pane').css("display","unset");
+                          }, 100);
 
         $('#campus-type-form').submit(function(event){
-        	showLoader();
-    		var formData = new FormData($(this)[0])
-        		var url = $('#campus-type-form').attr('action')
-        		var status_text1="added"
-        		var status_text2="adding"
-    			$("#error_content_div").css("display","none");
-        	 //   if(this.action.indexOf("edit"))
-        	   /* if(url.indexOf("edit") != -1)
-        	    {
-        	    	status_text1="changed"
-                	status_text2="changing"
-        	    }*/
+                showLoader();
+                var formData = new FormData($(this)[0]);
+        	var url = $('#campus-type-form').attr('action')
+        	var status_text1="added"
+        	var status_text2="adding"
+    		$("#error_content_div").css("display","none");
 
-       			var csrftoken = getCookie('csrftoken');
+       		var csrftoken = getCookie('csrftoken');
         	    $.ajax({
         	            beforeSend: function(xhr, settings) {
         	                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
@@ -288,7 +233,7 @@ function deleteCampusType()
 function deleteCampusTypes(){
 	var campusTypeId = [];
     var ids = $.map(table.rows('.selected').data(), function (item) {
-    	campusTypeId=item[0];
+    	campusTypeId=item.id;
     });
     deleteCampusTypesbyId(campusTypeId);
 }

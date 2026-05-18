@@ -1,26 +1,17 @@
-"""********************************************************
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
-
-from ngcn.models import ActionHistory
-from django.conf import settings
+import configparser
 import jenkins
+import logging
+import os
 import threading
 import time
 import traceback
-import logging
-import configparser
-import os
+
+from django.conf import settings
+
+from ngcn.models import ActionHistory
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +27,7 @@ JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 class StatusUpdater:
 
-    SERVER = jenkins.Jenkins(
-        JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
-    )
+    SERVER = None
     interval = 30
     RUN_SERVICE = True
     SERVICE_STATUS = False
@@ -52,6 +41,12 @@ class StatusUpdater:
         return StatusUpdater()
 
     def getBuildStatus(self, build_name, build_no):
+        if self.SERVER is None:
+            StatusUpdater.SERVER = jenkins.Jenkins(
+                JENKINS_SERVER_URL,
+                username=JENKINS_SERVER_USER,
+                password=JENKINS_SERVER_PASS,
+            )
         buildStatus = None
         RESULT = "result"
         try:

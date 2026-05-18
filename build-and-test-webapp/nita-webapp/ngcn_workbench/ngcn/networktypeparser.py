@@ -1,47 +1,30 @@
-"""********************************************************
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
-
-import os
-import yaml
-import re
-import jenkins
-from django.db import transaction
-from django.conf import settings
+import configparser
 
 # from pykwalify.core import Core
 import logging
-import traceback
-import configparser
-import tempfile
+import os
+import re
 import shutil
-
-from ngcn.models import CampusType
-from ngcn.models import Action
-from ngcn.models import ActionCategory
-from ngcn.models import ActionProperty
-
-# from ngcn.models import JenkinsJobProperty
-from ngcn.utils import ServerProperties
-from ngcn.utils import wait_and_get_build_status
-from django.utils.translation import gettext as _
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-
+import tempfile
+import traceback
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
-from jenkinsapi.jenkins import Jenkins
-from jenkinsapi.utils.crumb_requester import CrumbRequester
+
+import jenkins
+import yaml
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.db import transaction
+from django.http import JsonResponse
+from django.utils.translation import gettext as _
+
+from ngcn.models import Action, ActionCategory, ActionProperty, CampusType
+
+# from ngcn.models import JenkinsJobProperty
+from ngcn.utils import ServerProperties, wait_and_get_build_status
 
 # from _mysql import IntegrityError
 
@@ -69,12 +52,12 @@ class NetworkTypeParser:
         if zip_validation["status"]:
             try:
                 zip_file = ZipFile(default_storage.path(file_name), "r")
-                app_name = re.sub("\.zip$", "", file_name)
+                app_name = re.sub(r"\.zip$", "", file_name)
                 project_yaml_file = zip_file.read(app_name + "/project.yaml").decode(
                     "utf-8"
                 )
                 logger.debug(project_yaml_file)
-                yaml.load(project_yaml_file)
+                yaml.safe_load(project_yaml_file)
                 logger.debug("YAML Parsed Successfully")
                 zip_file.close()
                 validation_error = self.validateProjectYaml(project_yaml_file)
@@ -84,6 +67,10 @@ class NetworkTypeParser:
                     )
 
                 job_name = "network_type_validator"
+                # Intentionally imported here rather than at module level.
+                from jenkinsapi.jenkins import Jenkins
+                from jenkinsapi.utils.crumb_requester import CrumbRequester
+
                 server = jenkins.Jenkins(
                     JENKINS_SERVER_URL,
                     username=JENKINS_SERVER_USER,
@@ -122,7 +109,13 @@ class NetworkTypeParser:
                     )
                     logger.debug("db_status server: " + str(db_status))
                     if db_status:
-                        result = JsonResponse({"result": "success"})
+                        try:
+                            ct = CampusType.objects.get(name=app_name)
+                            result = JsonResponse(
+                                {"result": "success", "name": ct.name, "id": ct.id}
+                            )
+                        except CampusType.DoesNotExist:
+                            result = JsonResponse({"result": "success"})
                     else:
                         result = JsonResponse({"result": "failure"})
                     logger.debug("Updated network type details: " + str(result))
@@ -143,7 +136,7 @@ class NetworkTypeParser:
                 logger.error("Error while adding Campus Type")
                 logger.error(traceback.format_exc())
                 logger.error(e)
-                result = JsonResponse({"result": "failure", "reason": validation_error})
+                result = JsonResponse({"result": "failure", "reason": str(e)})
             finally:
                 if zip_file is not None:
                     zip_file.close()
@@ -159,7 +152,7 @@ class NetworkTypeParser:
 
         # inner function to find project file
         def find_file(top, filename):
-            for root, dirs, files in os.walk(top):
+            for root, _dirs, files in os.walk(top):
                 for file in files:
                     logger.debug("find_file: " + file)
                     if file.endswith(filename):
@@ -185,7 +178,7 @@ class NetworkTypeParser:
         try:
             logger.debug("open(" + projectfilename + ")")
             projectfile = open(projectfilename)
-            projectdata = yaml.load(projectfile)
+            projectdata = yaml.safe_load(projectfile)
             projectfile.close()
             projectname = projectdata["name"]
         except Exception as e:
@@ -200,18 +193,17 @@ class NetworkTypeParser:
 
         os.mkdir(tmp + "/tmp2")
         if projectbase == "tmp1":
-            os.replace(tmp + "/tmp1", tmp + "/tmp2/" + projectname)
-            logger.debug("os.replace(" + "/tmp1", tmp + "/tmp2/" + projectname + ")")
+            src, dst = tmp + "/tmp1", tmp + "/tmp2/" + projectname
+            os.replace(src, dst)
+            logger.debug("os.replace(%s, %s)", src, dst)
         else:
-            os.replace(tmp + "/tmp1/" + projectbase, tmp + "/tmp2/" + projectname)
-            logger.debug(
-                "os.replace(" + tmp + "/tmp1/" + projectbase,
-                tmp + "/tmp2/" + projectname + ")",
-            )
+            src, dst = tmp + "/tmp1/" + projectbase, tmp + "/tmp2/" + projectname
+            os.replace(src, dst)
+            logger.debug("os.replace(%s, %s)", src, dst)
 
         # put the new zipfile in the default storage location
         zf = ZipFile(default_storage.path(projectname + ".zip"), "w")
-        for root, dirs, files in os.walk(tmp + "/tmp2/" + projectname):
+        for root, _dirs, files in os.walk(tmp + "/tmp2/" + projectname):
             for file in files:
                 zf.write(
                     os.path.join(root, file),
@@ -236,16 +228,16 @@ class NetworkTypeParser:
             file_name = self.normalizeZipFile(default_storage.path(file_name))
             zip_file = ZipFile(default_storage.path(file_name), "r")
             logger.error("Unzipping zipfile to: " + default_storage.path(file_name))
-            app_name = re.sub("\.zip$", "", file_name)
+            app_name = re.sub(r"\.zip$", "", file_name)
             logger.debug(app_name)
             archive_member_list = zip_file.namelist()
             logger.debug(archive_member_list)
             if (archive_member_list[0].find(app_name + "/") != 0) and (
                 app_name not in archive_member_list
             ):
-                result[
-                    "message"
-                ] = "Zip file name and the project directory name should be same"
+                result["message"] = (
+                    "Zip file name and the project directory name should be same"
+                )
                 result["status"] = False
                 logger.error(result)
                 return result
@@ -270,6 +262,7 @@ class NetworkTypeParser:
             logger.debug(result)
         except Exception as e:
             logger.error(e)
+            result["filename"] = file_name
             result["message"] = "Undefined exception occured"
             result["status"] = False
             return result
@@ -282,7 +275,7 @@ class NetworkTypeParser:
     def validateProjectYaml(self, project_file):
         error_string = None
         campus_type_locale = _("network_type_heading")
-        project_file_dict = yaml.load(project_file)
+        project_file_dict = yaml.safe_load(project_file)
         try:
             campus_type_name = project_file_dict["name"]
             if not campus_type_name or campus_type_name.isspace():
@@ -375,7 +368,7 @@ class NetworkTypeParser:
         try:
             with transaction.atomic():
                 logger.info(project_file)
-                project_file_dict = yaml.load(project_file)
+                project_file_dict = yaml.safe_load(project_file)
                 logger.info(project_file_dict)
                 campus_type = CampusType(
                     name=project_file_dict["name"].strip(),

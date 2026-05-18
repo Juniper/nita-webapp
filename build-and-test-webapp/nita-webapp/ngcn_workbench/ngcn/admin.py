@@ -1,25 +1,17 @@
-"""********************************************************
-
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-********************************************************"""
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 from django.contrib import admin
-from ngcn.models import Action
-from ngcn.models import ActionCategory
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
-from ngcn.models import Workbook
-from ngcn.models import Worksheets
+
+from ngcn.models import (
+    Action,
+    ActionCategory,
+    ActionHistory,
+    CampusNetwork,
+    CampusType,
+    Workbook,
+    Worksheets,
+)
 
 # Register your models here.
 admin.site.register(ActionCategory)

@@ -1,11 +1,11 @@
+# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import JsonResponse
 from django.urls import reverse
-
-from ngcn.models import ActionHistory
-from ngcn.models import CampusNetwork
-from ngcn.models import CampusType
+from ngcn.models import ActionHistory, CampusNetwork, CampusType
 
 
 @pytest.mark.django_db

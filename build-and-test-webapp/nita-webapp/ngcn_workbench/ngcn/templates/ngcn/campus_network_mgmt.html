@@ -1,23 +1,12 @@
 <!DOCTYPE html>
 <!-- htmlhint head-script-disabled:false, id-class-value:false -->
-<!-- ********************************************************
-
-Project: nita-webapp
-
-Copyright (c) Juniper Networks, Inc., 2021. All rights reserved.
-
-Notice and Disclaimer: This code is licensed to you under the Apache 2.0 License (the "License"). You may not use this code except in compliance with the License. This code is not an official Juniper product. You can obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.html
-
-SPDX-License-Identifier: Apache-2.0
-
-Third-Party Code: This code may depend on other components under separate copyright notice and license terms. Your use of the source code for those components is subject to the terms and conditions of the respective license as noted in the Third-Party source code file.
-
-******************************************************** -->
+<!-- Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <html>
 <head>
-    <title>{% trans "network_heading" %} Management</title>
-    {% load staticfiles %}
+    {% load static %}
     {% load i18n %}
+    <title>{% trans "network_heading" %} Management</title>
     <script src="{% static 'global/js/campus_network_mgmt.js' %}"></script>
     <script src="{% static 'components/data-table/js/jquery.dataTables.js' %}"></script>
 
@@ -56,10 +45,18 @@ Third-Party Code: This code may depend on other components under separate copyri
                     </button>
                 </div>
                 <div style="padding-top:5px">
-                    {% load django_tables2 %}
-                      {% if table  %}
-                    {% render_table table %}
-                    {% endif %}
+                    <table id="CampusNetwork" class="table table-condensed table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Id</th>
+                                <th>{% trans "network_heading" %} Name</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Network Type</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
              </div>
              <div id="campus_network_adjacent_pane" class="col-md-3"></div>
