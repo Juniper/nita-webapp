@@ -37,7 +37,7 @@ jQuery(document).ready(function($) {
     });
 
     setTimeout(function() {
-        if ( campus_network_table != null && typeof campus_network_table != undefined ) {
+        if (typeof campus_network_table !== 'undefined' && campus_network_table != null) {
             campus_network_table.destroy();
         }
         campus_network_table = $('#CampusNetwork').DataTable({
@@ -61,10 +61,10 @@ jQuery(document).ready(function($) {
             "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
         });
 
-        if ( action_table != null && typeof action_table != undefined ) {
-            action_table.destroy();
+        if (typeof campus_type_actions_table !== 'undefined' && campus_type_actions_table != null) {
+            campus_type_actions_table.destroy();
         }
-        action_table = $('#Action').DataTable({
+        campus_type_actions_table = $('#Action').DataTable({
             "paging":   true,
             "ordering": false,
             "info":     false,
@@ -86,12 +86,6 @@ jQuery(document).ready(function($) {
 
         $('#main_pane').css("display","unset");
     }, 100);
-});
-</script>
-<style>
-    .module {
-                margin-bottom: 0px !important;
-            }
 
     fieldset.scheduler-border {
     border: 1px groove #ddd !important;
@@ -103,7 +97,6 @@ jQuery(document).ready(function($) {
 
     legend.scheduler-border {
         text-align: left !important;
-        width:auto;
         padding:0 10px;
         border-bottom:none;
         margin-bottom: 5px;

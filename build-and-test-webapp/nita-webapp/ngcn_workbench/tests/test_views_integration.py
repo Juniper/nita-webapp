@@ -102,6 +102,16 @@ def test_campus_type_view_renders_values_for_a_different_selection(client):
 
 
 @pytest.mark.django_db
+def test_campus_type_view_uses_shared_actions_table_variable(client, campus_type):
+    response = client.get(reverse("campustype", kwargs={"campus_type_id": campus_type.id}))
+
+    assert response.status_code == 200
+    html = response.content.decode("utf-8")
+    assert "campus_type_actions_table" in html
+    assert "action_table" not in html
+
+
+@pytest.mark.django_db
 def test_trigger_action_returns_failure_when_no_workbook(
     auth_client, action, campus_network
 ):
