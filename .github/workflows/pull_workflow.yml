@@ -33,6 +33,9 @@ jobs:
           # htmlhint cannot parse; results are meaningless false positives.
           JAVASCRIPT_ES_CONFIG_FILE: eslint.config.mjs
           FILTER_REGEX_EXCLUDE: .*(components/|jquery-|jquery\.event|bootstrap\.min|ui_1\.11\.4|\.min\.js|\.min\.css).*
+          # Disable PR summary comments; the workflow token is read-only and
+          # the comment API call fails with 403 in this repository.
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   security:
