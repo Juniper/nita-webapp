@@ -13,21 +13,31 @@
 <script>
 var CAMPUS_TYPE_ID = {{ campus_type_id }};
 
+function renderCampusTypeSummary(data) {
+    $('#ct-name').text(data.name || '');
+    $('#ct-zip').text(data.app_zip_name || '');
+    $('#ct-description').text(data.description || '');
+}
+
 jQuery(document).ready(function($) {
     $('#main_pane').css("display","none");
+
+    renderCampusTypeSummary({
+        name: "{{ campus_type.name|escapejs }}",
+        app_zip_name: "{{ campus_type.app_zip_name|escapejs }}",
+        description: "{{ campus_type.description|escapejs }}"
+    });
 
     $.ajax({
         type: "GET",
         url: "/api/v1/network-types/" + CAMPUS_TYPE_ID + "/",
         success: function(data) {
-            $('#ct-name').text(data.name);
-            $('#ct-zip').text(data.app_zip_name);
-            $('#ct-description').text(data.description);
+            renderCampusTypeSummary(data);
         }
     });
 
     setTimeout(function() {
-        if ( campus_network_table != null && typeof campus_network_table != undefined ) {
+        if (typeof campus_network_table !== 'undefined' && campus_network_table != null) {
             campus_network_table.destroy();
         }
         campus_network_table = $('#CampusNetwork').DataTable({
@@ -51,10 +61,10 @@ jQuery(document).ready(function($) {
             "aoColumnDefs": [{ "bVisible": false, "aTargets": [0] }]
         });
 
-        if ( action_table != null && typeof action_table != undefined ) {
-            action_table.destroy();
+        if (typeof campus_type_actions_table !== 'undefined' && campus_type_actions_table != null) {
+            campus_type_actions_table.destroy();
         }
-        action_table = $('#Action').DataTable({
+        campus_type_actions_table = $('#Action').DataTable({
             "paging":   true,
             "ordering": false,
             "info":     false,
@@ -93,7 +103,6 @@ jQuery(document).ready(function($) {
 
     legend.scheduler-border {
         text-align: left !important;
-        width:auto;
         padding:0 10px;
         border-bottom:none;
         margin-bottom: 5px;
@@ -110,15 +119,15 @@ jQuery(document).ready(function($) {
                     <table>
                         <tr>
                             <td><label>Name : </label></td>
-                            <td id="ct-name"></td>
+                            <td id="ct-name">{{ campus_type.name }}</td>
                         </tr>
                         <tr>
                             <td><label>Application Zip : </label></td>
-                            <td id="ct-zip"></td>
+                            <td id="ct-zip">{{ campus_type.app_zip_name }}</td>
                         </tr>
                         <tr>
                             <td><label>Description : </label></td>
-                            <td id="ct-description"></td>
+                            <td id="ct-description">{{ campus_type.description }}</td>
                         </tr>
                     </table>
                  </div>

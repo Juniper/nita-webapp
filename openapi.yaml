@@ -69,6 +69,12 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - name: campus_network_id
+        required: false
+        in: query
+        description: Filter by campus network ID.
+        schema:
+          type: integer
       tags:
       - v1
       security:
@@ -139,6 +145,12 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - name: campus_type_id
+        required: false
+        in: query
+        description: Filter by campus type ID.
+        schema:
+          type: integer
       tags:
       - v1
       security:
@@ -190,9 +202,7 @@ paths:
             schema:
               $ref: '#/components/schemas/AuthToken'
         required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
+      security: []
       responses:
         '200':
           content:
@@ -210,6 +220,12 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - name: name
+        required: false
+        in: query
+        description: Filter by network type name.
+        schema:
+          type: string
       tags:
       - v1
       security:
@@ -261,6 +277,54 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/network-types/upload/:
+    post:
+      operationId: v1_network_types_upload_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                app_zip_file:
+                  type: string
+                  format: binary
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                  name:
+                    type: string
+                  id:
+                    type: integer
+                required:
+                - result
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                  reason:
+                    type: string
+                required:
+                - result
+                - reason
+          description: ''
   /api/v1/networks/:
     get:
       operationId: v1_networks_list
@@ -269,6 +333,12 @@ paths:
         required: false
         in: query
         description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: campus_type_id
+        required: false
+        in: query
+        description: Filter by campus type ID.
         schema:
           type: integer
       tags:
@@ -425,8 +495,8 @@ paths:
       - in: path
         name: action_id
         schema:
-          type: string
-          pattern: ^[0-9]+$
+          type: integer
+        description: A unique integer value identifying the action to trigger.
         required: true
       - in: path
         name: id
@@ -436,18 +506,6 @@ paths:
         required: true
       tags:
       - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CampusNetwork'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/CampusNetwork'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/CampusNetwork'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -484,7 +542,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workbook'
+                type: object
+                properties:
+                  status:
+                    type: string
+                  workbook:
+                    type: array
+                    maxItems: 1000
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        data:
+                          oneOf:
+                          - type: object
+                          - type: array
+                            maxItems: 1000
+                          - type: string
+                      required:
+                      - name
+                      - data
+                required:
+                - status
+                - workbook
           description: ''
   /api/v1/networks/{id}/workbook/clear/:
     delete:
@@ -524,9 +605,10 @@ paths:
       responses:
         '200':
           content:
-            application/json:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
               schema:
-                $ref: '#/components/schemas/CampusNetwork'
+                type: string
+                format: binary
           description: ''
   /api/v1/networks/{id}/workbook/save/:
     post:
@@ -594,7 +676,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workbook'
+                type: object
+                properties:
+                  status:
+                    type: string
+                  workbook:
+                    type: array
+                    maxItems: 1000
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        data:
+                          oneOf:
+                          - type: object
+                          - type: array
+                            maxItems: 1000
+                          - type: string
+                      required:
+                      - name
+                      - data
+                required:
+                - status
+                - workbook
           description: ''
 components:
   schemas:

@@ -104,6 +104,15 @@ while ! python build-and-test-webapp/ping_jenkins.py jenkins 8080; do "jenkins o
 echo ""
 echo "##############################################"
 echo ""
+echo "        Configure Jenkins"
+echo ""
+echo "##############################################"
+
+python build-and-test-webapp/configure_jenkins.py jenkins 8080
+
+echo ""
+echo "##############################################"
+echo ""
 echo "        Add webapp jenkins jobs"
 echo ""
 echo "##############################################"
