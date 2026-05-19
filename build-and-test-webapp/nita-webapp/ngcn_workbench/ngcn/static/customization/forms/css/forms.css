@@ -5,3 +5,10 @@ label {
 .aligned label {
 	width: 180px !important
 }
+
+select,
+select.form-control {
+    line-height: 1.5;
+    height: auto;
+    min-height: 34px;
+}
