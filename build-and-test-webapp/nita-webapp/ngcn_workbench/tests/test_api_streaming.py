@@ -11,7 +11,6 @@ from django.utils import timezone
 from ngcn.models import ActionHistory
 from rest_framework.test import APIClient
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 

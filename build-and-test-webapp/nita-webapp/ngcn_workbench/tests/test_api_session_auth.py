@@ -11,7 +11,6 @@ GET  /api/v1/auth/me/
 import pytest
 from rest_framework.test import APIClient
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 

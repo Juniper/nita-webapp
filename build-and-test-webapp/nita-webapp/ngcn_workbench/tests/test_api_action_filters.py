@@ -8,7 +8,6 @@ from django.utils import timezone
 from ngcn.models import Action, ActionHistory, ActionProperty
 from rest_framework.test import APIClient
 
-
 # ── Shared fixture ─────────────────────────────────────────────────────────────
 
 
