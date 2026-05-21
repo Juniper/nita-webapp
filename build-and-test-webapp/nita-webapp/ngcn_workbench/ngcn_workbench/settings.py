@@ -202,11 +202,23 @@ LOGGING = {
     },
     "loggers": {
         # Application logger: file + console
-        "ngcn": {"handlers": ["default", "console"], "level": "DEBUG", "propagate": False},
+        "ngcn": {
+            "handlers": ["default", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         # Django core: console only (errors + warnings surface in kubectl logs)
         "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         # HTTP 500/400 errors — always log at ERROR so they appear in kubectl logs
-        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
-        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
 }

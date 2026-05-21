@@ -1,0 +1,3 @@
+# eslint.config.js uses ESM import syntax; super-linter runs ESLint in
+# CommonJS mode and cannot parse it. Exclude it from linting.
+frontend/eslint.config.js

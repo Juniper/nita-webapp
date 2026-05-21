@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Tests for the session auth endpoints:
-  GET  /api/v1/auth/csrf/
-  POST /api/v1/auth/login/
-  POST /api/v1/auth/logout/
-  GET  /api/v1/auth/me/
+GET  /api/v1/auth/csrf/
+POST /api/v1/auth/login/
+POST /api/v1/auth/logout/
+GET  /api/v1/auth/me/
 """
 
 import pytest

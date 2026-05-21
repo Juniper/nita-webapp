@@ -62,6 +62,7 @@ class SSERenderer(BaseRenderer):
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
 
+
 from ngcn.models import (
     Action,
     ActionCategory,
@@ -94,7 +95,9 @@ logger = logging.getLogger(__name__)
 
 
 @extend_schema(
-    responses={200: {"type": "object", "properties": {"csrfToken": {"type": "string"}}}},
+    responses={
+        200: {"type": "object", "properties": {"csrfToken": {"type": "string"}}}
+    },
     auth=[],
     summary="Return the CSRF token (no authentication required)",
 )
@@ -106,20 +109,25 @@ def csrf_view(request):
 
 
 @extend_schema(
-    request={"application/json": {
-        "type": "object",
-        "properties": {
-            "username": {"type": "string"},
-            "password": {"type": "string"},
-        },
-        "required": ["username", "password"],
-    }},
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "username": {"type": "string"},
+                "password": {"type": "string"},
+            },
+            "required": ["username", "password"],
+        }
+    },
     responses={
-        200: {"type": "object", "properties": {
-            "id": {"type": "integer"},
-            "username": {"type": "string"},
-            "is_superuser": {"type": "boolean"},
-        }},
+        200: {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "username": {"type": "string"},
+                "is_superuser": {"type": "boolean"},
+            },
+        },
         400: OpenApiResponse(description="Invalid credentials"),
         403: OpenApiResponse(description="CSRF verification failed"),
     },
@@ -134,9 +142,13 @@ def login_view(request):
     password = request.data.get("password", "")
     user = authenticate(request, username=username, password=password)
     if user is None:
-        return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST
+        )
     auth_login(request, user)
-    return Response({"id": user.pk, "username": user.username, "is_superuser": user.is_superuser})
+    return Response(
+        {"id": user.pk, "username": user.username, "is_superuser": user.is_superuser}
+    )
 
 
 @extend_schema(
@@ -152,11 +164,16 @@ def logout_view(request):
 
 
 @extend_schema(
-    responses={200: {"type": "object", "properties": {
-        "id": {"type": "integer"},
-        "username": {"type": "string"},
-        "is_superuser": {"type": "boolean"},
-    }}},
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "username": {"type": "string"},
+                "is_superuser": {"type": "boolean"},
+            },
+        }
+    },
     summary="Return the currently authenticated user's info",
 )
 @api_view(["GET"])
@@ -164,7 +181,9 @@ def logout_view(request):
 def me_view(request):
     """Return the authenticated user's id, username, and is_superuser."""
     user = request.user
-    return Response({"id": user.pk, "username": user.username, "is_superuser": user.is_superuser})
+    return Response(
+        {"id": user.pk, "username": user.username, "is_superuser": user.is_superuser}
+    )
 
 
 # ── End session auth views ─────────────────────────────────────────────────────
@@ -649,9 +668,7 @@ def _jenkins_progressive_text_generator(job_url, build_no):
     credentials = base64.b64encode(
         f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
     ).decode()
-    base_url = (
-        f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
-    )
+    base_url = f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
     offset = 0
     max_polls = 1800  # 30 minutes at 1-second intervals
 
