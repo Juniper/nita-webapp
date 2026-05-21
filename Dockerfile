@@ -1,6 +1,15 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# ── Stage 1: Build React SPA ──────────────────────────────────────────────────
+FROM node:22-slim AS frontend-builder
+
+WORKDIR /build
+COPY frontend/ .
+RUN npm ci
+RUN npm run build
+
+# ── Stage 2: Django application image ────────────────────────────────────────
 FROM python:3.12-slim-bookworm
 
 ENV WEBAPP_USER=vagrant
@@ -9,6 +18,9 @@ ENV JENKINS_USER=admin
 ENV JENKINS_PASS=admin
 
 WORKDIR /app
+
+# Copy compiled React SPA from builder stage
+COPY --from=frontend-builder /build/dist /app/frontend/dist
 
 RUN apt-get update -y
 RUN apt-get install gcc default-mysql-client default-libmysqlclient-dev pkg-config wget unzip -y

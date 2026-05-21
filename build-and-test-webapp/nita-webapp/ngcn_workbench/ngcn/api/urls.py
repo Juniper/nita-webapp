@@ -15,8 +15,20 @@ URL prefix                 ViewSet
 ``action-categories/``     :class:`~ngcn.api.views.ActionCategoryViewSet`
 ``action-history/``        :class:`~ngcn.api.views.ActionHistoryViewSet`
 =========================  =====================================
+
+Session auth (no authentication required for csrf/login):
+
+=========================  ==========================================
+URL                        View
+=========================  ==========================================
+``auth/csrf/``             :func:`~ngcn.api.views.csrf_view`
+``auth/login/``            :func:`~ngcn.api.views.login_view`
+``auth/logout/``           :func:`~ngcn.api.views.logout_view`
+``auth/me/``               :func:`~ngcn.api.views.me_view`
+=========================  ==========================================
 """
 
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
@@ -25,6 +37,10 @@ from .views import (
     ActionViewSet,
     CampusNetworkViewSet,
     CampusTypeViewSet,
+    csrf_view,
+    login_view,
+    logout_view,
+    me_view,
 )
 
 router = DefaultRouter()
@@ -34,4 +50,9 @@ router.register(r"actions", ActionViewSet, basename="action")
 router.register(r"action-categories", ActionCategoryViewSet, basename="actioncategory")
 router.register(r"action-history", ActionHistoryViewSet, basename="actionhistory")
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path("auth/csrf/", csrf_view, name="auth-csrf"),
+    path("auth/login/", login_view, name="auth-login"),
+    path("auth/logout/", logout_view, name="auth-logout"),
+    path("auth/me/", me_view, name="auth-me"),
+]

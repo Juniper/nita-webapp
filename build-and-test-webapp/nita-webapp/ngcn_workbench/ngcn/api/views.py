@@ -24,11 +24,19 @@ Endpoints
     ``?campus_network_id=``, with a Jenkins console proxy action.
 """
 
+import base64
 import json
 import logging
+import time
 import traceback
+import urllib.error
+import urllib.request
 
-from django.http import FileResponse
+from django.contrib.auth import authenticate
+from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout as auth_logout
+from django.http import FileResponse, StreamingHttpResponse
+from django.middleware.csrf import get_token
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -38,9 +46,21 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
+
+
+class SSERenderer(BaseRenderer):
+    """Passthrough renderer for Server-Sent Events (text/event-stream)."""
+
+    media_type = "text/event-stream"
+    format = "event-stream"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 from ngcn.models import (
     Action,
@@ -69,6 +89,85 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Session auth views ─────────────────────────────────────────────────────────
+
+
+@extend_schema(
+    responses={200: {"type": "object", "properties": {"csrfToken": {"type": "string"}}}},
+    auth=[],
+    summary="Return the CSRF token (no authentication required)",
+)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def csrf_view(request):
+    """Return the current CSRF token as JSON. Also sets the csrftoken cookie."""
+    return Response({"csrfToken": get_token(request)})
+
+
+@extend_schema(
+    request={"application/json": {
+        "type": "object",
+        "properties": {
+            "username": {"type": "string"},
+            "password": {"type": "string"},
+        },
+        "required": ["username", "password"],
+    }},
+    responses={
+        200: {"type": "object", "properties": {
+            "id": {"type": "integer"},
+            "username": {"type": "string"},
+            "is_superuser": {"type": "boolean"},
+        }},
+        400: OpenApiResponse(description="Invalid credentials"),
+        403: OpenApiResponse(description="CSRF verification failed"),
+    },
+    auth=[],
+    summary="Log in with username and password, open a Django session",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def login_view(request):
+    """Authenticate and open a Django session. Requires a valid X-CSRFToken header."""
+    username = request.data.get("username", "")
+    password = request.data.get("password", "")
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+    auth_login(request, user)
+    return Response({"id": user.pk, "username": user.username, "is_superuser": user.is_superuser})
+
+
+@extend_schema(
+    responses={204: OpenApiResponse(description="Session destroyed. No content.")},
+    summary="Log out and destroy the current Django session",
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """Destroy the current session. Authentication required."""
+    auth_logout(request)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    responses={200: {"type": "object", "properties": {
+        "id": {"type": "integer"},
+        "username": {"type": "string"},
+        "is_superuser": {"type": "boolean"},
+    }}},
+    summary="Return the currently authenticated user's info",
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me_view(request):
+    """Return the authenticated user's id, username, and is_superuser."""
+    user = request.user
+    return Response({"id": user.pk, "username": user.username, "is_superuser": user.is_superuser})
+
+
+# ── End session auth views ─────────────────────────────────────────────────────
 
 WORKBOOK_ITEM_SCHEMA = {
     "type": "object",
@@ -502,15 +601,22 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 location="query",
                 required=False,
                 description="Filter by campus type ID.",
-            )
+            ),
+            OpenApiParameter(
+                "action_category_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by action category ID.",
+            ),
         ]
     )
 )
 class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for Action objects.
 
-    Supports ``?campus_type_id=<id>`` query parameter to filter actions
-    that belong to a specific network type.
+    Supports ``?campus_type_id=<id>`` and ``?action_category_id=<id>`` query
+    parameters (combinable) to filter actions by network type and/or category.
     """
 
     queryset = Action.objects.all()
@@ -521,7 +627,62 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         campus_type_id = self.request.query_params.get("campus_type_id")
         if campus_type_id:
             qs = qs.filter(campus_type_id=campus_type_id)
+        action_category_id = self.request.query_params.get("action_category_id")
+        if action_category_id:
+            qs = qs.filter(action_category_id=action_category_id)
         return qs
+
+
+def _jenkins_progressive_text_generator(job_url, build_no):
+    """Generator that polls Jenkins progressive text API and yields SSE events.
+
+    Yields ``data: <line>\n\n`` for each output line, then one of:
+    - ``event: done\ndata: \n\n``    — build finished normally
+    - ``event: error\ndata: <msg>\n\n`` — Jenkins unreachable / exception
+    - ``event: timeout\ndata: \n\n``  — 30-minute cap reached
+    """
+    import re
+
+    from ngcn.views import JENKINS_SERVER_PASS, JENKINS_SERVER_URL, JENKINS_SERVER_USER
+
+    ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+    credentials = base64.b64encode(
+        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
+    ).decode()
+    base_url = (
+        f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
+    )
+    offset = 0
+    max_polls = 1800  # 30 minutes at 1-second intervals
+
+    for _ in range(max_polls):
+        try:
+            url = f"{base_url}?start={offset}"
+            req = urllib.request.Request(
+                url, headers={"Authorization": f"Basic {credentials}"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+                chunk = resp.read().decode("utf-8", errors="replace")
+                more_data = resp.headers.get("X-More-Data", "false").lower() == "true"
+                new_offset = resp.headers.get("X-Text-Size")
+                if new_offset:
+                    offset = int(new_offset)
+        except Exception as exc:
+            yield f"event: error\ndata: {exc}\n\n"
+            return
+
+        cleaned = ansi_escape.sub("", chunk)
+        for line in cleaned.splitlines():
+            if line:
+                yield f"data: {line}\n\n"
+
+        if not more_data:
+            yield "event: done\ndata: \n\n"
+            return
+
+        time.sleep(1)
+
+    yield "event: timeout\ndata: \n\n"
 
 
 @extend_schema_view(
@@ -533,26 +694,42 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                 location="query",
                 required=False,
                 description="Filter by campus network ID.",
-            )
+            ),
+            OpenApiParameter(
+                "action_category_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by action category ID.",
+            ),
         ]
     )
 )
 class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
-    Supports ``?campus_network_id=<id>`` query parameter to filter history
-    for a specific network.  The ``/console/`` action proxies the Jenkins
-    console log for a given history entry.
+    Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
+    parameters (combinable) to filter history by network and/or category.
+    The ``/console/`` action proxies the Jenkins console log for a given entry.
     """
 
     queryset = ActionHistory.objects.all().order_by("-timestamp")
     serializer_class = ActionHistorySerializer
+
+    def get_renderers(self):
+        """Use SSERenderer for the stream action; default renderers otherwise."""
+        if getattr(self, "action", None) == "stream":
+            return [SSERenderer()]
+        return super().get_renderers()
 
     def get_queryset(self):
         qs = super().get_queryset()
         campus_network_id = self.request.query_params.get("campus_network_id")
         if campus_network_id:
             qs = qs.filter(campus_network_id=campus_network_id)
+        action_category_id = self.request.query_params.get("action_category_id")
+        if action_category_id:
+            qs = qs.filter(category_id=action_category_id)
         return qs
 
     @extend_schema(
@@ -580,3 +757,29 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(
                 {"console": "Build is queued or console output is not yet available."}
             )
+
+    @extend_schema(
+        responses={
+            (200, "text/event-stream"): OpenApiResponse(
+                response=OpenApiTypes.STR,
+                description=(
+                    "SSE stream of Jenkins console output. "
+                    "Events: data (log line), done (build finished), "
+                    "error (Jenkins unreachable), timeout (30-min cap reached)."
+                ),
+            )
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="stream")
+    def stream(self, request, pk=None):
+        """Stream Jenkins console output as Server-Sent Events."""
+        history = self.get_object()
+        job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
+        build_no = history.jenkins_job_build_no
+        response = StreamingHttpResponse(
+            _jenkins_progressive_text_generator(job_url, build_no),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response

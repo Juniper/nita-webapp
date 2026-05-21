@@ -1,0 +1,16 @@
+# Don't send node_modules or pre-built dist into the build context.
+# The frontend-builder stage runs npm ci + npm run build itself.
+frontend/node_modules
+frontend/dist
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+
+# Dev artefacts
+.git
+.venv
+venv
+*.egg-info

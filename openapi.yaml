@@ -1,23 +1,12 @@
-# Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 openapi: 3.0.3
 info:
   title: NITA Webapp API
   version: 1.0.0
-servers:
-  - url: https://{host}
-    description: NITA Webapp (HTTPS)
-    variables:
-      host:
-        default: localhost
-security:
-  - cookieAuth: []
-  - tokenAuth: []
 paths:
   /api/v1/action-categories/:
     get:
       operationId: v1_action_categories_list
+      description: Read-only list and retrieve for ActionCategory objects.
       parameters:
       - name: page
         required: false
@@ -40,6 +29,7 @@ paths:
   /api/v1/action-categories/{id}/:
     get:
       operationId: v1_action_categories_retrieve
+      description: Read-only list and retrieve for ActionCategory objects.
       parameters:
       - in: path
         name: id
@@ -62,17 +52,27 @@ paths:
   /api/v1/action-history/:
     get:
       operationId: v1_action_history_list
+      description: |-
+        Read-only list and retrieve for ActionHistory objects, ordered newest-first.
+
+        Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
+        parameters (combinable) to filter history by network and/or category.
+        The ``/console/`` action proxies the Jenkins console log for a given entry.
       parameters:
+      - in: query
+        name: action_category_id
+        schema:
+          type: integer
+        description: Filter by action category ID.
+      - in: query
+        name: campus_network_id
+        schema:
+          type: integer
+        description: Filter by campus network ID.
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: campus_network_id
-        required: false
-        in: query
-        description: Filter by campus network ID.
         schema:
           type: integer
       tags:
@@ -90,6 +90,12 @@ paths:
   /api/v1/action-history/{id}/:
     get:
       operationId: v1_action_history_retrieve
+      description: |-
+        Read-only list and retrieve for ActionHistory objects, ordered newest-first.
+
+        Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
+        parameters (combinable) to filter history by network and/or category.
+        The ``/console/`` action proxies the Jenkins console log for a given entry.
       parameters:
       - in: path
         name: id
@@ -135,20 +141,54 @@ paths:
                   console:
                     type: string
           description: ''
+  /api/v1/action-history/{id}/stream/:
+    get:
+      operationId: v1_action_history_stream_retrieve
+      description: Stream Jenkins console output as Server-Sent Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this action history.
+        required: true
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: 'SSE stream of Jenkins console output. Events: data (log line),
+            done (build finished), error (Jenkins unreachable), timeout (30-min cap
+            reached).'
   /api/v1/actions/:
     get:
       operationId: v1_actions_list
+      description: |-
+        Read-only list and retrieve for Action objects.
+
+        Supports ``?campus_type_id=<id>`` and ``?action_category_id=<id>`` query
+        parameters (combinable) to filter actions by network type and/or category.
       parameters:
+      - in: query
+        name: action_category_id
+        schema:
+          type: integer
+        description: Filter by action category ID.
+      - in: query
+        name: campus_type_id
+        schema:
+          type: integer
+        description: Filter by campus type ID.
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: campus_type_id
-        required: false
-        in: query
-        description: Filter by campus type ID.
         schema:
           type: integer
       tags:
@@ -166,6 +206,11 @@ paths:
   /api/v1/actions/{id}/:
     get:
       operationId: v1_actions_retrieve
+      description: |-
+        Read-only list and retrieve for Action objects.
+
+        Supports ``?campus_type_id=<id>`` and ``?action_category_id=<id>`` query
+        parameters (combinable) to filter actions by network type and/or category.
       parameters:
       - in: path
         name: id
@@ -184,6 +229,100 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Action'
+          description: ''
+  /api/v1/auth/csrf/:
+    get:
+      operationId: v1_auth_csrf_retrieve
+      description: Return the current CSRF token as JSON. Also sets the csrftoken
+        cookie.
+      summary: Return the CSRF token (no authentication required)
+      tags:
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      description: Authenticate and open a Django session. Requires a valid X-CSRFToken
+        header.
+      summary: Log in with username and password, open a Django session
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+              - username
+              - password
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  is_superuser:
+                    type: boolean
+          description: ''
+        '400':
+          description: Invalid credentials
+        '403':
+          description: CSRF verification failed
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      description: Destroy the current session. Authentication required.
+      summary: Log out and destroy the current Django session
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Session destroyed. No content.
+  /api/v1/auth/me/:
+    get:
+      operationId: v1_auth_me_retrieve
+      description: Return the authenticated user's id, username, and is_superuser.
+      summary: Return the currently authenticated user's info
+      tags:
+      - v1
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  is_superuser:
+                    type: boolean
           description: ''
   /api/v1/auth/token/:
     post:
@@ -213,19 +352,20 @@ paths:
   /api/v1/network-types/:
     get:
       operationId: v1_network_types_list
+      description: Network types. Create via POST /upload/ (zip); delete via DELETE
+        /{id}/.
       parameters:
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by network type name.
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
         schema:
           type: integer
-      - name: name
-        required: false
-        in: query
-        description: Filter by network type name.
-        schema:
-          type: string
       tags:
       - v1
       security:
@@ -241,6 +381,8 @@ paths:
   /api/v1/network-types/{id}/:
     get:
       operationId: v1_network_types_retrieve
+      description: Network types. Create via POST /upload/ (zip); delete via DELETE
+        /{id}/.
       parameters:
       - in: path
         name: id
@@ -262,6 +404,8 @@ paths:
           description: ''
     delete:
       operationId: v1_network_types_destroy
+      description: Network types. Create via POST /upload/ (zip); delete via DELETE
+        /{id}/.
       parameters:
       - in: path
         name: id
@@ -280,6 +424,7 @@ paths:
   /api/v1/network-types/upload/:
     post:
       operationId: v1_network_types_upload_create
+      description: Upload a network-type zip file to register a new CampusType.
       tags:
       - v1
       requestBody:
@@ -291,7 +436,6 @@ paths:
                 app_zip_file:
                   type: string
                   format: binary
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -328,17 +472,37 @@ paths:
   /api/v1/networks/:
     get:
       operationId: v1_networks_list
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       parameters:
+      - in: query
+        name: campus_type_id
+        schema:
+          type: integer
+        description: Filter by campus type ID.
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: campus_type_id
-        required: false
-        in: query
-        description: Filter by campus type ID.
         schema:
           type: integer
       tags:
@@ -355,6 +519,27 @@ paths:
           description: ''
     post:
       operationId: v1_networks_create
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       tags:
       - v1
       requestBody:
@@ -382,6 +567,27 @@ paths:
   /api/v1/networks/{id}/:
     get:
       operationId: v1_networks_retrieve
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       parameters:
       - in: path
         name: id
@@ -403,6 +609,27 @@ paths:
           description: ''
     put:
       operationId: v1_networks_update
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       parameters:
       - in: path
         name: id
@@ -436,6 +663,27 @@ paths:
           description: ''
     patch:
       operationId: v1_networks_partial_update
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       parameters:
       - in: path
         name: id
@@ -468,6 +716,27 @@ paths:
           description: ''
     delete:
       operationId: v1_networks_destroy
+      description: |-
+        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+
+        Standard CRUD
+            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
+            ``POST /api/v1/networks/``               — create
+            ``GET /api/v1/networks/{id}/``           — retrieve
+            ``PUT/PATCH /api/v1/networks/{id}/``     — update
+            ``DELETE /api/v1/networks/{id}/``        — destroy
+
+        Workbook actions
+            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
+            ``GET    …/{id}/workbook/``          — retrieve current grid data
+            ``POST   …/{id}/workbook/save/``     — save edited grid data
+            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
+            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
+
+        Trigger
+            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
+            returns ``202 Accepted`` with ``action_history_id`` immediately.
+            Poll ``GET /api/v1/action-history/{id}/`` for status.
       parameters:
       - in: path
         name: id
@@ -609,7 +878,7 @@ paths:
               schema:
                 type: string
                 format: binary
-          description: ''
+          description: Excel workbook
   /api/v1/networks/{id}/workbook/save/:
     post:
       operationId: v1_networks_workbook_save_create
@@ -631,7 +900,6 @@ paths:
               properties:
                 data:
                   type: array
-                  maxItems: 1000
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -705,6 +973,8 @@ components:
   schemas:
     Action:
       type: object
+      description: Serializer for Action.  Nests ActionProperty and ActionCategory
+        inline.
       properties:
         id:
           type: integer
@@ -735,6 +1005,7 @@ components:
       - jenkins_url
     ActionCategory:
       type: object
+      description: Serializer for ActionCategory (build / test / deploy labels).
       properties:
         id:
           type: integer
@@ -747,6 +1018,11 @@ components:
       - id
     ActionHistory:
       type: object
+      description: |-
+        Serializer for ActionHistory.
+
+        Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
+        string fields so consumers can display context without extra look-ups.
       properties:
         id:
           type: integer
@@ -788,6 +1064,7 @@ components:
       - timestamp
     ActionProperty:
       type: object
+      description: Serializer for ActionProperty (shell command + workspace configuration).
       properties:
         id:
           type: integer
@@ -825,6 +1102,7 @@ components:
       - username
     CampusNetwork:
       type: object
+      description: Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
       properties:
         id:
           type: integer
@@ -859,19 +1137,19 @@ components:
       - status
     CampusType:
       type: object
+      description: Serializer for CampusType.  Includes nested roles and resources
+        lists.
       properties:
         id:
           type: integer
           readOnly: true
         roles:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/Role'
           readOnly: true
         resources:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/Resource'
           readOnly: true
@@ -913,7 +1191,6 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/ActionCategory'
     PaginatedActionHistoryList:
@@ -937,7 +1214,6 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/ActionHistory'
     PaginatedActionList:
@@ -961,7 +1237,6 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/Action'
     PaginatedCampusNetworkList:
@@ -985,7 +1260,6 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/CampusNetwork'
     PaginatedCampusTypeList:
@@ -1009,11 +1283,11 @@ components:
           example: http://api.example.org/accounts/?page=2
         results:
           type: array
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/CampusType'
     PatchedCampusNetwork:
       type: object
+      description: Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
       properties:
         id:
           type: integer
@@ -1040,6 +1314,7 @@ components:
           title: Network Type
     Resource:
       type: object
+      description: Serializer for Resource (resource allocated to a network type).
       properties:
         id:
           type: integer
@@ -1052,6 +1327,7 @@ components:
       - name
     Role:
       type: object
+      description: Serializer for Role (Ansible role assigned to a network type).
       properties:
         id:
           type: integer
@@ -1060,49 +1336,6 @@ components:
           type: string
           maxLength: 255
       required:
-      - id
-      - name
-    Workbook:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-        campus_network_id:
-          type: integer
-          title: Network
-        sheets:
-          type: array
-          maxItems: 1000
-          items:
-            $ref: '#/components/schemas/Worksheets'
-          readOnly: true
-      required:
-      - campus_network_id
-      - id
-      - name
-      - sheets
-    Worksheets:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-        data:
-          oneOf:
-          - type: object
-          - type: array
-            maxItems: 1000
-          - type: string
-          readOnly: true
-      required:
-      - data
       - id
       - name
   securitySchemes:

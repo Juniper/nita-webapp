@@ -138,6 +138,13 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
 ]
 
+# WhiteNoise serves the compiled React SPA assets (JS/CSS) at their root-relative
+# paths (e.g. /assets/index-xxx.js) without going through collectstatic.
+WHITENOISE_ROOT = os.environ.get(
+    "FRONTEND_DIST",
+    os.path.join(BASE_DIR, "../../../frontend/dist"),
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
