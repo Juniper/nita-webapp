@@ -1044,6 +1044,9 @@ components:
           maxLength: 255
         jenkins_job_build_no:
           type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           title: Jenkins Job Id
         action_id:
           type: integer
