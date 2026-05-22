@@ -9,15 +9,20 @@
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
-let csrfTokenCache: string | null = null
+function readCsrfCookie(): string {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
 
 async function getCsrfToken(): Promise<string> {
-  if (csrfTokenCache) return csrfTokenCache
+  // Always read from the cookie — never cache.  Django rotates the CSRF secret
+  // on login(), so a cached value from before login will mismatch the cookie.
+  const token = readCsrfCookie()
+  if (token) return token
+  // Cookie not set yet: call the CSRF endpoint so Django sets it, then re-read.
   const res = await fetch('/api/v1/auth/csrf/', { credentials: 'include' })
   if (!res.ok) throw new Error(`Failed to fetch CSRF token: ${res.status}`)
-  const data = await res.json()
-  csrfTokenCache = data.csrfToken as string
-  return csrfTokenCache
+  return readCsrfCookie()
 }
 
 export async function apiFetch(
@@ -41,7 +46,6 @@ export async function apiFetch(
   })
 }
 
-/** Call after logout to force a fresh CSRF token next time. */
-export function clearCsrfCache(): void {
-  csrfTokenCache = null
-}
+/** No-op — kept for API compatibility. Cache was removed in favour of always
+ *  reading from document.cookie so stale tokens after login are not possible. */
+export function clearCsrfCache(): void {}

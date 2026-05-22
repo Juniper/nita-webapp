@@ -728,6 +728,11 @@ def _jenkins_progressive_text_generator(job_url, build_no):
     base_url = f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
     offset = 0
     max_polls = 1800  # 30 minutes at 1-second intervals
+    # How many consecutive 404s to tolerate before giving up.
+    # Jenkins keeps the build in queue for a few seconds before the executor
+    # picks it up; during that window progressiveText returns 404.
+    max_queued_polls = 60
+    queued_polls = 0
 
     for _ in range(max_polls):
         try:
@@ -739,6 +744,15 @@ def _jenkins_progressive_text_generator(job_url, build_no):
                 new_offset = resp.headers.get("X-Text-Size")
                 if new_offset:
                     offset = int(new_offset)
+            queued_polls = 0  # reset once build is reachable
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and queued_polls < max_queued_polls:
+                # Build is still queued / executor not yet started — wait and retry.
+                queued_polls += 1
+                time.sleep(1)
+                continue
+            yield f"event: error\ndata: {exc}\n\n"
+            return
         except Exception as exc:
             yield f"event: error\ndata: {exc}\n\n"
             return

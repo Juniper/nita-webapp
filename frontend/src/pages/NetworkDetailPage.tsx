@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
-import { apiFetch } from '../api/client'
+import { apiFetch, clearCsrfCache } from '../api/client'
 interface Action {
   id: number
   action_name: string
@@ -67,7 +67,6 @@ export function NetworkDetailPage() {
   const [consoleLines, setConsoleLines] = useState<string[]>([])
   // Streaming state: 'idle' | 'streaming' | 'done' | 'error' | 'timeout'
   const [streamState, setStreamState] = useState<'idle' | 'streaming' | 'done' | 'error' | 'timeout'>('idle')
-  const [consoleHistoryId, setConsoleHistoryId] = useState<number | null>(null)
   const consoleRef = useRef<HTMLPreElement>(null)
 
   // History tab
@@ -149,44 +148,60 @@ export function NetworkDetailPage() {
   const handleTrigger = (action: Action) => {
     setTriggerLoading(action.id)
     apiFetch(`/api/v1/networks/${id}/trigger/${action.id}/`, { method: 'POST' })
-      .then(r => r.json())
-      .then((d: { action_history_id: number; status: string }) => {
-        const histId = d.action_history_id
-        setConsoleHistoryId(histId)
-        setConsoleLines([])
-        setStreamState('streaming')
-        const es = new EventSource(`/api/v1/action-history/${histId}/stream/`)
-        es.onmessage = (e) => {
-          setConsoleLines(prev => [...prev, e.data])
-        }
-        // Named event listeners for clean termination (per SSE spec)
-        es.addEventListener('done', () => {
-          setStreamState('done')
-          es.close()
-          setLoaded(l => ({ ...l, history: false }))
-        })
-        es.addEventListener('error', (e) => {
+      .then(r => {
+        if (!r.ok) {
+          if (r.status === 403) clearCsrfCache()
+          setConsoleLines([`[error] Trigger failed (HTTP ${r.status})`])
           setStreamState('error')
-          setConsoleLines(prev => [...prev, `[error] ${(e as MessageEvent).data ?? 'stream error'}`])
-          es.close()
-          setLoaded(l => ({ ...l, history: false }))
-        })
-        es.addEventListener('timeout', () => {
-          setStreamState('timeout')
-          setConsoleLines(prev => [...prev, '[timeout] Build stream timed out after 30 minutes.'])
-          es.close()
-          setLoaded(l => ({ ...l, history: false }))
-        })
-        // Fallback: network-level error before stream starts
-        es.onerror = () => {
-          if (es.readyState === EventSource.CLOSED) {
-            setStreamState(s => s === 'streaming' ? 'error' : s)
+          return
+        }
+        return r.json().then((d: { action_history_id: number; status: string }) => {
+          const histId = d.action_history_id
+          if (!histId) {
+            setConsoleLines(['[error] Trigger returned no job ID'])
+            setStreamState('error')
+            return
+          }
+          setConsoleLines([])
+          setStreamState('streaming')
+          const es = new EventSource(`/api/v1/action-history/${histId}/stream/`)
+          es.onmessage = (e) => {
+            setConsoleLines(prev => [...prev, e.data])
+          }
+          // Named event listeners for clean termination (per SSE spec)
+          es.addEventListener('done', () => {
+            setStreamState('done')
             es.close()
             setLoaded(l => ({ ...l, history: false }))
+          })
+          es.addEventListener('error', (e) => {
+            const data = (e as MessageEvent).data
+            if (!data) return  // network-level error — handled by es.onerror
+            setStreamState('error')
+            setConsoleLines(prev => [...prev, `[error] ${data}`])
+            es.close()
+            setLoaded(l => ({ ...l, history: false }))
+          })
+          es.addEventListener('timeout', () => {
+            setStreamState('timeout')
+            setConsoleLines(prev => [...prev, '[timeout] Build stream timed out after 30 minutes.'])
+            es.close()
+            setLoaded(l => ({ ...l, history: false }))
+          })
+          // Fallback: network-level error before stream starts
+          es.onerror = () => {
+            if (es.readyState === EventSource.CLOSED) {
+              setStreamState(s => s === 'streaming' ? 'error' : s)
+              es.close()
+              setLoaded(l => ({ ...l, history: false }))
+            }
           }
-        }
+        })
       })
-      .catch(() => {})
+      .catch(() => {
+        setConsoleLines(['[error] Trigger request failed'])
+        setStreamState('error')
+      })
       .finally(() => setTriggerLoading(null))
   }
 
@@ -333,14 +348,14 @@ export function NetworkDetailPage() {
                 ) : null}
 
                 {/* Console pane */}
-                {consoleHistoryId !== null && (
+                {streamState !== 'idle' && (
                   <div className="mt-6">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-300 text-sm font-medium">
                         Console {streamState === 'streaming' ? '(streaming…)' : streamState === 'timeout' ? '(timed out)' : streamState === 'error' ? '(error)' : '(done)'}
                       </span>
                       <button
-                        onClick={() => { setConsoleHistoryId(null); setConsoleLines([]) }}
+                        onClick={() => { setConsoleLines([]); setStreamState('idle') }}
                         className="text-gray-500 hover:text-white text-xs"
                       >
                         Close
