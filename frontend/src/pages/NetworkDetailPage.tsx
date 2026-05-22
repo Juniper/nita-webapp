@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
-import { WorkbookGrid, WorkbookSheet } from '../components/WorkbookGrid'
+import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
 import { apiFetch } from '../api/client'
 interface Action {
   id: number
