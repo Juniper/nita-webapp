@@ -16,22 +16,12 @@ class ActionCategory(models.Model):
         return self.category_name
 
 
-class Role(models.Model):
-    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
-
-
-class Resource(models.Model):
-    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
-
-
 class CampusType(models.Model):
     name = models.CharField(
         max_length=255, verbose_name=_("network_type_heading") + " Name", unique=True
     )
     description = models.CharField(max_length=255, verbose_name="Description")
     app_zip_name = models.CharField(max_length=255, unique=True)
-    roles = models.ManyToManyField(Role)
-    resources = models.ManyToManyField(Resource)
 
     def __str__(self):
         return self.name

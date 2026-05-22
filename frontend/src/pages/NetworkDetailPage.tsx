@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
+import { WorkbookGrid, WorkbookSheet } from '../components/WorkbookGrid'
 import { apiFetch } from '../api/client'
-
-interface WorkbookSheet { name: string; data: unknown }
 interface Action {
   id: number
   action_name: string
@@ -66,7 +65,8 @@ export function NetworkDetailPage() {
   const [actionsError, setActionsError] = useState<string | null>(null)
   const [triggerLoading, setTriggerLoading] = useState<number | null>(null)
   const [consoleLines, setConsoleLines] = useState<string[]>([])
-  const [streaming, setStreaming] = useState(false)
+  // Streaming state: 'idle' | 'streaming' | 'done' | 'error' | 'timeout'
+  const [streamState, setStreamState] = useState<'idle' | 'streaming' | 'done' | 'error' | 'timeout'>('idle')
   const [consoleHistoryId, setConsoleHistoryId] = useState<number | null>(null)
   const consoleRef = useRef<HTMLPreElement>(null)
 
@@ -154,14 +154,33 @@ export function NetworkDetailPage() {
         const histId = d.action_history_id
         setConsoleHistoryId(histId)
         setConsoleLines([])
-        setStreaming(true)
+        setStreamState('streaming')
         const es = new EventSource(`/api/v1/action-history/${histId}/stream/`)
         es.onmessage = (e) => {
           setConsoleLines(prev => [...prev, e.data])
         }
+        // Named event listeners for clean termination (per SSE spec)
+        es.addEventListener('done', () => {
+          setStreamState('done')
+          es.close()
+          setLoaded(l => ({ ...l, history: false }))
+        })
+        es.addEventListener('error', (e) => {
+          setStreamState('error')
+          setConsoleLines(prev => [...prev, `[error] ${(e as MessageEvent).data ?? 'stream error'}`])
+          es.close()
+          setLoaded(l => ({ ...l, history: false }))
+        })
+        es.addEventListener('timeout', () => {
+          setStreamState('timeout')
+          setConsoleLines(prev => [...prev, '[timeout] Build stream timed out after 30 minutes.'])
+          es.close()
+          setLoaded(l => ({ ...l, history: false }))
+        })
+        // Fallback: network-level error before stream starts
         es.onerror = () => {
           if (es.readyState === EventSource.CLOSED) {
-            setStreaming(false)
+            setStreamState(s => s === 'streaming' ? 'error' : s)
             es.close()
             setLoaded(l => ({ ...l, history: false }))
           }
@@ -264,16 +283,11 @@ export function NetworkDetailPage() {
                 ) : workbook && workbook.length === 0 ? (
                   <p className="text-gray-500">No workbook data. Upload an Excel file to get started.</p>
                 ) : workbook ? (
-                  <div className="space-y-2">
-                    {workbook.map(sheet => (
-                      <div key={sheet.name} className="bg-gray-800 rounded p-3 flex justify-between items-center">
-                        <span className="text-white font-medium">{sheet.name}</span>
-                        <span className="text-gray-400 text-sm">
-                          {Array.isArray(sheet.data) ? `${sheet.data.length} rows` : 'data present'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <WorkbookGrid
+                    sheets={workbook}
+                    networkId={id!}
+                    onSaved={setWorkbook}
+                  />
                 ) : null}
               </div>
             )}
@@ -305,7 +319,7 @@ export function NetworkDetailPage() {
                               <span className="text-white">{action.action_name}</span>
                               <button
                                 onClick={() => handleTrigger(action)}
-                                disabled={triggerLoading === action.id || streaming}
+                                disabled={triggerLoading === action.id || streamState === 'streaming'}
                                 className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
                               >
                                 {triggerLoading === action.id ? 'Running…' : 'Run'}
@@ -323,7 +337,7 @@ export function NetworkDetailPage() {
                   <div className="mt-6">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-300 text-sm font-medium">
-                        Console {streaming ? '(streaming…)' : '(done)'}
+                        Console {streamState === 'streaming' ? '(streaming…)' : streamState === 'timeout' ? '(timed out)' : streamState === 'error' ? '(error)' : '(done)'}
                       </span>
                       <button
                         onClick={() => { setConsoleHistoryId(null); setConsoleLines([]) }}

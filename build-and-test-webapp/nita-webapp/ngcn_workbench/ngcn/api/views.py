@@ -32,6 +32,8 @@ import traceback
 import urllib.error
 import urllib.request
 
+import requests as http_requests
+
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
@@ -364,7 +366,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         request={
             "multipart/form-data": {
                 "type": "object",
-                "properties": {"up_file": {"type": "string", "format": "binary"}},
+                "properties": {"file": {"type": "string", "format": "binary"}},
             }
         },
         responses={200: WORKBOOK_RESPONSE_SCHEMA},
@@ -376,8 +378,11 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         url_path="workbook/upload",
     )
     def upload_workbook(self, request, pk=None):
-        """Upload an Excel workbook to populate configuration data for this network."""
-        up_file = request.FILES.get("up_file")
+        """Upload an Excel workbook to populate configuration data for this network.
+
+        Expects multipart/form-data with field name ``file``.
+        """
+        up_file = request.FILES.get("file")
         if not up_file:
             return Response(
                 {"status": "failure", "message": "No file provided."},
@@ -387,7 +392,15 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             result = parse_workbook(up_file, pk)
             if result != "invalid_host":
                 dm = GridDataManager()
-                sheets = dm.get_sheets_by_campus_network(pk)
+                raw_sheets = dm.get_sheets_by_campus_network(pk)
+                sheets = []
+                for sheet in raw_sheets:
+                    name = sheet.get("name", "")
+                    columns = sheet.get("columns", [])
+                    headers = [col["name"] for col in columns]
+                    raw_rows = sheet.get(name, [])
+                    rows = [list(row.values()) for row in raw_rows]
+                    sheets.append({"name": name, "headers": headers, "rows": rows})
                 return Response({"workbook": sheets, "status": "success"})
             return Response(
                 {
@@ -406,10 +419,23 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     @extend_schema(responses={200: WORKBOOK_RESPONSE_SCHEMA})
     @action(detail=True, methods=["get"], url_path="workbook")
     def get_workbook(self, request, pk=None):
-        """Return the current configuration grid data for this network."""
+        """Return the current configuration grid data for this network.
+
+        Each sheet is returned as ``{"name", "headers", "rows"}`` where
+        ``headers`` is the list of column names and ``rows`` is a list of
+        value arrays (one array per data row).
+        """
         try:
             dm = GridDataManager()
-            sheets = dm.get_sheets_by_campus_network(pk)
+            raw_sheets = dm.get_sheets_by_campus_network(pk)
+            sheets = []
+            for sheet in raw_sheets:
+                name = sheet.get("name", "")
+                columns = sheet.get("columns", [])
+                headers = [col["name"] for col in columns]
+                raw_rows = sheet.get(name, [])
+                rows = [list(row.values()) for row in raw_rows]
+                sheets.append({"name": name, "headers": headers, "rows": rows})
             return Response({"workbook": sheets, "status": "success"})
         except Exception as exc:
             logger.error("Error fetching workbook: %s", exc)
@@ -431,19 +457,28 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"], url_path="workbook/save")
     def save_workbook(self, request, pk=None):
-        """Save updated configuration grid data for this network."""
+        """Save updated configuration grid data for this network.
+
+        Expects a JSON body ``{"data": [{"name": "...", "headers": [...], "rows": [[...]]}]}``.
+        """
         try:
             import collections
 
-            grid_list = json.JSONDecoder(
-                object_pairs_hook=collections.OrderedDict
-            ).decode(request.body.decode("utf-8"))
+            payload = json.loads(request.body.decode("utf-8"))
             dm = GridDataManager()
             sheets = dm.get_sheets_by_campus_network(pk)
-            for grid in grid_list["data"]:
+            for grid in payload["data"]:
+                grid_name = grid["name"]
+                headers = grid.get("headers", [])
+                new_rows = grid.get("rows", [])
+                # Reconstruct rows as ordered dicts (internal storage format)
+                rows_as_dicts = [
+                    collections.OrderedDict(zip(headers, row))
+                    for row in new_rows
+                ]
                 for sheet in sheets:
-                    if sheet["name"] == grid["name"]:
-                        sheet[grid["name"]] = grid[grid["name"]]
+                    if sheet["name"] == grid_name:
+                        sheet[grid_name] = rows_as_dicts
             dm.create_or_update_db(pk, sheets)
             return Response({"status": "success"})
         except Exception as exc:
@@ -525,22 +560,28 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         """
         Trigger a Jenkins action for this network.
 
+        Communicates with Jenkins using unauthenticated plain HTTP on the
+        internal service network (jenkins:8080). No credentials or CSRF crumb
+        are sent. Jenkins must be configured to allow anonymous Job/Build access
+        on the internal port.
+
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
         """
-        from jenkinsapi.jenkins import Jenkins
-        from jenkinsapi.utils.crumb_requester import CrumbRequester
-
         from ngcn.views import (
-            JENKINS_SERVER_PASS,
             JENKINS_SERVER_URL,
-            JENKINS_SERVER_USER,
-            _make_jenkins_server,
             updateCampusNetworkStatusOnDB,
         )
 
         try:
             action_obj = Action.objects.get(pk=action_id)
+        except Action.DoesNotExist:
+            return Response(
+                {"status": "failure", "reason": "Action not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
             campus_network = CampusNetwork.objects.get(pk=pk)
 
             if Workbook.objects.filter(campus_network_id=pk).count() == 0:
@@ -566,22 +607,44 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             else:
                 build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
 
-            server = _make_jenkins_server()
-            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-            crumb = CrumbRequester(
-                baseurl=JENKINS_SERVER_URL,
-                username=JENKINS_SERVER_USER,
-                password=JENKINS_SERVER_PASS,
-            )
-            Jenkins(
-                JENKINS_SERVER_URL,
-                username=JENKINS_SERVER_USER,
-                password=JENKINS_SERVER_PASS,
-                requester=crumb,
-            ).get_job(action_url).invoke(
-                files={"data.json": json.dumps(configuration_data)},
-                build_params={"build_dir": build_dir},
-            )
+            # Get the next build number before triggering (unauthenticated)
+            info_url = f"{JENKINS_SERVER_URL}/job/{action_url}/api/json?tree=nextBuildNumber"
+            try:
+                info_resp = http_requests.get(info_url, timeout=10)
+                info_resp.raise_for_status()
+                current_build_number = info_resp.json()["nextBuildNumber"]
+            except Exception as exc:
+                logger.error("Jenkins unreachable while fetching build number: %s", exc)
+                return Response(
+                    {"error": "Jenkins service unavailable"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            # Trigger the job with unauthenticated POST (no Authorization header, no crumb)
+            trigger_url = f"{JENKINS_SERVER_URL}/job/{action_url}/buildWithParameters"
+            try:
+                trigger_resp = http_requests.post(
+                    trigger_url,
+                    data={"build_dir": build_dir},
+                    files={"data.json": ("data.json", json.dumps(configuration_data), "application/json")},
+                    timeout=30,
+                )
+                if trigger_resp.status_code not in (200, 201, 303):
+                    logger.error(
+                        "Jenkins returned %s for trigger on %s",
+                        trigger_resp.status_code,
+                        action_url,
+                    )
+                    return Response(
+                        {"error": "Jenkins service unavailable"},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
+            except Exception as exc:
+                logger.error("Jenkins unreachable during trigger: %s", exc)
+                return Response(
+                    {"error": "Jenkins service unavailable"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
             history = ActionHistory(
                 action_id=action_obj,
@@ -596,11 +659,6 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             return Response(
                 {"status": "accepted", "action_history_id": history.id},
                 status=status.HTTP_202_ACCEPTED,
-            )
-        except Action.DoesNotExist:
-            return Response(
-                {"status": "failure", "reason": "Action not found."},
-                status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as exc:
             logger.error("Error triggering action: %s", exc)
@@ -655,6 +713,8 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
 def _jenkins_progressive_text_generator(job_url, build_no):
     """Generator that polls Jenkins progressive text API and yields SSE events.
 
+    Uses unauthenticated plain HTTP to the internal Jenkins service.
+
     Yields ``data: <line>\n\n`` for each output line, then one of:
     - ``event: done\ndata: \n\n``    — build finished normally
     - ``event: error\ndata: <msg>\n\n`` — Jenkins unreachable / exception
@@ -662,12 +722,9 @@ def _jenkins_progressive_text_generator(job_url, build_no):
     """
     import re
 
-    from ngcn.views import JENKINS_SERVER_PASS, JENKINS_SERVER_URL, JENKINS_SERVER_USER
+    from ngcn.views import JENKINS_SERVER_URL
 
     ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
-    credentials = base64.b64encode(
-        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
-    ).decode()
     base_url = f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
     offset = 0
     max_polls = 1800  # 30 minutes at 1-second intervals
@@ -675,9 +732,7 @@ def _jenkins_progressive_text_generator(job_url, build_no):
     for _ in range(max_polls):
         try:
             url = f"{base_url}?start={offset}"
-            req = urllib.request.Request(
-                url, headers={"Authorization": f"Basic {credentials}"}
-            )
+            req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
                 chunk = resp.read().decode("utf-8", errors="replace")
                 more_data = resp.headers.get("X-More-Data", "false").lower() == "true"

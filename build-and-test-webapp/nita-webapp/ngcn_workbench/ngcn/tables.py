@@ -145,23 +145,3 @@ class CampusNetworkActionListTable(tables.Table):
         attrs = {"class": "table table-condensed table-bordered", "id": "Action"}
         orderable = False
         exclude = ("campus_type_id", "action_property")
-
-
-class RolesTable(tables.Table):
-    id = tables.Column(verbose_name="Id")
-    name = tables.Column(verbose_name="Roles")
-
-    class Meta:
-        model = CampusNetwork
-        attrs = {"class": "table table-condensed table-bordered", "id": "Roles"}
-        orderable = False
-        exclude = ("id", "status")
-
-
-class ResourcesTable(tables.Table):
-    name = tables.Column(verbose_name="Resources")
-
-    class Meta:
-        model = CampusNetwork
-        attrs = {"class": "table table-condensed table-bordered", "id": "Resources"}
-        orderable = False

@@ -2,23 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
 
-interface Role {
-  id: number
-  name: string
-}
-
-interface Resource {
-  id: number
-  name: string
-}
-
 interface NetworkType {
   id: number
   name: string
   description: string
   app_zip_name: string
-  roles: Role[]
-  resources: Resource[]
 }
 
 interface PaginatedResponse {
@@ -140,8 +128,6 @@ export function NetworkTypesPage() {
                 <th className="pb-2 pr-4 font-medium">Name</th>
                 <th className="pb-2 pr-4 font-medium">Description</th>
                 <th className="pb-2 pr-4 font-medium">Zip File</th>
-                <th className="pb-2 pr-4 font-medium text-center">Roles</th>
-                <th className="pb-2 pr-4 font-medium text-center">Resources</th>
                 <th className="pb-2 font-medium"></th>
               </tr>
             </thead>
@@ -151,8 +137,6 @@ export function NetworkTypesPage() {
                   <td className="py-2.5 pr-4 font-medium">{nt.name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{nt.description || '—'}</td>
                   <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">{nt.app_zip_name}</td>
-                  <td className="py-2.5 pr-4 text-center text-gray-400">{nt.roles.length}</td>
-                  <td className="py-2.5 pr-4 text-center text-gray-400">{nt.resources.length}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
                     {confirmDeleteId === nt.id ? (
                       <span className="inline-flex gap-2">

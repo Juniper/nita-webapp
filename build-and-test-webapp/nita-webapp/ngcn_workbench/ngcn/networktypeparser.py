@@ -345,18 +345,6 @@ class NetworkTypeParser:
                         return error_string
                     output_path = output_path.strip()
 
-            # if not project_file_dict['roles_and_resources']:
-            #   error_string="The roles and resources must not be empty."
-            #   return error_string
-
-            # if not project_file_dict['roles_and_resources']['roles']:
-            #    error_string="The roles must not be empty."
-            #    return error_string
-
-            # if not project_file_dict['roles_and_resources']['resources']:
-            #    error_string="The resources must not be empty."
-            #    return error_string
-
         except Exception:
             error_string = "Invalid project.yaml file"
             return error_string
@@ -376,23 +364,6 @@ class NetworkTypeParser:
                     app_zip_name=app_zip_name_param.strip(),
                 )
                 campus_type.save()
-
-                # for role_name in project_file_dict['roles_and_resources']['roles']:
-                #    try:
-                #        role = Role.objects.get(name=role_name.strip())
-                #    except:
-                #        role= Role(name=role_name.strip())
-                #        role.save()
-                #
-                # campus_type.roles.add(role)
-
-                # for resource_name in project_file_dict['roles_and_resources']['resources']:
-                #   try:
-                #       resource = Resource.objects.get(name=resource_name.strip())
-                #   except:
-                #       resource = Resource(name=resource_name.strip())
-                #       resource.save()
-                # campus_type.resources.add(resource)
 
                 for action in project_file_dict["action"]:
                     action_category = ActionCategory.objects.get(

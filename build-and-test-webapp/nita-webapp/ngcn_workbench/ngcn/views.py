@@ -41,8 +41,6 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
-    Resource,
-    Role,
     Workbook,
     Worksheets,
 )
@@ -598,6 +596,9 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url="/admin/login/")
 def addCampusNetworkView(request):
+    # TODO(deprecated): This legacy view makes direct authenticated Jenkins calls.
+    # The new SPA uses POST /api/v1/networks/{id}/trigger/{action_id}/ instead,
+    # which uses unauthenticated plain HTTP on the internal service network.
     server = _make_jenkins_server()
     if request.method == "POST":
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
@@ -626,9 +627,6 @@ def addCampusNetworkView(request):
             project_yaml["name"] = network_name
             project_yaml["description"] = campusNetwork.description
             project_yaml["action"] = []
-            project_yaml["roles_and_resources"] = {}
-            project_yaml["roles_and_resources"]["roles"] = []
-            project_yaml["roles_and_resources"]["resources"] = []
 
             action_suffix = "(" + network_name + ")"
 
@@ -661,32 +659,6 @@ def addCampusNetworkView(request):
                 logger.debug(
                     "configuration[custom_workspace] "
                     + str(configuration["custom_workspace"])
-                )
-
-            roles_list = Role.objects.all().filter(campustype=campusNetwork.campus_type)
-            if roles_list:
-                for role in roles_list:
-                    project_yaml["roles_and_resources"]["roles"].append(role.name)
-            else:
-                logger.info(
-                    "roles for Campus Type: "
-                    + campusNetwork.campus_type.name
-                    + "::::: is Empty "
-                )
-
-            resources_list = Resource.objects.all().filter(
-                campustype=campusNetwork.campus_type
-            )
-            if resources_list:
-                for resource in resources_list:
-                    project_yaml["roles_and_resources"]["resources"].append(
-                        resource.name
-                    )
-            else:
-                logger.info(
-                    "resources for Campus Type: "
-                    + campusNetwork.campus_type.name
-                    + "::::: is Empty "
                 )
 
             # server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'project_yaml':yaml.safe_dump(project_yaml, default_flow_style=False)})
@@ -764,6 +736,9 @@ def addCampusNetworkView(request):
 
 @login_required(login_url="/admin/login/")
 def editCampusNetworkView(request, campus_network_id):
+    # TODO(deprecated): This legacy view makes direct authenticated Jenkins calls.
+    # The new SPA uses POST /api/v1/networks/{id}/trigger/{action_id}/ instead,
+    # which uses unauthenticated plain HTTP on the internal service network.
     server = _make_jenkins_server()
     if request.method == "POST":
         campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
