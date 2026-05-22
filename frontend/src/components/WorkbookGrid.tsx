@@ -110,7 +110,7 @@ export function WorkbookGrid({ sheets, networkId, onSaved }: Props) {
     <div className="flex flex-col gap-3">
       {/* Sheet tab bar */}
       {sheets.length > 1 && (
-        <div className="flex gap-1 border-b border-gray-700 pb-0">
+        <div className="flex flex-wrap gap-1 border-b border-gray-700 pb-0">
           {sheets.map((s, idx) => (
             <button
               key={s.name}

@@ -2,7 +2,7 @@
 
 ## Purpose
 Network types (CampusType) represent reusable project templates that define the
-Ansible roles, resources, and actions available for a class of network topology.
+Ansible actions available for a class of network topology.
 
 ## Requirements
 
@@ -14,6 +14,7 @@ GET /api/v1/network-types/.
 - GIVEN one or more network types are registered
 - WHEN GET /api/v1/network-types/ is called with a valid token
 - THEN a 200 response with `count` and `results` fields is returned
+- AND no item in `results` contains `roles` or `resources` fields
 
 #### Scenario: Filter by name
 - GIVEN a network type named `evpn_vxlan_erb_dc_1.3` is registered
@@ -27,7 +28,8 @@ GET /api/v1/network-types/{id}/.
 #### Scenario: Retrieve by id
 - GIVEN a network type with a known id
 - WHEN GET /api/v1/network-types/{id}/ is called
-- THEN a 200 response with name, description, roles and resources is returned
+- THEN a 200 response with `name` and `description` fields is returned
+- AND the response body does NOT contain `roles` or `resources` fields
 
 ### Requirement: Upload a Network Type
 The system SHALL register a new network type from a zip archive via
@@ -53,14 +55,6 @@ The system SHALL remove a network type via DELETE /api/v1/network-types/{id}/.
 - THEN a 204 No Content response is returned
 - AND the type no longer appears in the list
 
-### Requirement: Nested Roles and Resources
-The network type response SHALL include nested lists of associated Ansible roles
-and resources.
-
-#### Scenario: Roles included in response
-- GIVEN a network type with one or more roles defined in project.yaml
-- WHEN GET /api/v1/network-types/{id}/ is called
-- THEN the response body contains a non-empty `roles` list with id and name
 
 ### Requirement: Pagination
 The system SHALL paginate list responses with a default page size of 50 items.
