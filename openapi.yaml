@@ -758,6 +758,11 @@ paths:
       description: |-
         Trigger a Jenkins action for this network.
 
+        Communicates with Jenkins using unauthenticated plain HTTP on the
+        internal service network (jenkins:8080). No credentials or CSRF crumb
+        are sent. Jenkins must be configured to allow anonymous Job/Build access
+        on the internal port.
+
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
       parameters:
@@ -793,7 +798,12 @@ paths:
   /api/v1/networks/{id}/workbook/:
     get:
       operationId: v1_networks_workbook_retrieve
-      description: Return the current configuration grid data for this network.
+      description: |-
+        Return the current configuration grid data for this network.
+
+        Each sheet is returned as ``{"name", "headers", "rows"}`` where
+        ``headers`` is the list of column names and ``rows`` is a list of
+        value arrays (one array per data row).
       parameters:
       - in: path
         name: id
@@ -882,7 +892,10 @@ paths:
   /api/v1/networks/{id}/workbook/save/:
     post:
       operationId: v1_networks_workbook_save_create
-      description: Save updated configuration grid data for this network.
+      description: |-
+        Save updated configuration grid data for this network.
+
+        Expects a JSON body ``{"data": [{"name": "...", "headers": [...], "rows": [[...]]}]}``.
       parameters:
       - in: path
         name: id
@@ -916,8 +929,10 @@ paths:
   /api/v1/networks/{id}/workbook/upload/:
     post:
       operationId: v1_networks_workbook_upload_create
-      description: Upload an Excel workbook to populate configuration data for this
-        network.
+      description: |-
+        Upload an Excel workbook to populate configuration data for this network.
+
+        Expects multipart/form-data with field name ``file``.
       parameters:
       - in: path
         name: id
@@ -933,7 +948,7 @@ paths:
             schema:
               type: object
               properties:
-                up_file:
+                file:
                   type: string
                   format: binary
       security:
@@ -1044,9 +1059,6 @@ components:
           maxLength: 255
         jenkins_job_build_no:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
           title: Jenkins Job Id
         action_id:
           type: integer
@@ -1140,21 +1152,10 @@ components:
       - status
     CampusType:
       type: object
-      description: Serializer for CampusType.  Includes nested roles and resources
-        lists.
+      description: Serializer for CampusType.
       properties:
         id:
           type: integer
-          readOnly: true
-        roles:
-          type: array
-          items:
-            $ref: '#/components/schemas/Role'
-          readOnly: true
-        resources:
-          type: array
-          items:
-            $ref: '#/components/schemas/Resource'
           readOnly: true
         name:
           type: string
@@ -1171,8 +1172,6 @@ components:
       - description
       - id
       - name
-      - resources
-      - roles
     PaginatedActionCategoryList:
       type: object
       required:
@@ -1315,32 +1314,6 @@ components:
         campus_type:
           type: integer
           title: Network Type
-    Resource:
-      type: object
-      description: Serializer for Resource (resource allocated to a network type).
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-      required:
-      - id
-      - name
-    Role:
-      type: object
-      description: Serializer for Role (Ansible role assigned to a network type).
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 255
-      required:
-      - id
-      - name
   securitySchemes:
     cookieAuth:
       type: apiKey

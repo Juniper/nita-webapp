@@ -148,15 +148,17 @@ def test_network_type_list(api_client, campus_type):
 
 
 @pytest.mark.django_db
-def test_network_type_retrieve_includes_nested_roles_and_resources(
+def test_network_type_retrieve_returns_expected_fields(
     api_client, campus_type
 ):
     response = api_client.get(f"/api/v1/network-types/{campus_type.id}/")
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == campus_type.name
-    assert "roles" in data
-    assert "resources" in data
+    assert data["description"] == campus_type.description
+    assert data["app_zip_name"] == campus_type.app_zip_name
+    assert "roles" not in data
+    assert "resources" not in data
 
 
 @pytest.mark.django_db
@@ -259,31 +261,33 @@ def test_network_delete(api_client, campus_network):
 
 @pytest.mark.django_db
 def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch):
-    sheets = [{"name": "hosts", "hosts": [{"host": "10.0.0.1"}]}]
+    raw_sheets = [
+        {"name": "hosts", "columns": [{"name": "host"}], "hosts": [{"host": "10.0.0.1"}]}
+    ]
     monkeypatch.setattr(
         api_views.GridDataManager,
         "get_sheets_by_campus_network",
-        lambda self, pk: sheets,
+        lambda self, pk: raw_sheets,
     )
     response = api_client.get(f"/api/v1/networks/{campus_network.id}/workbook/")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
-    assert data["workbook"] == sheets
+    assert data["workbook"] == [{"name": "hosts", "headers": ["host"], "rows": [["10.0.0.1"]]}]
 
 
 @pytest.mark.django_db
 def test_upload_workbook_success(api_client, campus_network, monkeypatch):
-    sheets = [{"name": "hosts", "hosts": []}]
+    raw_sheets = [{"name": "hosts", "columns": [], "hosts": []}]
     monkeypatch.setattr(api_views, "parse_workbook", lambda f, pk: "ok")
     monkeypatch.setattr(
         api_views.GridDataManager,
         "get_sheets_by_campus_network",
-        lambda self, pk: sheets,
+        lambda self, pk: raw_sheets,
     )
     response = api_client.post(
         f"/api/v1/networks/{campus_network.id}/workbook/upload/",
-        {"up_file": io.BytesIO(b"xlsx-data")},
+        {"file": io.BytesIO(b"xlsx-data")},
         format="multipart",
     )
     assert response.status_code == 200
@@ -297,7 +301,7 @@ def test_upload_workbook_invalid_host_returns_400(
     monkeypatch.setattr(api_views, "parse_workbook", lambda f, pk: "invalid_host")
     response = api_client.post(
         f"/api/v1/networks/{campus_network.id}/workbook/upload/",
-        {"up_file": io.BytesIO(b"xlsx-data")},
+        {"file": io.BytesIO(b"xlsx-data")},
         format="multipart",
     )
     assert response.status_code == 400
@@ -371,17 +375,33 @@ def test_download_workbook_error_returns_500(api_client, campus_network, monkeyp
 def test_trigger_action_returns_202_and_creates_history(
     api_client, campus_network, action, monkeypatch
 ):
+    class _FakeHttpResponse:
+        def __init__(self, status_code=200, json_data=None):
+            self.status_code = status_code
+            self._json_data = json_data or {}
+
+        def json(self):
+            return self._json_data
+
+        def raise_for_status(self):
+            pass
+
     Workbook.objects.create(name="wb", campus_network_id=campus_network)
-    monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _FakeServer())
     monkeypatch.setattr(api_views, "create_workbook_from_db", lambda pk: "test.xlsx")
     monkeypatch.setattr(
         api_views,
         "create_new_inv",
         lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/build"}},
     )
-    monkeypatch.setattr("jenkinsapi.jenkins.Jenkins", _FakeJenkinsClient)
     monkeypatch.setattr(
-        "jenkinsapi.utils.crumb_requester.CrumbRequester", lambda **kw: None
+        api_views.http_requests,
+        "get",
+        lambda url, **kw: _FakeHttpResponse(200, {"nextBuildNumber": 42}),
+    )
+    monkeypatch.setattr(
+        api_views.http_requests,
+        "post",
+        lambda url, **kw: _FakeHttpResponse(201),
     )
 
     response = api_client.post(
