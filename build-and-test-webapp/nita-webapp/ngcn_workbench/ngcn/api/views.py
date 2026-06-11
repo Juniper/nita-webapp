@@ -362,6 +362,169 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             qs = qs.filter(campus_type_id=campus_type_id)
         return qs
 
+    def create(self, request, *args, **kwargs):
+        """Create a network, synchronously running the Jenkins build job.
+
+        The ``network_template_mgr`` Jenkins job is triggered with
+        ``operation=create`` and this request blocks until it completes. The
+        database row is only persisted if the job succeeds; on failure a
+        cleanup ``delete`` job is triggered and an error response is returned so
+        the GUI can report success or failure.
+        """
+        from ngcn.utils import ServerProperties, wait_and_get_build_status
+        from ngcn.views import _make_jenkins_server
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        campus_type = validated["campus_type"]
+        network_name = validated["name"]
+        host_file = validated.get("host_file", "")
+        network_desc = validated.get("description", "")
+
+        src = (
+            ServerProperties.getWorkspaceLocation()
+            + "/"
+            + campus_type.app_zip_name
+        )
+        action_url = "network_template_mgr"
+        build_params = {
+            "operation": "create",
+            "src": src,
+            "network_name": network_name,
+            "hosts": host_file,
+            "network_desc": network_desc,
+        }
+
+        server = _make_jenkins_server()
+        try:
+            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
+            try:
+                server.build_job(action_url, build_params)
+            except Exception as exc:  # most likely a Jenkins crumb issue
+                if "Forbidden" in str(exc):
+                    server = _make_jenkins_server()
+                    server.build_job(action_url, build_params)
+                else:
+                    raise
+        except Exception as exc:
+            logger.error(
+                "Jenkins unreachable while creating network %s: %s",
+                network_name,
+                exc,
+            )
+            return Response(
+                {
+                    "status": "failure",
+                    "name": network_name,
+                    "reason": "Jenkins service unavailable.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if wait_and_get_build_status(action_url, current_build_number):
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers,
+            )
+
+        logger.error(
+            "Jenkins create job failed for network %s; running cleanup delete",
+            network_name,
+        )
+        try:
+            cleanup_build = server.get_job_info(action_url)["nextBuildNumber"]
+            server.build_job(
+                action_url,
+                {
+                    "operation": "delete",
+                    "src": src,
+                    "network_name": network_name,
+                },
+            )
+            wait_and_get_build_status(action_url, cleanup_build)
+        except Exception as exc:
+            logger.error(
+                "Cleanup delete job failed for network %s: %s", network_name, exc
+            )
+        return Response(
+            {
+                "status": "failure",
+                "name": network_name,
+                "reason": "Network creation job failed.",
+            },
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a network, synchronously running the Jenkins build job.
+
+        The ``network_template_mgr`` Jenkins job is triggered with
+        ``operation=delete`` and this request blocks until it completes. The
+        database row is only removed if the job succeeds, so the GUI can report
+        success or failure.
+        """
+        from ngcn.utils import ServerProperties, wait_and_get_build_status
+        from ngcn.views import _make_jenkins_server
+
+        instance = self.get_object()
+        network_name = instance.name
+        src = (
+            ServerProperties.getWorkspaceLocation()
+            + "/"
+            + instance.campus_type.app_zip_name
+        )
+        action_url = "network_template_mgr"
+        build_params = {
+            "operation": "delete",
+            "src": src,
+            "network_name": network_name,
+        }
+
+        server = _make_jenkins_server()
+        try:
+            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
+            try:
+                server.build_job(action_url, build_params)
+            except Exception as exc:  # most likely a Jenkins crumb issue
+                if "Forbidden" in str(exc):
+                    server = _make_jenkins_server()
+                    server.build_job(action_url, build_params)
+                else:
+                    raise
+        except Exception as exc:
+            logger.error(
+                "Jenkins unreachable while deleting network %s: %s",
+                network_name,
+                exc,
+            )
+            return Response(
+                {
+                    "status": "failure",
+                    "name": network_name,
+                    "reason": "Jenkins service unavailable.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if wait_and_get_build_status(action_url, current_build_number):
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        logger.error("Jenkins delete job failed for network %s", network_name)
+        return Response(
+            {
+                "status": "failure",
+                "name": network_name,
+                "reason": "Network deletion job failed.",
+            },
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
     @extend_schema(
         request={
             "multipart/form-data": {

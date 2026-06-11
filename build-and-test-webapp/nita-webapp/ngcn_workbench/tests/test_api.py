@@ -65,6 +65,33 @@ class _FakeStorage:
         pass
 
 
+def _mock_jenkins_build(monkeypatch, success):
+    """Patch the Jenkins helpers used by CampusNetworkViewSet create/destroy.
+
+    Avoids contacting a real Jenkins server: the build job is a no-op and
+    ``wait_and_get_build_status`` returns ``success``.
+    """
+    import ngcn.utils as ngcn_utils
+    import ngcn.views as ngcn_views
+
+    class _BuildServer:
+        def get_job_info(self, job_name):
+            return {"nextBuildNumber": 1}
+
+        def build_job(self, *args, **kwargs):
+            return None
+
+    monkeypatch.setattr(ngcn_views, "_make_jenkins_server", lambda: _BuildServer())
+    monkeypatch.setattr(
+        ngcn_utils.ServerProperties,
+        "getWorkspaceLocation",
+        staticmethod(lambda: "/tmp/workspace"),
+    )
+    monkeypatch.setattr(
+        ngcn_utils, "wait_and_get_build_status", lambda *a, **k: success
+    )
+
+
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 
@@ -223,7 +250,8 @@ def test_network_retrieve_includes_campus_type_name(api_client, campus_network):
 
 
 @pytest.mark.django_db
-def test_network_create(api_client, campus_type):
+def test_network_create(api_client, campus_type, monkeypatch):
+    _mock_jenkins_build(monkeypatch, success=True)
     response = api_client.post(
         "/api/v1/networks/",
         {
@@ -239,6 +267,23 @@ def test_network_create(api_client, campus_type):
 
 
 @pytest.mark.django_db
+def test_network_create_jenkins_failure_returns_502(api_client, campus_type, monkeypatch):
+    _mock_jenkins_build(monkeypatch, success=False)
+    response = api_client.post(
+        "/api/v1/networks/",
+        {
+            "name": "bad-net",
+            "status": "Initialized",
+            "description": "Test network",
+            "host_file": "hosts data",
+            "campus_type": campus_type.id,
+        },
+    )
+    assert response.status_code == 502
+    assert not CampusNetwork.objects.filter(name="bad-net").exists()
+
+
+@pytest.mark.django_db
 def test_network_partial_update(api_client, campus_network):
     response = api_client.patch(
         f"/api/v1/networks/{campus_network.id}/",
@@ -250,10 +295,19 @@ def test_network_partial_update(api_client, campus_network):
 
 
 @pytest.mark.django_db
-def test_network_delete(api_client, campus_network):
+def test_network_delete(api_client, campus_network, monkeypatch):
+    _mock_jenkins_build(monkeypatch, success=True)
     response = api_client.delete(f"/api/v1/networks/{campus_network.id}/")
     assert response.status_code == 204
     assert not CampusNetwork.objects.filter(id=campus_network.id).exists()
+
+
+@pytest.mark.django_db
+def test_network_delete_jenkins_failure_returns_502(api_client, campus_network, monkeypatch):
+    _mock_jenkins_build(monkeypatch, success=False)
+    response = api_client.delete(f"/api/v1/networks/{campus_network.id}/")
+    assert response.status_code == 502
+    assert CampusNetwork.objects.filter(id=campus_network.id).exists()
 
 
 # ── CampusNetworkViewSet — workbook actions ────────────────────────────────────

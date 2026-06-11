@@ -505,26 +505,13 @@ paths:
     post:
       operationId: v1_networks_create
       description: |-
-        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+        Create a network, synchronously running the Jenkins build job.
 
-        Standard CRUD
-            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
-            ``POST /api/v1/networks/``               — create
-            ``GET /api/v1/networks/{id}/``           — retrieve
-            ``PUT/PATCH /api/v1/networks/{id}/``     — update
-            ``DELETE /api/v1/networks/{id}/``        — destroy
-
-        Workbook actions
-            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
-            ``GET    …/{id}/workbook/``          — retrieve current grid data
-            ``POST   …/{id}/workbook/save/``     — save edited grid data
-            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
-            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
-
-        Trigger
-            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
-            returns ``202 Accepted`` with ``action_history_id`` immediately.
-            Poll ``GET /api/v1/action-history/{id}/`` for status.
+        The ``network_template_mgr`` Jenkins job is triggered with
+        ``operation=create`` and this request blocks until it completes. The
+        database row is only persisted if the job succeeds; on failure a
+        cleanup ``delete`` job is triggered and an error response is returned so
+        the GUI can report success or failure.
       tags:
       - v1
       requestBody:
@@ -698,26 +685,12 @@ paths:
     delete:
       operationId: v1_networks_destroy
       description: |-
-        Full CRUD for CampusNetwork objects, plus workbook management and action triggering.
+        Delete a network, synchronously running the Jenkins build job.
 
-        Standard CRUD
-            ``GET /api/v1/networks/``                — paginated list (filter: ``?campus_type_id=``)
-            ``POST /api/v1/networks/``               — create
-            ``GET /api/v1/networks/{id}/``           — retrieve
-            ``PUT/PATCH /api/v1/networks/{id}/``     — update
-            ``DELETE /api/v1/networks/{id}/``        — destroy
-
-        Workbook actions
-            ``POST   …/{id}/workbook/upload/``   — parse and store Excel data
-            ``GET    …/{id}/workbook/``          — retrieve current grid data
-            ``POST   …/{id}/workbook/save/``     — save edited grid data
-            ``DELETE …/{id}/workbook/clear/``    — remove all grid data
-            ``GET    …/{id}/workbook/download/`` — stream as ``.xlsx`` file
-
-        Trigger
-            ``POST …/{id}/trigger/{action_id}/`` — queue a Jenkins job;
-            returns ``202 Accepted`` with ``action_history_id`` immediately.
-            Poll ``GET /api/v1/action-history/{id}/`` for status.
+        The ``network_template_mgr`` Jenkins job is triggered with
+        ``operation=delete`` and this request blocks until it completes. The
+        database row is only removed if the job succeeds, so the GUI can report
+        success or failure.
       parameters:
       - in: path
         name: id
