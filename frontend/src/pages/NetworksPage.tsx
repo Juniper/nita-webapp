@@ -89,6 +89,7 @@ export function NetworksPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.campus_type) { setFormError('Network type is required'); return }
+    if (!form.host_file) { setFormError('Host file is required'); return }
     setSubmitting(true)
     setFormError(null)
     try {
@@ -99,7 +100,7 @@ export function NetworksPage() {
           name: form.name,
           description: form.description,
           campus_type: Number(form.campus_type),
-          host_file: form.host_file || '',
+          host_file: form.host_file,
           dynamic_ansible_workspace: form.dynamic_ansible_workspace,
         }),
       })
@@ -192,12 +193,17 @@ export function NetworksPage() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>Host File (optional)</label>
+              <label className={labelCls}>Host File *</label>
               <input
+                type="file"
                 className={inputCls}
-                placeholder="optional"
-                value={form.host_file}
-                onChange={e => setForm(f => ({ ...f, host_file: e.target.value }))}
+                required
+                onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) { setForm(f => ({ ...f, host_file: '' })); return }
+                  const text = await file.text()
+                  setForm(f => ({ ...f, host_file: text }))
+                }}
               />
             </div>
           </div>
