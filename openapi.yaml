@@ -711,10 +711,8 @@ paths:
       description: |-
         Trigger a Jenkins action for this network.
 
-        Communicates with Jenkins using unauthenticated plain HTTP on the
-        internal service network (jenkins:8080). No credentials or CSRF crumb
-        are sent. Jenkins must be configured to allow anonymous Job/Build access
-        on the internal port.
+        Communicates with Jenkins using authenticated python/jenkinsapi calls
+        with a CSRF crumb (Jenkins rejects anonymous build requests with 403).
 
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.

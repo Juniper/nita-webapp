@@ -429,16 +429,8 @@ def test_download_workbook_error_returns_500(api_client, campus_network, monkeyp
 def test_trigger_action_returns_202_and_creates_history(
     api_client, campus_network, action, monkeypatch
 ):
-    class _FakeHttpResponse:
-        def __init__(self, status_code=200, json_data=None):
-            self.status_code = status_code
-            self._json_data = json_data or {}
-
-        def json(self):
-            return self._json_data
-
-        def raise_for_status(self):
-            pass
+    import jenkinsapi.jenkins as jenkinsapi_jenkins
+    import jenkinsapi.utils.crumb_requester as jenkinsapi_crumb
 
     Workbook.objects.create(name="wb", campus_network_id=campus_network)
     monkeypatch.setattr(api_views, "create_workbook_from_db", lambda pk: "test.xlsx")
@@ -447,15 +439,10 @@ def test_trigger_action_returns_202_and_creates_history(
         "create_new_inv",
         lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/build"}},
     )
+    monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _FakeServer())
+    monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", _FakeJenkinsClient)
     monkeypatch.setattr(
-        api_views.http_requests,
-        "get",
-        lambda url, **kw: _FakeHttpResponse(200, {"nextBuildNumber": 42}),
-    )
-    monkeypatch.setattr(
-        api_views.http_requests,
-        "post",
-        lambda url, **kw: _FakeHttpResponse(201),
+        jenkinsapi_crumb, "CrumbRequester", lambda *a, **kw: object()
     )
 
     response = api_client.post(

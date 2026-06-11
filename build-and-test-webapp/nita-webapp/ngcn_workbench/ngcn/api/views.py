@@ -32,8 +32,6 @@ import traceback
 import urllib.error
 import urllib.request
 
-import requests as http_requests
-
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
@@ -723,16 +721,17 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         """
         Trigger a Jenkins action for this network.
 
-        Communicates with Jenkins using unauthenticated plain HTTP on the
-        internal service network (jenkins:8080). No credentials or CSRF crumb
-        are sent. Jenkins must be configured to allow anonymous Job/Build access
-        on the internal port.
+        Communicates with Jenkins using authenticated python/jenkinsapi calls
+        with a CSRF crumb (Jenkins rejects anonymous build requests with 403).
 
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
         """
         from ngcn.views import (
+            JENKINS_SERVER_PASS,
             JENKINS_SERVER_URL,
+            JENKINS_SERVER_USER,
+            _make_jenkins_server,
             updateCampusNetworkStatusOnDB,
         )
 
@@ -770,40 +769,32 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             else:
                 build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
 
-            # Get the next build number before triggering (unauthenticated)
-            info_url = f"{JENKINS_SERVER_URL}/job/{action_url}/api/json?tree=nextBuildNumber"
-            try:
-                info_resp = http_requests.get(info_url, timeout=10)
-                info_resp.raise_for_status()
-                current_build_number = info_resp.json()["nextBuildNumber"]
-            except Exception as exc:
-                logger.error("Jenkins unreachable while fetching build number: %s", exc)
-                return Response(
-                    {"error": "Jenkins service unavailable"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
+            # Trigger the job with authenticated python/jenkinsapi calls (a CSRF
+            # crumb is required; Jenkins rejects anonymous build requests with 403).
+            from jenkinsapi.jenkins import Jenkins
+            from jenkinsapi.utils.crumb_requester import CrumbRequester
 
-            # Trigger the job with unauthenticated POST (no Authorization header, no crumb)
-            trigger_url = f"{JENKINS_SERVER_URL}/job/{action_url}/buildWithParameters"
             try:
-                trigger_resp = http_requests.post(
-                    trigger_url,
-                    data={"build_dir": build_dir},
-                    files={"data.json": ("data.json", json.dumps(configuration_data), "application/json")},
-                    timeout=30,
+                server = _make_jenkins_server()
+                current_build_number = server.get_job_info(action_url)[
+                    "nextBuildNumber"
+                ]
+                crumb = CrumbRequester(
+                    baseurl=JENKINS_SERVER_URL,
+                    username=JENKINS_SERVER_USER,
+                    password=JENKINS_SERVER_PASS,
                 )
-                if trigger_resp.status_code not in (200, 201, 303):
-                    logger.error(
-                        "Jenkins returned %s for trigger on %s",
-                        trigger_resp.status_code,
-                        action_url,
-                    )
-                    return Response(
-                        {"error": "Jenkins service unavailable"},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    )
+                Jenkins(
+                    JENKINS_SERVER_URL,
+                    username=JENKINS_SERVER_USER,
+                    password=JENKINS_SERVER_PASS,
+                    requester=crumb,
+                ).get_job(action_url).invoke(
+                    files={"data.json": json.dumps(configuration_data)},
+                    build_params={"build_dir": build_dir},
+                )
             except Exception as exc:
-                logger.error("Jenkins unreachable during trigger: %s", exc)
+                logger.error("Jenkins unreachable during trigger on %s: %s", action_url, exc)
                 return Response(
                     {"error": "Jenkins service unavailable"},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
