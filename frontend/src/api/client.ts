@@ -32,7 +32,12 @@ export async function apiFetch(
   const method = (options.method ?? 'GET').toUpperCase()
   const headers = new Headers(options.headers)
 
-  headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json')
+  // Never force a Content-Type for FormData bodies: the browser must set
+  // multipart/form-data with the correct boundary itself. Forcing
+  // application/json here makes DRF reject file uploads with 415.
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   if (MUTATING_METHODS.has(method)) {
     const token = await getCsrfToken()
