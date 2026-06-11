@@ -48,6 +48,7 @@ RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser \
 USER appuser
 
 LABEL net.juniper.framework="NITA"
+LABEL org.opencontainers.image.source="https://github.com/aburston/nita-webapp"
 
 EXPOSE 8000
 
