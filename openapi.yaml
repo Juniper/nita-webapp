@@ -17,7 +17,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -40,7 +39,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -78,7 +76,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -106,7 +103,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -129,7 +125,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -155,7 +150,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -194,7 +188,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -221,7 +214,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -295,7 +287,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -308,7 +299,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -369,7 +359,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -393,7 +382,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -416,7 +404,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -437,7 +424,6 @@ paths:
                   type: string
                   format: binary
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -508,7 +494,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -555,7 +540,6 @@ paths:
               $ref: '#/components/schemas/CampusNetwork'
         required: true
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -598,7 +582,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -652,7 +635,6 @@ paths:
               $ref: '#/components/schemas/CampusNetwork'
         required: true
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -705,7 +687,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCampusNetwork'
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -747,7 +728,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -781,7 +761,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '202':
@@ -814,7 +793,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -860,7 +838,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -879,7 +856,6 @@ paths:
       tags:
       - v1
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -914,7 +890,6 @@ paths:
                 data:
                   type: array
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -952,7 +927,6 @@ paths:
                   type: string
                   format: binary
       security:
-      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1059,6 +1033,9 @@ components:
           maxLength: 255
         jenkins_job_build_no:
           type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
           title: Jenkins Job Id
         action_id:
           type: integer
@@ -1315,10 +1292,6 @@ components:
           type: integer
           title: Network Type
   securitySchemes:
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: sessionid
     tokenAuth:
       type: apiKey
       in: header
