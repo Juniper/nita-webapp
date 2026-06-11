@@ -102,6 +102,7 @@ export function NetworksPage() {
           campus_type: Number(form.campus_type),
           host_file: form.host_file,
           dynamic_ansible_workspace: form.dynamic_ansible_workspace,
+          status: 'Initialized',
         }),
       })
       if (!res.ok) {
