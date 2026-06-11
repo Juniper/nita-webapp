@@ -47,7 +47,7 @@ export function NetworkTypesPage() {
     setUploadError(null)
     try {
       const form = new FormData()
-      form.append('file', file)
+      form.append('app_zip_file', file)
       const res = await apiFetch('/api/v1/network-types/upload/', {
         method: 'POST',
         body: form,
