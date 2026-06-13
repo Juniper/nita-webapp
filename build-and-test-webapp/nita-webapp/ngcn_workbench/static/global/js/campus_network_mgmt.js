@@ -108,8 +108,6 @@ jQuery(document).ready(function($) {
         	    	}
         	    	else
         	    	{
-        	    		data += '</br><p style="margin-bottom:0px"><label style="padding-left: 11px; margin-bottom:0px"><b>Note</b>: By Enabling the Dynamic ansible workspace,'
-    	    				+ 'the "build_dir" variable in the configuration excel file will be configured dynamically, which will create new  ansible build directory for each Network</label></p>'
         	    		$('#campus_network_forms').html(data);
         	    	}
         	    	hideLoader();
@@ -160,8 +158,6 @@ function addCampusNetwork(save)
 	            {
 	            	    $("#campus_network_form").attr('action',url)
 	            	    $("#add_campus_network_header").text("Add " + campus_network_i18n)
-	            	    data += '</br><p style="margin-bottom:0px"><label style="padding-left: 11px; margin-bottom:0px"><b>Note</b>: By Enabling the Dynamic ansible workspace,'
-	    				+ 'the "build_dir" variable in the configuration excel file will be configured dynamically, which will create new  ansible build directory for each Network</label></p>'
 	                    $('#campus_network_forms').html(data);
 	                    $('#add-campus-network-modal').modal('show');
 	            },
@@ -200,8 +196,6 @@ function editCampusNetwork(campusNetworkId)
              {
             	    $("#campus_network_form").attr('action',url)
             	    $("#add_campus_network_header").text("Edit " + campus_network_i18n)
-            	    data += '</br><p style="margin-bottom:0px"><label style="padding-left: 11px; margin-bottom:0px"><b>Note</b>: By Enabling the Dynamic ansible workspace,'
-	    				+ 'the "build_dir" variable in the configuration excel file will be configured dynamically, which will create new  ansible build directory for each Network</label></p>'
                     $('#campus_network_forms').html(data);
             	    $('#id_campus_type').attr('disabled','disabled');
             	    $("#id_name").prop("readonly", true);

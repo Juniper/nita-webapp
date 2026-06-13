@@ -12,7 +12,7 @@ The `/networks` page SHALL fetch and display all networks from `GET /api/v1/netw
 - **THEN** the browser navigates to `/app/networks/:id`
 
 ### Requirement: User can add a new Network
-The page SHALL provide an inline form (toggled by "Add Network" button) with fields for name, description, network type (dropdown), host_file, and dynamic_ansible_workspace. On submit it SHALL POST to `POST /api/v1/networks/` and refresh the list on success.
+The page SHALL provide an inline form (toggled by "Add Network" button) with fields for name, description, network type (dropdown), and host_file. On submit it SHALL POST to `POST /api/v1/networks/` and refresh the list on success.
 
 #### Scenario: Successful network creation
 - **WHEN** the user fills in the required fields and submits the Add form

@@ -30,7 +30,6 @@ interface CampusNetwork {
   campus_type: number
   campus_type_name: string
   host_file: string | null
-  dynamic_ansible_workspace: boolean
 }
 
 function statusBadge(status: string): string {
@@ -73,6 +72,24 @@ export function NetworkDetailPage() {
   const [history, setHistory] = useState<ActionHistory[] | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+
+  // History console viewer
+  const [consoleView, setConsoleView] = useState<ActionHistory | null>(null)
+  const [consoleViewText, setConsoleViewText] = useState('')
+  const [consoleViewLoading, setConsoleViewLoading] = useState(false)
+  const [consoleViewError, setConsoleViewError] = useState<string | null>(null)
+
+  const handleViewConsole = (h: ActionHistory) => {
+    setConsoleView(h)
+    setConsoleViewText('')
+    setConsoleViewError(null)
+    setConsoleViewLoading(true)
+    apiFetch(`/api/v1/action-history/${h.id}/console/`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then((d: { console: string }) => setConsoleViewText(d.console ?? ''))
+      .catch(() => setConsoleViewError('Failed to load console output'))
+      .finally(() => setConsoleViewLoading(false))
+  }
 
   // Network fetch on mount
   useEffect(() => {
@@ -389,7 +406,8 @@ export function NetworkDetailPage() {
                         <th className="pb-2 pr-4">Action</th>
                         <th className="pb-2 pr-4">Category</th>
                         <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2">Date</th>
+                        <th className="pb-2 pr-4">Date</th>
+                        <th className="pb-2"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -398,7 +416,15 @@ export function NetworkDetailPage() {
                           <td className="py-2 pr-4">{h.action_name}</td>
                           <td className="py-2 pr-4 text-gray-400">{h.category_name}</td>
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
-                          <td className="py-2 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
+                          <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              onClick={() => handleViewConsole(h)}
+                              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                            >
+                              View
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -409,6 +435,45 @@ export function NetworkDetailPage() {
           </>
         )}
       </div>
+
+      {/* Console viewer modal */}
+      {consoleView && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setConsoleView(null)}
+        >
+          <div
+            className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[85vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <span className="text-white font-medium text-sm">
+                  Console — {consoleView.action_name} #{consoleView.jenkins_job_build_no}
+                </span>
+                <span className={statusBadge(consoleView.status)}>{consoleView.status}</span>
+              </div>
+              <button
+                onClick={() => setConsoleView(null)}
+                className="text-gray-400 hover:text-white text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              {consoleViewLoading ? (
+                <p className="text-gray-400 text-sm">Loading console output…</p>
+              ) : consoleViewError ? (
+                <p className="text-red-400 text-sm">{consoleViewError}</p>
+              ) : (
+                <pre className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap">
+                  {consoleViewText || 'No console output available.'}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

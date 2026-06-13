@@ -16,7 +16,6 @@ interface Network {
   campus_type: number
   campus_type_name: string
   host_file: string
-  dynamic_ansible_workspace: boolean
 }
 
 interface PaginatedNetworks {
@@ -32,7 +31,6 @@ const emptyForm = {
   description: '',
   campus_type: '',
   host_file: '',
-  dynamic_ansible_workspace: false,
 }
 
 export function NetworksPage() {
@@ -101,7 +99,6 @@ export function NetworksPage() {
           description: form.description,
           campus_type: Number(form.campus_type),
           host_file: form.host_file,
-          dynamic_ansible_workspace: form.dynamic_ansible_workspace,
           status: 'Initialized',
         }),
       })
@@ -208,18 +205,6 @@ export function NetworksPage() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              id="dynamic_ansible"
-              type="checkbox"
-              checked={form.dynamic_ansible_workspace}
-              onChange={e => setForm(f => ({ ...f, dynamic_ansible_workspace: e.target.checked }))}
-              className="w-4 h-4 accent-indigo-500"
-            />
-            <label htmlFor="dynamic_ansible" className="text-sm text-gray-300">
-              Dynamic Ansible workspace
-            </label>
-          </div>
           <button
             type="submit"
             disabled={submitting}
@@ -263,7 +248,7 @@ export function NetworksPage() {
                         to={`/networks/${n.id}`}
                         className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
                       >
-                        View
+                        Modify
                       </Link>
                       {confirmDeleteId === n.id ? (
                         <>

@@ -606,7 +606,6 @@ def addCampusNetworkView(request):
             data = form.cleaned_data
             campusNetwork = CampusNetwork(name=data["name"].strip())
             campusNetwork.description = data["description"].strip()
-            campusNetwork.dynamic_ansible_workspace = data["dynamic_ansible_workspace"]
             # campusNetwork.status=data['status'].strip();
             campusNetwork.status = "Initialized"
             campusNetwork.host_file = data["host_file"].read().decode()
@@ -749,7 +748,6 @@ def editCampusNetworkView(request, campus_network_id):
             campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
             data = form.cleaned_data
             campusNetwork.description = data["description"].strip()
-            campusNetwork.dynamic_ansible_workspace = data["dynamic_ansible_workspace"]
             #                 campusNetwork.status=data['status'].strip();
             # campusNetwork.host_file=data['host_file'];
             hostData = data["host_file"]  # data['host_file'].read()
@@ -1127,12 +1125,9 @@ def triggerAction(request, action_id, campus_network_id):
         logger.debug("configuration_data: " + str(configuration_data))
 
         if configuration_data != "invalid file name":
-            if campus_network.dynamic_ansible_workspace is True:
-                build_dir = (
-                    "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-                )
-            else:
-                build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
+            build_dir = (
+                "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
+            )
 
             current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
             crumb = CrumbRequester(

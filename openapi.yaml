@@ -1085,8 +1085,6 @@ components:
           maxLength: 255
         host_file:
           type: string
-        dynamic_ansible_workspace:
-          type: boolean
         campus_type:
           type: integer
           title: Network Type
@@ -1257,8 +1255,6 @@ components:
           maxLength: 255
         host_file:
           type: string
-        dynamic_ansible_workspace:
-          type: boolean
         campus_type:
           type: integer
           title: Network Type

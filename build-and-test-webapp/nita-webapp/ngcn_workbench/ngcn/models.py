@@ -68,9 +68,6 @@ class CampusNetwork(models.Model):
     campus_type = models.ForeignKey(
         CampusType, on_delete=models.CASCADE, verbose_name=_("network_type_heading")
     )
-    dynamic_ansible_workspace = models.BooleanField(
-        verbose_name="Dynamic Ansible workspace", default=True
-    )
 
     # class Meta:
     #    unique_together = ("campus_type","name",)

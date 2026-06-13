@@ -186,7 +186,6 @@ def test_add_campus_network_view_creates_network(auth_client, campus_type, monke
             "description": "Campus one",
             "host_file": SimpleUploadedFile("hosts.txt", b"host data"),
             "campus_type": campus_type.id,
-            "dynamic_ansible_workspace": "on",
         },
     )
 
@@ -217,7 +216,6 @@ def test_add_campus_network_view_cleans_up_on_failure(
             "description": "Campus two",
             "host_file": SimpleUploadedFile("hosts.txt", b"host data"),
             "campus_type": campus_type.id,
-            "dynamic_ansible_workspace": "on",
         },
     )
 
@@ -254,7 +252,6 @@ def test_add_campus_network_view_retries_on_forbidden(
             "description": "Campus three",
             "host_file": SimpleUploadedFile("hosts.txt", b"host data"),
             "campus_type": campus_type.id,
-            "dynamic_ansible_workspace": "on",
         },
     )
 
@@ -283,7 +280,6 @@ def test_edit_campus_network_view_updates_hosts(
             "name": "campus-one",
             "description": "Updated campus",
             "host_file": "group_vars/all.yaml\nbuild_dir: /tmp/build",
-            "dynamic_ansible_workspace": "",
         },
     )
 
@@ -313,7 +309,6 @@ def test_edit_campus_network_view_reports_failure(
             "name": "campus-one",
             "description": "Updated campus",
             "host_file": "group_vars/all.yaml\nbuild_dir: /tmp/build",
-            "dynamic_ansible_workspace": "",
         },
     )
 
@@ -390,23 +385,12 @@ def test_trigger_action_returns_failure_without_workbook(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("dynamic_workspace", "expected_build_dir"),
-    [
-        (True, "/var/tmp/build/sample_type-campus_one"),
-        (False, "/from/yaml"),
-    ],
-)
 def test_trigger_action_uses_expected_build_dir(
     auth_client,
     action,
     campus_network,
     monkeypatch,
-    dynamic_workspace,
-    expected_build_dir,
 ):
-    campus_network.dynamic_ansible_workspace = dynamic_workspace
-    campus_network.save()
     Workbook.objects.create(name="campus_one.xlsx", campus_network_id=campus_network)
 
     fake_server = FakeServer(build_number=21)
@@ -446,7 +430,8 @@ def test_trigger_action_uses_expected_build_dir(
     assert response.status_code == 200
     assert response.json() == {"status": "success", "name": action.action_name}
     assert (
-        fake_job_runner.job.calls[0]["build_params"]["build_dir"] == expected_build_dir
+        fake_job_runner.job.calls[0]["build_params"]["build_dir"]
+        == "/var/tmp/build/sample_type-campus_one"
     )
     assert fake_job_runner.job.calls[0]["files"]["data.json"] == json.dumps(
         configuration_data

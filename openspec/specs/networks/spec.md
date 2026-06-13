@@ -66,10 +66,11 @@ The system SHALL remove a network via DELETE /api/v1/networks/{id}/.
 - AND the network no longer appears in the list
 
 ### Requirement: Dynamic Ansible Workspace
-A network MAY have the `dynamic_ansible_workspace` flag set, which causes
-NITA to use a per-network build directory at runtime.
+The system SHALL always use a per-network build directory at runtime. The
+`dynamic_ansible_workspace` flag has been removed; the dynamic workspace is
+the permanent, only behaviour.
 
 #### Scenario: Dynamic workspace path
-- GIVEN a network with dynamic_ansible_workspace true
+- GIVEN any network
 - WHEN a build action is triggered
 - THEN the build directory is set to /var/tmp/build/<type>-<network>

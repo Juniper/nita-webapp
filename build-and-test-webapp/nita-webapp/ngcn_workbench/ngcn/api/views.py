@@ -762,12 +762,9 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             workbook_name = create_workbook_from_db(pk)
             configuration_data = create_new_inv(workbook_name)
 
-            if campus_network.dynamic_ansible_workspace:
-                build_dir = (
-                    "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-                )
-            else:
-                build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
+            build_dir = (
+                "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
+            )
 
             # Trigger the job with authenticated python/jenkinsapi calls (a CSRF
             # crumb is required; Jenkins rejects anonymous build requests with 403).
