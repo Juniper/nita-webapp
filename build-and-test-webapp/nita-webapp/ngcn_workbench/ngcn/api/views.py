@@ -381,11 +381,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         host_file = validated.get("host_file", "")
         network_desc = validated.get("description", "")
 
-        src = (
-            ServerProperties.getWorkspaceLocation()
-            + "/"
-            + campus_type.app_zip_name
-        )
+        src = ServerProperties.getWorkspaceLocation() + "/" + campus_type.app_zip_name
         action_url = "network_template_mgr"
         build_params = {
             "operation": "create",
@@ -634,8 +630,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 new_rows = grid.get("rows", [])
                 # Reconstruct rows as ordered dicts (internal storage format)
                 rows_as_dicts = [
-                    collections.OrderedDict(zip(headers, row))
-                    for row in new_rows
+                    collections.OrderedDict(zip(headers, row)) for row in new_rows
                 ]
                 for sheet in sheets:
                     if sheet["name"] == grid_name:
@@ -762,9 +757,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             workbook_name = create_workbook_from_db(pk)
             configuration_data = create_new_inv(workbook_name)
 
-            build_dir = (
-                "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-            )
+            build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
 
             # Trigger the job with authenticated python/jenkinsapi calls (a CSRF
             # crumb is required; Jenkins rejects anonymous build requests with 403).
@@ -791,7 +784,9 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                     build_params={"build_dir": build_dir},
                 )
             except Exception as exc:
-                logger.error("Jenkins unreachable during trigger on %s: %s", action_url, exc)
+                logger.error(
+                    "Jenkins unreachable during trigger on %s: %s", action_url, exc
+                )
                 return Response(
                     {"error": "Jenkins service unavailable"},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,

@@ -3,6 +3,12 @@
 // permissive rules suited to the legacy jQuery/SlickGrid codebase.
 export default [
   {
+    // The Vite/React frontend has its own ESM toolchain and ESLint config;
+    // super-linter's legacy "script" parser cannot parse its ESM config file,
+    // so skip it here (it is linted via `npm run lint` from within frontend/).
+    ignores: ["**/node_modules/**", "frontend/dist/**", "frontend/eslint.config.js"],
+  },
+  {
     languageOptions: {
       ecmaVersion: 2015,
       sourceType: "script",

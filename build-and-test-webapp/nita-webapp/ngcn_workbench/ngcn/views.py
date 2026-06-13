@@ -1125,9 +1125,7 @@ def triggerAction(request, action_id, campus_network_id):
         logger.debug("configuration_data: " + str(configuration_data))
 
         if configuration_data != "invalid file name":
-            build_dir = (
-                "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-            )
+            build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
 
             current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
             crumb = CrumbRequester(

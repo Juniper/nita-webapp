@@ -175,9 +175,7 @@ def test_network_type_list(api_client, campus_type):
 
 
 @pytest.mark.django_db
-def test_network_type_retrieve_returns_expected_fields(
-    api_client, campus_type
-):
+def test_network_type_retrieve_returns_expected_fields(api_client, campus_type):
     response = api_client.get(f"/api/v1/network-types/{campus_type.id}/")
     assert response.status_code == 200
     data = response.json()
@@ -267,7 +265,9 @@ def test_network_create(api_client, campus_type, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_network_create_jenkins_failure_returns_502(api_client, campus_type, monkeypatch):
+def test_network_create_jenkins_failure_returns_502(
+    api_client, campus_type, monkeypatch
+):
     _mock_jenkins_build(monkeypatch, success=False)
     response = api_client.post(
         "/api/v1/networks/",
@@ -303,7 +303,9 @@ def test_network_delete(api_client, campus_network, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_network_delete_jenkins_failure_returns_502(api_client, campus_network, monkeypatch):
+def test_network_delete_jenkins_failure_returns_502(
+    api_client, campus_network, monkeypatch
+):
     _mock_jenkins_build(monkeypatch, success=False)
     response = api_client.delete(f"/api/v1/networks/{campus_network.id}/")
     assert response.status_code == 502
@@ -316,7 +318,11 @@ def test_network_delete_jenkins_failure_returns_502(api_client, campus_network, 
 @pytest.mark.django_db
 def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch):
     raw_sheets = [
-        {"name": "hosts", "columns": [{"name": "host"}], "hosts": [{"host": "10.0.0.1"}]}
+        {
+            "name": "hosts",
+            "columns": [{"name": "host"}],
+            "hosts": [{"host": "10.0.0.1"}],
+        }
     ]
     monkeypatch.setattr(
         api_views.GridDataManager,
@@ -327,7 +333,9 @@ def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
-    assert data["workbook"] == [{"name": "hosts", "headers": ["host"], "rows": [["10.0.0.1"]]}]
+    assert data["workbook"] == [
+        {"name": "hosts", "headers": ["host"], "rows": [["10.0.0.1"]]}
+    ]
 
 
 @pytest.mark.django_db
@@ -441,9 +449,7 @@ def test_trigger_action_returns_202_and_creates_history(
     )
     monkeypatch.setattr("ngcn.views._make_jenkins_server", lambda: _FakeServer())
     monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", _FakeJenkinsClient)
-    monkeypatch.setattr(
-        jenkinsapi_crumb, "CrumbRequester", lambda *a, **kw: object()
-    )
+    monkeypatch.setattr(jenkinsapi_crumb, "CrumbRequester", lambda *a, **kw: object())
 
     response = api_client.post(
         f"/api/v1/networks/{campus_network.id}/trigger/{action.id}/"
