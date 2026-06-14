@@ -392,6 +392,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LifecycleRun'
+                maxItems: 150
           description: ''
   /api/v1/lifecycle-runs/console/:
     get:

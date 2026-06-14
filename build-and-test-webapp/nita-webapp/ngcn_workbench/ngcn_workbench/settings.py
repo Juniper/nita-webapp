@@ -162,6 +162,10 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "NITA Webapp API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "ngcn.api.schema_hooks.bound_array_lengths",
+    ],
 }
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")

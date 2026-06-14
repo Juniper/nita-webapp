@@ -975,6 +975,11 @@ class LifecycleRunViewSet(viewsets.ViewSet):
             try:
                 build_info = server.get_build_info(job_name, number)
             except Exception:
+                logger.warning(
+                    "Skipping unreadable build %s#%s in lifecycle history",
+                    job_name,
+                    number,
+                )
                 continue
             params = self._build_params(build_info)
             if (params.get("operation") or "").lower() != operation:
