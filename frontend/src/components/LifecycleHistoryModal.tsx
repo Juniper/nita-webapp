@@ -11,6 +11,13 @@ export interface LifecycleRun {
   status: string
 }
 
+interface PaginatedLifecycleRuns {
+  count: number
+  next: string | null
+  previous: string | null
+  results: LifecycleRun[]
+}
+
 const KIND_LABELS: Record<string, string> = {
   network_create: 'Create',
   network_delete: 'Delete',
@@ -50,13 +57,13 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
           kinds.map(k =>
             apiFetch(`/api/v1/lifecycle-runs/?kind=${encodeURIComponent(k)}`).then(res => {
               if (!res.ok) throw new Error(`Failed to load history: ${res.status}`)
-              return res.json() as Promise<LifecycleRun[]>
+              return res.json() as Promise<PaginatedLifecycleRuns | LifecycleRun[]>
             })
           )
         )
         if (cancelled) return
         const merged = responses
-          .flat()
+          .flatMap(r => (Array.isArray(r) ? r : r.results))
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         setRuns(merged)
       } catch (e) {
