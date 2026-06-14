@@ -1,9 +1,11 @@
 # Jenkins Trigger Security Specification
 
 ## Purpose
-The webapp SHALL trigger Jenkins jobs via an internal unauthenticated HTTP path
+The webapp SHALL trigger Jenkins jobs via an internal authenticated HTTP path
 (Django → Jenkins service), so that job triggering works reliably regardless of
-how the user accesses NITA externally (proxy, port-forward, NAT, etc.).
+how the user accesses NITA externally (proxy, port-forward, NAT, etc.). The
+Django container authenticates to Jenkins on the caller's behalf, so the caller
+never needs Jenkins credentials.
 
 ## Requirements
 
@@ -15,7 +17,8 @@ internal Jenkins hostname or port.
 
 All Jenkins communication SHALL originate from the Django application container
 to the internal Jenkins service (`jenkins:8080`), never from the client browser
-directly. No credentials or CSRF crumb are required for this internal path.
+directly. The Django container authenticates to Jenkins on the caller's behalf,
+so the caller never needs Jenkins credentials or a crumb.
 
 #### Scenario: Trigger via port-forwarded host
 - GIVEN NITA is accessed at an externally assigned IP and port (e.g. `https://10
@@ -30,22 +33,29 @@ directly. No credentials or CSRF crumb are required for this internal path.
 - THEN a 202 Accepted response is returned
 - AND the Jenkins job is queued successfully
 
-### Requirement: Internal Jenkins Communication Is Unauthenticated
-The Django application SHALL communicate with the Jenkins internal service using
-plain unauthenticated HTTP — no `Authorization` header and no CSRF crumb.
+### Requirement: Internal Jenkins Communication Is Authenticated
+The Django application SHALL communicate with the internal Jenkins service using
+authenticated requests — a username and password (`JENKINS_SERVER_USER` /
+`JENKINS_SERVER_PASS`) — and SHALL supply a CSRF crumb for build requests via a
+`CrumbRequester`. This applies to all Django→Jenkins paths: triggering an
+action, and the synchronous create/delete network jobs.
 
-Jenkins SHALL be configured to allow anonymous access with `Job/Build` permission
-and CSRF protection disabled on its internal service port. External access to
-Jenkins on its own exposed port retains Jenkins' full security realm; this
-requirement applies only to the internal service-to-service path.
+All Jenkins communication SHALL still originate from the Django application
+container to the internal Jenkins service, never from the client browser
+directly.
 
-#### Scenario: Trigger request contains no Authorization header
-- GIVEN a valid NITA session and a Jenkins service configured for anonymous
-  internal access
+#### Scenario: Trigger uses authenticated Jenkins client with a crumb
+- GIVEN a valid NITA session and configured Jenkins credentials
 - WHEN POST /api/v1/networks/{id}/trigger/{action_id}/ is called
-- THEN the Django backend sends the job trigger POST to Jenkins with no
-  Authorization header
-- AND no crumb fetch is made before the trigger request
+- THEN the Django backend authenticates to Jenkins with username/password
+- AND a CSRF crumb is obtained before the build is invoked
+- AND the Jenkins job is invoked successfully
+
+#### Scenario: Create/delete jobs use the authenticated Jenkins server
+- GIVEN configured Jenkins credentials
+- WHEN a network create or delete runs the `network_template_mgr` job
+- THEN the job is submitted through the authenticated Jenkins server
+- AND anonymous (credential-less) submission is not used
 
 ### Requirement: Trigger Returns Descriptive Error When Jenkins Unreachable
 The system SHALL return a `503 Service Unavailable` response with a
