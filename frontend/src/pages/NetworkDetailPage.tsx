@@ -45,8 +45,14 @@ export function NetworkDetailPage() {
 
   const [network, setNetwork] = useState<CampusNetwork | null>(null)
   const [networkError, setNetworkError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'workbook' | 'actions' | 'history'>('workbook')
+  const [activeTab, setActiveTab] = useState<'hosts' | 'workbook' | 'actions' | 'history'>('hosts')
   const [loaded, setLoaded] = useState({ workbook: false, actions: false, history: false })
+
+  // Hosts tab
+  const [hostsText, setHostsText] = useState('')
+  const [hostsSaved, setHostsSaved] = useState('')
+  const [hostsSaving, setHostsSaving] = useState(false)
+  const [hostsError, setHostsError] = useState<string | null>(null)
 
   // Workbook tab
   const [workbook, setWorkbook] = useState<WorkbookSheet[] | null>(null)
@@ -95,7 +101,11 @@ export function NetworkDetailPage() {
   useEffect(() => {
     apiFetch(`/api/v1/networks/${id}/`)
       .then(r => r.json())
-      .then(setNetwork)
+      .then((d: CampusNetwork) => {
+        setNetwork(d)
+        setHostsText(d.host_file ?? '')
+        setHostsSaved(d.host_file ?? '')
+      })
       .catch(() => setNetworkError('Failed to load network'))
   }, [id])
 
@@ -160,6 +170,27 @@ export function NetworkDetailPage() {
       .then(() => { setWorkbook([]); setClearConfirm(false) })
       .catch(() => {})
       .finally(() => setClearing(false))
+  }
+
+  const handleSaveHosts = () => {
+    setHostsSaving(true)
+    setHostsError(null)
+    apiFetch(`/api/v1/networks/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ host_file: hostsText }),
+    })
+      .then(r => { if (!r.ok) throw new Error(); return r.json() })
+      .then(() => {
+        setHostsSaved(hostsText)
+        setNetwork(n => (n ? { ...n, host_file: hostsText } : n))
+      })
+      .catch(() => setHostsError('Failed to save host file'))
+      .finally(() => setHostsSaving(false))
+  }
+
+  const handleDiscardHosts = () => {
+    setHostsText(hostsSaved)
+    setHostsError(null)
   }
 
   const handleTrigger = (action: Action) => {
@@ -243,7 +274,7 @@ export function NetworkDetailPage() {
 
             {/* Tab bar */}
             <div className="flex border-b border-gray-700 mb-6">
-              {(['workbook', 'actions', 'history'] as const).map(tab => (
+              {(['hosts', 'workbook', 'actions', 'history'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -257,6 +288,44 @@ export function NetworkDetailPage() {
                 </button>
               ))}
             </div>
+
+            {/* Hosts tab */}
+            {activeTab === 'hosts' && (
+              <div>
+                <div className="flex gap-3 mb-4 flex-wrap items-center">
+                  <button
+                    onClick={handleSaveHosts}
+                    disabled={hostsSaving || hostsText === hostsSaved}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
+                  >
+                    {hostsSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  {hostsText !== hostsSaved && (
+                    <button
+                      onClick={handleDiscardHosts}
+                      disabled={hostsSaving}
+                      className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-sm rounded"
+                    >
+                      Discard
+                    </button>
+                  )}
+                  {hostsText !== hostsSaved && (
+                    <span className="text-yellow-400 text-xs">Unsaved changes</span>
+                  )}
+                </div>
+                {hostsError && <p className="text-red-400 text-sm mb-3">{hostsError}</p>}
+                {!network ? (
+                  <p className="text-gray-400">Loading…</p>
+                ) : (
+                  <textarea
+                    value={hostsText}
+                    onChange={e => setHostsText(e.target.value)}
+                    spellCheck={false}
+                    className="w-full h-96 bg-gray-900 border border-gray-700 rounded p-3 font-mono text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                  />
+                )}
+              </div>
+            )}
 
             {/* Workbook tab */}
             {activeTab === 'workbook' && (
