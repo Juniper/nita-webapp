@@ -24,7 +24,7 @@ from django.utils.translation import gettext as _
 from ngcn.models import Action, ActionCategory, ActionProperty, CampusType
 
 # from ngcn.models import JenkinsJobProperty
-from ngcn.utils import ServerProperties, wait_and_get_build_status
+from ngcn.utils import ServerProperties
 
 # from _mysql import IntegrityError
 
@@ -68,9 +68,6 @@ class NetworkTypeParser:
 
                 job_name = "network_type_validator"
                 # Intentionally imported here rather than at module level.
-                from jenkinsapi.jenkins import Jenkins
-                from jenkinsapi.utils.crumb_requester import CrumbRequester
-
                 server = jenkins.Jenkins(
                     JENKINS_SERVER_URL,
                     username=JENKINS_SERVER_USER,
@@ -83,55 +80,62 @@ class NetworkTypeParser:
                     0
                 ].firstChild.replaceWholeText(ServerProperties.getWorkspaceLocation())
                 server.reconfig_job(job_name, tree.toxml())
-                current_build_number = server.get_job_info(job_name)["nextBuildNumber"]
-                logger.debug("Current build number is: " + str(current_build_number))
-                with open(default_storage.path(file_name), "rb") as app_zip_file:
-                    crumb = CrumbRequester(
-                        baseurl=JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
+
+                # Trigger the validator job without blocking. A failure here
+                # (e.g. Jenkins unreachable) is surfaced as a 503 before any
+                # database registration so the type is not left half-registered.
+                from ngcn import jenkins_jobs
+
+                try:
+                    with open(default_storage.path(file_name), "rb") as app_zip_file:
+                        build_no = jenkins_jobs.invoke_job(
+                            job_name,
+                            build_params={
+                                "file_name": file_name,
+                                "operation": "add",
+                            },
+                            files={"app.zip": app_zip_file},
+                        )
+                except Exception as exc:
+                    logger.error("Jenkins unreachable during network type load")
+                    logger.error(traceback.format_exc())
+                    return JsonResponse(
+                        {
+                            "result": "failure",
+                            "reason": "Jenkins service unavailable.",
+                        },
+                        status=503,
                     )
-                    jenkins_job = Jenkins(
-                        JENKINS_SERVER_URL,
-                        username=JENKINS_SERVER_USER,
-                        password=JENKINS_SERVER_PASS,
-                        requester=crumb,
-                    ).get_job(job_name)
-                    jenkins_job.invoke(
-                        build_params={"file_name": file_name, "operation": "add"},
-                        files={"app.zip": app_zip_file},
-                        block=True,
+                logger.debug("Invoked Jenkins Job to add zip file (non-blocking)")
+
+                # Register the network type optimistically (consistent with the
+                # non-blocking network create flow). The console stream gives the
+                # user visibility into the build instead of a blocking wait.
+                db_status = self.updateNetworkTypeDetailsOnDB(
+                    project_yaml_file, file_name
+                )
+                logger.debug("db_status server: " + str(db_status))
+                if not db_status:
+                    return JsonResponse(
+                        {
+                            "result": "failure",
+                            "reason": "Failed to register network type.",
+                        }
                     )
-                logger.debug("Invoked Jenkins Job to add zip file")
-                if wait_and_get_build_status(job_name, current_build_number):
-                    db_status = self.updateNetworkTypeDetailsOnDB(
-                        project_yaml_file, file_name
-                    )
-                    logger.debug("db_status server: " + str(db_status))
-                    if db_status:
-                        try:
-                            ct = CampusType.objects.get(name=app_name)
-                            result = JsonResponse(
-                                {"result": "success", "name": ct.name, "id": ct.id}
-                            )
-                        except CampusType.DoesNotExist:
-                            result = JsonResponse({"result": "success"})
-                    else:
-                        result = JsonResponse({"result": "failure"})
-                    logger.debug("Updated network type details: " + str(result))
-                else:
-                    output = server.get_build_console_output(
-                        job_name, current_build_number
-                    )
-                    logger.debug("Jenkins get_build_console_output: " + output)
-                    validation_error = output.partition("|--|")[-1].rpartition("|--|")[
-                        0
-                    ]
-                    logger.error(validation_error)
-                    result = JsonResponse(
-                        {"result": "failure", "reason": validation_error}
-                    )
-                    logger.debug("Got build console output! " + str(result))
+
+                payload = {
+                    "result": "success",
+                    "job_name": job_name,
+                    "build_no": build_no,
+                }
+                try:
+                    ct = CampusType.objects.get(name=app_name)
+                    payload["name"] = ct.name
+                    payload["id"] = ct.id
+                except CampusType.DoesNotExist:
+                    pass
+                result = JsonResponse(payload, status=202)
+                logger.debug("Network type load queued: " + str(result))
             except Exception as e:
                 logger.error("Error while adding Campus Type")
                 logger.error(traceback.format_exc())

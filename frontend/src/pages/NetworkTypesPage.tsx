@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
+import { LifecycleConsolePanel, useJenkinsStream } from '../components/LifecycleConsole'
+import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
 
 interface NetworkType {
   id: number
@@ -22,6 +24,10 @@ export function NetworkTypesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { lines, state: streamState, start: startStream, reset: resetStream } = useJenkinsStream()
+  const [consoleTitle, setConsoleTitle] = useState('Console')
+  const [showHistory, setShowHistory] = useState(false)
 
   async function fetchNetworkTypes() {
     setLoading(true)
@@ -56,7 +62,12 @@ export function NetworkTypesPage() {
         const text = await res.text()
         throw new Error(`Upload failed (${res.status}): ${text}`)
       }
+      const data = await res.json()
       await fetchNetworkTypes()
+      if (data.job_name && data.build_no != null) {
+        setConsoleTitle(`Loading ${data.name ?? file.name}`)
+        startStream(data.job_name, data.build_no)
+      }
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed')
     } finally {
@@ -88,7 +99,13 @@ export function NetworkTypesPage() {
     <AppLayout>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Network Types</h2>
-        <div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            History
+          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -169,6 +186,23 @@ export function NetworkTypesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {streamState !== 'idle' && (
+        <LifecycleConsolePanel
+          title={consoleTitle}
+          lines={lines}
+          state={streamState}
+          onClose={resetStream}
+        />
+      )}
+
+      {showHistory && (
+        <LifecycleHistoryModal
+          title="Network Type History"
+          kinds={['network_type_load']}
+          onClose={() => setShowHistory(false)}
+        />
       )}
     </AppLayout>
   )

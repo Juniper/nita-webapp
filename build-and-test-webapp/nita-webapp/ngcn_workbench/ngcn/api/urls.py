@@ -28,7 +28,7 @@ URL                        View
 =========================  ==========================================
 """
 
-from django.urls import path
+from django.urls import path, re_path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
@@ -37,6 +37,8 @@ from .views import (
     ActionViewSet,
     CampusNetworkViewSet,
     CampusTypeViewSet,
+    JenkinsJobStreamView,
+    LifecycleRunViewSet,
     csrf_view,
     login_view,
     logout_view,
@@ -49,8 +51,14 @@ router.register(r"networks", CampusNetworkViewSet, basename="campusnetwork")
 router.register(r"actions", ActionViewSet, basename="action")
 router.register(r"action-categories", ActionCategoryViewSet, basename="actioncategory")
 router.register(r"action-history", ActionHistoryViewSet, basename="actionhistory")
+router.register(r"lifecycle-runs", LifecycleRunViewSet, basename="lifecyclerun")
 
 urlpatterns = router.urls + [
+    re_path(
+        r"^jenkins/jobs/(?P<job_name>[A-Za-z0-9_.\-]+)/(?P<build_no>[0-9]+)/stream/$",
+        JenkinsJobStreamView.as_view(),
+        name="jenkins-job-stream",
+    ),
     path("auth/csrf/", csrf_view, name="auth-csrf"),
     path("auth/login/", login_view, name="auth-login"),
     path("auth/logout/", logout_view, name="auth-logout"),

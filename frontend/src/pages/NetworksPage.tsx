@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
+import { LifecycleConsolePanel, useJenkinsStream } from '../components/LifecycleConsole'
+import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
 
 interface NetworkType {
   id: number
@@ -47,6 +49,10 @@ export function NetworksPage() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+
+  const { lines, state: streamState, start: startStream, reset: resetStream } = useJenkinsStream()
+  const [consoleTitle, setConsoleTitle] = useState('Console')
+  const [showHistory, setShowHistory] = useState(false)
 
   async function fetchNetworks() {
     setLoading(true)
@@ -106,8 +112,13 @@ export function NetworksPage() {
         const text = await res.text()
         throw new Error(`Create failed (${res.status}): ${text}`)
       }
+      const data = await res.json()
       setShowAddForm(false)
       await fetchNetworks()
+      if (data.job_name && data.build_no != null) {
+        setConsoleTitle(`Creating ${data.name ?? form.name}`)
+        startStream(data.job_name, data.build_no)
+      }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Create failed')
     } finally {
@@ -122,7 +133,15 @@ export function NetworksPage() {
     try {
       const res = await apiFetch(`/api/v1/networks/${id}/`, { method: 'DELETE' })
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`)
+      const deleted = networks.find(n => n.id === id)
       setNetworks(prev => prev.filter(n => n.id !== id))
+      if (res.status === 202) {
+        const data = await res.json()
+        if (data.job_name && data.build_no != null) {
+          setConsoleTitle(`Deleting ${data.name ?? deleted?.name ?? ''}`)
+          startStream(data.job_name, data.build_no)
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Delete failed')
     } finally {
@@ -137,12 +156,20 @@ export function NetworksPage() {
     <AppLayout>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Networks</h2>
-        <button
-          onClick={showAddForm ? () => setShowAddForm(false) : openAddForm}
-          className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
-        >
-          {showAddForm ? 'Cancel' : 'Add Network'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            History
+          </button>
+          <button
+            onClick={showAddForm ? () => setShowAddForm(false) : openAddForm}
+            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+          >
+            {showAddForm ? 'Cancel' : 'Add Network'}
+          </button>
+        </div>
       </div>
 
       {/* Inline add form */}
@@ -282,6 +309,23 @@ export function NetworksPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {streamState !== 'idle' && (
+        <LifecycleConsolePanel
+          title={consoleTitle}
+          lines={lines}
+          state={streamState}
+          onClose={resetStream}
+        />
+      )}
+
+      {showHistory && (
+        <LifecycleHistoryModal
+          title="Network History"
+          kinds={['network_create', 'network_delete']}
+          onClose={() => setShowHistory(false)}
+        />
       )}
     </AppLayout>
   )

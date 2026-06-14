@@ -29,6 +29,7 @@ from ngcn.models import (
     ActionProperty,
     CampusNetwork,
     CampusType,
+    LifecycleRun,
     Workbook,
     Worksheets,
 )
@@ -130,3 +131,19 @@ class WorkbookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workbook
         fields = ["id", "name", "campus_network_id", "sheets"]
+
+
+class LifecycleRunSerializer(serializers.ModelSerializer):
+    """Serializer for a network lifecycle Jenkins job run (history entry)."""
+
+    class Meta:
+        model = LifecycleRun
+        fields = [
+            "id",
+            "kind",
+            "subject",
+            "job_name",
+            "build_no",
+            "timestamp",
+            "status",
+        ]

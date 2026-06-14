@@ -124,3 +124,32 @@ class Worksheets(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class LifecycleRun(models.Model):
+    """Record of a network lifecycle Jenkins job (create/delete/type-load).
+
+    Stored independently of ``ActionHistory`` so that a run survives the
+    deletion of its network row. ``subject`` is a plain string (the network or
+    network-type name) rather than a foreign key for the same reason.
+    """
+
+    KIND_NETWORK_CREATE = "network_create"
+    KIND_NETWORK_DELETE = "network_delete"
+    KIND_NETWORK_TYPE_LOAD = "network_type_load"
+    KIND_CHOICES = (
+        (KIND_NETWORK_CREATE, "Network create"),
+        (KIND_NETWORK_DELETE, "Network delete"),
+        (KIND_NETWORK_TYPE_LOAD, "Network type load"),
+    )
+
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES)
+    subject = models.CharField(max_length=255)
+    job_name = models.CharField(max_length=255)
+    build_no = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=64)
+
+    def __str__(self):
+        return f"{self.kind}:{self.subject} ({self.job_name}#{self.build_no})"
+

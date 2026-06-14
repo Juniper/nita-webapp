@@ -27,15 +27,12 @@ Endpoints
 import base64
 import json
 import logging
-import time
 import traceback
-import urllib.error
-import urllib.request
 
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
-from django.http import FileResponse, StreamingHttpResponse
+from django.http import FileResponse
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from drf_spectacular.utils import (
@@ -51,6 +48,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class SSERenderer(BaseRenderer):
@@ -69,6 +67,7 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
+    LifecycleRun,
     Workbook,
 )
 from ngcn.networktypeparser import NetworkTypeParser
@@ -86,6 +85,7 @@ from .serializers import (
     ActionSerializer,
     CampusNetworkSerializer,
     CampusTypeSerializer,
+    LifecycleRunSerializer,
     WorkbookSerializer,
 )
 
@@ -311,6 +311,16 @@ class CampusTypeViewSet(
         else:
             data = {"result": "failure", "reason": str(result)}
             http_status = status.HTTP_400_BAD_REQUEST
+        if data.get("result") == "success" and "build_no" in data:
+            from ngcn.models import LifecycleRun
+
+            LifecycleRun.objects.create(
+                kind=LifecycleRun.KIND_NETWORK_TYPE_LOAD,
+                subject=data.get("name", file_name),
+                job_name=data["job_name"],
+                build_no=data["build_no"],
+                status="Loading",
+            )
         return Response(data, status=http_status)
 
 
@@ -361,16 +371,18 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         return qs
 
     def create(self, request, *args, **kwargs):
-        """Create a network, synchronously running the Jenkins build job.
+        """Create a network, triggering the Jenkins build job without blocking.
 
-        The ``network_template_mgr`` Jenkins job is triggered with
-        ``operation=create`` and this request blocks until it completes. The
-        database row is only persisted if the job succeeds; on failure a
-        cleanup ``delete`` job is triggered and an error response is returned so
-        the GUI can report success or failure.
+        Persists the network row immediately with status ``Initializing``,
+        triggers the ``network_template_mgr`` job (``operation=create``) via the
+        shared invoke helper, records a ``LifecycleRun``, and returns ``201``
+        with the network data plus ``job_name`` and ``build_no`` so the client
+        can open a live console stream. Returns ``503`` (no row persisted) if
+        Jenkins is unreachable.
         """
-        from ngcn.utils import ServerProperties, wait_and_get_build_status
-        from ngcn.views import _make_jenkins_server
+        from ngcn import jenkins_jobs
+        from ngcn.models import LifecycleRun
+        from ngcn.utils import ServerProperties
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -391,17 +403,8 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             "network_desc": network_desc,
         }
 
-        server = _make_jenkins_server()
         try:
-            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-            try:
-                server.build_job(action_url, build_params)
-            except Exception as exc:  # most likely a Jenkins crumb issue
-                if "Forbidden" in str(exc):
-                    server = _make_jenkins_server()
-                    server.build_job(action_url, build_params)
-                else:
-                    raise
+            build_no = jenkins_jobs.invoke_job(action_url, build_params=build_params)
         except Exception as exc:
             logger.error(
                 "Jenkins unreachable while creating network %s: %s",
@@ -417,53 +420,33 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        if wait_and_get_build_status(action_url, current_build_number):
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED,
-                headers=headers,
-            )
-
-        logger.error(
-            "Jenkins create job failed for network %s; running cleanup delete",
-            network_name,
+        serializer.save(status="Initializing")
+        LifecycleRun.objects.create(
+            kind=LifecycleRun.KIND_NETWORK_CREATE,
+            subject=network_name,
+            job_name=action_url,
+            build_no=build_no,
+            status="Initializing",
         )
-        try:
-            cleanup_build = server.get_job_info(action_url)["nextBuildNumber"]
-            server.build_job(
-                action_url,
-                {
-                    "operation": "delete",
-                    "src": src,
-                    "network_name": network_name,
-                },
-            )
-            wait_and_get_build_status(action_url, cleanup_build)
-        except Exception as exc:
-            logger.error(
-                "Cleanup delete job failed for network %s: %s", network_name, exc
-            )
-        return Response(
-            {
-                "status": "failure",
-                "name": network_name,
-                "reason": "Network creation job failed.",
-            },
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
+        headers = self.get_success_headers(serializer.data)
+        data = dict(serializer.data)
+        data["job_name"] = action_url
+        data["build_no"] = build_no
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
-        """Delete a network, synchronously running the Jenkins build job.
+        """Delete a network, triggering the Jenkins build job without blocking.
 
-        The ``network_template_mgr`` Jenkins job is triggered with
-        ``operation=delete`` and this request blocks until it completes. The
-        database row is only removed if the job succeeds, so the GUI can report
-        success or failure.
+        Triggers the ``network_template_mgr`` job (``operation=delete``) via the
+        shared invoke helper, removes the database row once the build has been
+        queued, records a ``LifecycleRun``, and returns ``202`` with
+        ``job_name`` and ``build_no`` so the client can open a live console
+        stream. If Jenkins is unreachable the row is left in place and ``503``
+        is returned.
         """
-        from ngcn.utils import ServerProperties, wait_and_get_build_status
-        from ngcn.views import _make_jenkins_server
+        from ngcn import jenkins_jobs
+        from ngcn.models import LifecycleRun
+        from ngcn.utils import ServerProperties
 
         instance = self.get_object()
         network_name = instance.name
@@ -479,17 +462,8 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             "network_name": network_name,
         }
 
-        server = _make_jenkins_server()
         try:
-            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-            try:
-                server.build_job(action_url, build_params)
-            except Exception as exc:  # most likely a Jenkins crumb issue
-                if "Forbidden" in str(exc):
-                    server = _make_jenkins_server()
-                    server.build_job(action_url, build_params)
-                else:
-                    raise
+            build_no = jenkins_jobs.invoke_job(action_url, build_params=build_params)
         except Exception as exc:
             logger.error(
                 "Jenkins unreachable while deleting network %s: %s",
@@ -505,18 +479,17 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        if wait_and_get_build_status(action_url, current_build_number):
-            self.perform_destroy(instance)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        logger.error("Jenkins delete job failed for network %s", network_name)
+        self.perform_destroy(instance)
+        LifecycleRun.objects.create(
+            kind=LifecycleRun.KIND_NETWORK_DELETE,
+            subject=network_name,
+            job_name=action_url,
+            build_no=build_no,
+            status="Deleting",
+        )
         return Response(
-            {
-                "status": "failure",
-                "name": network_name,
-                "reason": "Network deletion job failed.",
-            },
-            status=status.HTTP_502_BAD_GATEWAY,
+            {"name": network_name, "job_name": action_url, "build_no": build_no},
+            status=status.HTTP_202_ACCEPTED,
         )
 
     @extend_schema(
@@ -722,13 +695,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
         """
-        from ngcn.views import (
-            JENKINS_SERVER_PASS,
-            JENKINS_SERVER_URL,
-            JENKINS_SERVER_USER,
-            _make_jenkins_server,
-            updateCampusNetworkStatusOnDB,
-        )
+        from ngcn.views import updateCampusNetworkStatusOnDB
 
         try:
             action_obj = Action.objects.get(pk=action_id)
@@ -759,29 +726,16 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
             build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
 
-            # Trigger the job with authenticated python/jenkinsapi calls (a CSRF
-            # crumb is required; Jenkins rejects anonymous build requests with 403).
-            from jenkinsapi.jenkins import Jenkins
-            from jenkinsapi.utils.crumb_requester import CrumbRequester
+            # Trigger the job through the shared authenticated invoke helper (a
+            # CSRF crumb is required; Jenkins rejects anonymous build requests
+            # with 403).
+            from ngcn import jenkins_jobs
 
             try:
-                server = _make_jenkins_server()
-                current_build_number = server.get_job_info(action_url)[
-                    "nextBuildNumber"
-                ]
-                crumb = CrumbRequester(
-                    baseurl=JENKINS_SERVER_URL,
-                    username=JENKINS_SERVER_USER,
-                    password=JENKINS_SERVER_PASS,
-                )
-                Jenkins(
-                    JENKINS_SERVER_URL,
-                    username=JENKINS_SERVER_USER,
-                    password=JENKINS_SERVER_PASS,
-                    requester=crumb,
-                ).get_job(action_url).invoke(
-                    files={"data.json": json.dumps(configuration_data)},
+                current_build_number = jenkins_jobs.invoke_job(
+                    action_url,
                     build_params={"build_dir": build_dir},
+                    files={"data.json": json.dumps(configuration_data)},
                 )
             except Exception as exc:
                 logger.error(
@@ -854,67 +808,6 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         if action_category_id:
             qs = qs.filter(action_category_id=action_category_id)
         return qs
-
-
-def _jenkins_progressive_text_generator(job_url, build_no):
-    """Generator that polls Jenkins progressive text API and yields SSE events.
-
-    Uses unauthenticated plain HTTP to the internal Jenkins service.
-
-    Yields ``data: <line>\n\n`` for each output line, then one of:
-    - ``event: done\ndata: \n\n``    — build finished normally
-    - ``event: error\ndata: <msg>\n\n`` — Jenkins unreachable / exception
-    - ``event: timeout\ndata: \n\n``  — 30-minute cap reached
-    """
-    import re
-
-    from ngcn.views import JENKINS_SERVER_URL
-
-    ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
-    base_url = f"{JENKINS_SERVER_URL}/job/{job_url}/{build_no}/logText/progressiveText"
-    offset = 0
-    max_polls = 1800  # 30 minutes at 1-second intervals
-    # How many consecutive 404s to tolerate before giving up.
-    # Jenkins keeps the build in queue for a few seconds before the executor
-    # picks it up; during that window progressiveText returns 404.
-    max_queued_polls = 60
-    queued_polls = 0
-
-    for _ in range(max_polls):
-        try:
-            url = f"{base_url}?start={offset}"
-            req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
-                chunk = resp.read().decode("utf-8", errors="replace")
-                more_data = resp.headers.get("X-More-Data", "false").lower() == "true"
-                new_offset = resp.headers.get("X-Text-Size")
-                if new_offset:
-                    offset = int(new_offset)
-            queued_polls = 0  # reset once build is reachable
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404 and queued_polls < max_queued_polls:
-                # Build is still queued / executor not yet started — wait and retry.
-                queued_polls += 1
-                time.sleep(1)
-                continue
-            yield f"event: error\ndata: {exc}\n\n"
-            return
-        except Exception as exc:
-            yield f"event: error\ndata: {exc}\n\n"
-            return
-
-        cleaned = ansi_escape.sub("", chunk)
-        for line in cleaned.splitlines():
-            if line:
-                yield f"data: {line}\n\n"
-
-        if not more_data:
-            yield "event: done\ndata: \n\n"
-            return
-
-        time.sleep(1)
-
-    yield "event: timeout\ndata: \n\n"
 
 
 @extend_schema_view(
@@ -1005,13 +898,99 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"], url_path="stream")
     def stream(self, request, pk=None):
         """Stream Jenkins console output as Server-Sent Events."""
+        from ngcn import jenkins_jobs
+
         history = self.get_object()
         job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
         build_no = history.jenkins_job_build_no
-        response = StreamingHttpResponse(
-            _jenkins_progressive_text_generator(job_url, build_no),
-            content_type="text/event-stream",
-        )
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"
-        return response
+        return jenkins_jobs.stream_response(job_url, build_no)
+
+
+class JenkinsJobStreamView(APIView):
+    """Generic authenticated SSE stream of any Jenkins job build's console.
+
+    ``GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/``
+
+    Used by the network lifecycle flows (create/delete/network-type load) which
+    only have a ``job_name`` + ``build_no`` handle rather than an
+    ``ActionHistory`` row. Requires authentication; unauthenticated requests are
+    rejected with ``403`` (consistent with the action-history stream).
+    """
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [SSERenderer]
+
+    @extend_schema(
+        responses={
+            (200, "text/event-stream"): OpenApiResponse(
+                response=OpenApiTypes.STR,
+                description=(
+                    "SSE stream of Jenkins console output for the given job and "
+                    "build. Events: data (log line), done (build finished), "
+                    "error (Jenkins unreachable), timeout (30-min cap reached)."
+                ),
+            )
+        },
+    )
+    def get(self, request, job_name, build_no):
+        """Stream the console output for ``job_name`` build ``build_no``."""
+        from ngcn import jenkins_jobs
+
+        return jenkins_jobs.stream_response(job_name, int(build_no))
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "kind",
+                type=str,
+                location="query",
+                required=False,
+                description=(
+                    "Filter by lifecycle kind: network_create, network_delete, "
+                    "or network_type_load."
+                ),
+            ),
+        ]
+    )
+)
+class LifecycleRunViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only list/retrieve of network lifecycle job runs, newest-first.
+
+    Supports ``?kind=`` filtering. The ``/console/`` action proxies the stored
+    Jenkins build's console log for a given run.
+    """
+
+    queryset = LifecycleRun.objects.all().order_by("-timestamp")
+    serializer_class = LifecycleRunSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        kind = self.request.query_params.get("kind")
+        if kind:
+            qs = qs.filter(kind=kind)
+        return qs
+
+    @extend_schema(
+        responses={
+            "200": {"type": "object", "properties": {"console": {"type": "string"}}}
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="console")
+    def console(self, request, pk=None):
+        """Return the historical Jenkins console log for this lifecycle run."""
+        import re
+
+        from ngcn.views import _make_jenkins_server
+
+        run = self.get_object()
+        server = _make_jenkins_server()
+        try:
+            output = server.get_build_console_output(run.job_name, run.build_no)
+            ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+            return Response({"console": ansi_escape.sub("", output)})
+        except Exception:
+            return Response(
+                {"console": "Build is queued or console output is not yet available."}
+            )

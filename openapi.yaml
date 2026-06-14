@@ -160,6 +160,122 @@ paths:
           description: 'SSE stream of Jenkins console output. Events: data (log line),
             done (build finished), error (Jenkins unreachable), timeout (30-min cap
             reached).'
+  /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/:
+    get:
+      operationId: v1_jenkins_job_stream_retrieve
+      description: |-
+        Generic authenticated SSE stream of any Jenkins job build's console.
+
+        Used by the network lifecycle flows (create/delete/network-type load)
+        which only have a job_name + build_no handle. Requires authentication;
+        unauthenticated requests are rejected with 403.
+      parameters:
+      - in: path
+        name: job_name
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_.\-]+$
+        description: The Jenkins job name.
+        required: true
+      - in: path
+        name: build_no
+        schema:
+          type: integer
+        description: The Jenkins build number.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: 'SSE stream of Jenkins console output for the given job and
+            build. Events: data (log line), done (build finished), error (Jenkins
+            unreachable), timeout (30-min cap reached).'
+        '403':
+          description: Authentication credentials were not provided.
+  /api/v1/lifecycle-runs/:
+    get:
+      operationId: v1_lifecycle_runs_list
+      description: |-
+        Read-only list of network lifecycle job runs, newest-first.
+
+        Supports ``?kind=`` filtering (network_create, network_delete,
+        network_type_load).
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - network_create
+          - network_delete
+          - network_type_load
+        description: 'Filter by lifecycle kind.'
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LifecycleRun'
+          description: ''
+  /api/v1/lifecycle-runs/{id}/:
+    get:
+      operationId: v1_lifecycle_runs_retrieve
+      description: Read-only retrieve for a network lifecycle job run.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lifecycle run.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleRun'
+          description: ''
+  /api/v1/lifecycle-runs/{id}/console/:
+    get:
+      operationId: v1_lifecycle_runs_console_retrieve
+      description: Return the historical Jenkins console log for this lifecycle run.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lifecycle run.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  console:
+                    type: string
+          description: ''
   /api/v1/actions/:
     get:
       operationId: v1_actions_list
@@ -426,7 +542,7 @@ paths:
       security:
       - tokenAuth: []
       responses:
-        '200':
+        '202':
           content:
             application/json:
               schema:
@@ -438,9 +554,16 @@ paths:
                     type: string
                   id:
                     type: integer
+                  job_name:
+                    type: string
+                  build_no:
+                    type: integer
                 required:
                 - result
-          description: ''
+                - job_name
+                - build_no
+          description: 'Network-type load queued. Open the lifecycle stream at
+            /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/ to watch progress.'
         '400':
           content:
             application/json:
@@ -455,6 +578,20 @@ paths:
                 - result
                 - reason
           description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                  reason:
+                    type: string
+                required:
+                - result
+                - reason
+          description: 'Jenkins service unavailable.'
   /api/v1/networks/:
     get:
       operationId: v1_networks_list
@@ -505,13 +642,14 @@ paths:
     post:
       operationId: v1_networks_create
       description: |-
-        Create a network, synchronously running the Jenkins build job.
+        Create a network, triggering the Jenkins build job without blocking.
 
-        The ``network_template_mgr`` Jenkins job is triggered with
-        ``operation=create`` and this request blocks until it completes. The
-        database row is only persisted if the job succeeds; on failure a
-        cleanup ``delete`` job is triggered and an error response is returned so
-        the GUI can report success or failure.
+        Persists the network row immediately with status ``Initializing``,
+        triggers the ``network_template_mgr`` job (``operation=create``), records
+        a ``LifecycleRun``, and returns ``201`` with the network data plus
+        ``job_name`` and ``build_no`` so the client can open a live console
+        stream at ``/api/v1/jenkins/jobs/{job_name}/{build_no}/stream/``.
+        Returns ``503`` (no row persisted) if Jenkins is unreachable.
       tags:
       - v1
       requestBody:
@@ -533,8 +671,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CampusNetwork'
-          description: ''
+                allOf:
+                - $ref: '#/components/schemas/CampusNetwork'
+                - type: object
+                  properties:
+                    job_name:
+                      type: string
+                    build_no:
+                      type: integer
+          description: 'Network create queued. Open the lifecycle stream to watch
+            progress.'
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  name:
+                    type: string
+                  reason:
+                    type: string
+          description: 'Jenkins service unavailable; no row persisted.'
   /api/v1/networks/{id}/:
     get:
       operationId: v1_networks_retrieve
@@ -685,12 +844,13 @@ paths:
     delete:
       operationId: v1_networks_destroy
       description: |-
-        Delete a network, synchronously running the Jenkins build job.
+        Delete a network, triggering the Jenkins build job without blocking.
 
-        The ``network_template_mgr`` Jenkins job is triggered with
-        ``operation=delete`` and this request blocks until it completes. The
-        database row is only removed if the job succeeds, so the GUI can report
-        success or failure.
+        Triggers the ``network_template_mgr`` job (``operation=delete``), removes
+        the row once the build is queued, records a ``LifecycleRun``, and returns
+        ``202`` with ``job_name`` and ``build_no`` so the client can open a live
+        console stream. Returns ``503`` (row not removed) if Jenkins is
+        unreachable.
       parameters:
       - in: path
         name: id
@@ -703,8 +863,33 @@ paths:
       security:
       - tokenAuth: []
       responses:
-        '204':
-          description: No response body
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  job_name:
+                    type: string
+                  build_no:
+                    type: integer
+          description: 'Network delete queued. Open the lifecycle stream to watch
+            progress.'
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  name:
+                    type: string
+                  reason:
+                    type: string
+          description: 'Jenkins service unavailable; row not removed.'
   /api/v1/networks/{id}/trigger/{action_id}/:
     post:
       operationId: v1_networks_trigger_create
@@ -1118,6 +1303,42 @@ components:
       - description
       - id
       - name
+    LifecycleRun:
+      type: object
+      description: Serializer for a network lifecycle Jenkins job run (history entry).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          type: string
+          enum:
+          - network_create
+          - network_delete
+          - network_type_load
+        subject:
+          type: string
+          maxLength: 255
+        job_name:
+          type: string
+          maxLength: 255
+        build_no:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          type: string
+          maxLength: 64
+      required:
+      - build_no
+      - id
+      - job_name
+      - kind
+      - status
+      - subject
+      - timestamp
     PaginatedActionCategoryList:
       type: object
       required:

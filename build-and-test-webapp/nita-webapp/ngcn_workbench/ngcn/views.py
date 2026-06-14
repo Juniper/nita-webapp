@@ -561,25 +561,11 @@ def deleteCampusTypeView(request):
                 }
             )
 
-        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-        # was removed in Python 3.12; lazy import keeps startup path clean).
-        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
-        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+        from ngcn import jenkins_jobs  # noqa: PLC0415
 
         action_url = "network_type_validator"
-        server = _make_jenkins_server()
-        current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-        crumb = CrumbRequester(
-            baseurl=JENKINS_SERVER_URL,
-            username=JENKINS_SERVER_USER,
-            password=JENKINS_SERVER_PASS,
-        )
-        Jenkins(
-            JENKINS_SERVER_URL,
-            username=JENKINS_SERVER_USER,
-            password=JENKINS_SERVER_PASS,
-            requester=crumb,
-        ).get_job(action_url).invoke(
+        current_build_number = jenkins_jobs.invoke_job(
+            action_url,
             build_params={
                 "file_name": campusType.app_zip_name,
                 "operation": "delete",
