@@ -31,7 +31,7 @@ The page SHALL allow deleting a network via `DELETE /api/v1/networks/{id}/` with
 ## ADDED Requirements
 
 ### Requirement: Networks table lifecycle history view
-The Networks page SHALL provide a History button on the top-level Networks table that opens a history view, similar to the per-network triggered actions history, listing the persisted network create and delete lifecycle runs. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_create` and `?kind=network_delete` (or the equivalent combined query) and display each run's subject (network name), kind, timestamp, and status. Each row SHALL provide a View action that opens a console viewer fetching `GET /api/v1/lifecycle-runs/{id}/console/` and displaying the returned historical console text. The console viewer SHALL show a loading indicator while fetching, an error message on failure, and a placeholder when output is empty, and SHALL be dismissable.
+The Networks page SHALL provide a History button on the top-level Networks table that opens a history view, similar to the per-network triggered actions history, listing the network create and delete lifecycle runs derived from Jenkins build history. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_create` and `?kind=network_delete` (or the equivalent combined query) and display each run's subject (network name), kind, timestamp, and status. Each row SHALL provide a View action that opens a console viewer fetching `GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` and displaying the returned historical console text. The console viewer SHALL show a loading indicator while fetching, an error message on failure, and a placeholder when output is empty, and SHALL be dismissable.
 
 #### Scenario: Open the Networks lifecycle history
 - **WHEN** the user clicks the History button on the Networks table
@@ -40,7 +40,7 @@ The Networks page SHALL provide a History button on the top-level Networks table
 
 #### Scenario: View historical console for a run
 - **WHEN** the user clicks View on a lifecycle run row
-- **THEN** `GET /api/v1/lifecycle-runs/{id}/console/` is requested
+- **THEN** `GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` is requested
 - **AND** the returned historical console text is displayed in the viewer
 
 #### Scenario: Console fetch error

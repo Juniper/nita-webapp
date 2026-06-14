@@ -35,7 +35,8 @@ interface LifecycleHistoryModalProps {
  * Modal listing lifecycle job runs with a per-run historical console viewer.
  *
  * Fetches `GET /api/v1/lifecycle-runs/` (one request per kind, merged and
- * sorted newest-first) and `GET /api/v1/lifecycle-runs/{id}/console/` on demand.
+ * sorted newest-first) and
+ * `GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` on demand.
  */
 export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistoryModalProps) {
   const [runs, setRuns] = useState<LifecycleRun[] | null>(null)

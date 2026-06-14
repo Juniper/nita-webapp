@@ -3,9 +3,7 @@
 ## Purpose
 Network types (CampusType) represent reusable project templates that define the
 Ansible actions available for a class of network topology.
-
 ## Requirements
-
 ### Requirement: List Network Types
 The system SHALL return a paginated list of all registered network types via
 GET /api/v1/network-types/.
@@ -35,16 +33,31 @@ GET /api/v1/network-types/{id}/.
 The system SHALL register a new network type from a zip archive via
 POST /api/v1/network-types/upload/.
 
-#### Scenario: Successful upload
+Loading a network type SHALL be non-blocking. The system SHALL invoke the
+`network_type_validator` Jenkins job through the shared invocation library and
+return without waiting for the validation/load build to complete. The response
+SHALL include a streaming handle (`job_name` and `build_no`) so the SPA can
+watch the live console of the load job. If no file is supplied the system SHALL
+return `400` with `result: failure` and a reason. If the Jenkins service is
+unreachable the system SHALL return `503 Service Unavailable` with a failure
+reason.
+
+#### Scenario: Successful upload starts the job and streams
 - GIVEN a valid project zip with project.yaml and ansible.cfg
 - WHEN the zip is posted as multipart/form-data with field name `app_zip_file`
-- THEN a 200 response with `result: success`, `name`, and `id` is returned
-- AND the network type appears in subsequent GET /api/v1/network-types/ calls
+- THEN the `network_type_validator` job is invoked
+- AND a `202` response is returned with `result`, `name`, and a streaming handle
+  (`job_name`, `build_no`) without waiting for the build to finish
 
 #### Scenario: Missing file
 - GIVEN no file is included in the POST body
 - WHEN POST /api/v1/network-types/upload/ is called
 - THEN a 400 response with `result: failure` and a reason is returned
+
+#### Scenario: Jenkins unreachable on load
+- GIVEN the Jenkins service is not reachable from the Django container
+- WHEN POST /api/v1/network-types/upload/ is called with a valid zip
+- THEN a 503 response is returned with a failure reason
 
 ### Requirement: Delete a Network Type
 The system SHALL remove a network type via DELETE /api/v1/network-types/{id}/.
@@ -54,7 +67,6 @@ The system SHALL remove a network type via DELETE /api/v1/network-types/{id}/.
 - WHEN DELETE /api/v1/network-types/{id}/ is called
 - THEN a 204 No Content response is returned
 - AND the type no longer appears in the list
-
 
 ### Requirement: Pagination
 The system SHALL paginate list responses with a default page size of 50 items.
@@ -96,3 +108,4 @@ the detail pane when a network type is selected from the left-hand tree.
 - WHEN the user changes the selection
 - THEN the actions table updates to show the newly selected network type's actions
 - AND previously loaded actions are not retained
+

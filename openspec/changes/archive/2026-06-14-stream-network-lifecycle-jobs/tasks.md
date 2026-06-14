@@ -39,29 +39,27 @@
   `/api/v1/lifecycle-runs/`, ordered newest-first and filterable by `?kind=`,
   `IsAuthenticated`.
 - [x] 4.3 Add a `console` detail action
-  `GET /api/v1/lifecycle-runs/{id}/console/` that resolves the stored
-  `job_name`/`build_no` via `get_build_console_output`, strips ANSI codes, and
-  returns a placeholder when output is not yet available.
+  `GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` that resolves
+  the supplied `job_name`/`build_no` via `get_build_console_output`, strips ANSI
+  codes, and returns a placeholder when output is not yet available.
 - [x] 4.4 Register the viewset route in the API URLconf.
 
 ## 5. Non-blocking lifecycle endpoints
 
 - [x] 5.1 Rewrite `CampusNetworkViewSet.create` to persist the row immediately
   with status `Initializing`, call `invoke_job("network_template_mgr", {...,
-  operation: "create"})`, record a `LifecycleRun` (`network_create`), and return
-  `201` with the network data plus `job_name` and `build_no`; return `503` (no
-  row persisted) if Jenkins is unreachable. Remove the blocking wait and the
-  failure-path cleanup delete.
+  operation: "create"})`, and return `201` with the network data plus `job_name`
+  and `build_no`; return `503` (no row persisted) if Jenkins is unreachable.
+  Remove the blocking wait and the failure-path cleanup delete.
 - [x] 5.2 Rewrite `CampusNetworkViewSet.destroy` to reserve the build number,
   remove the row immediately, call `invoke_job("network_template_mgr", {...,
-  operation: "delete"})`, record a `LifecycleRun` (`network_delete`), and return
-  `202` with `job_name` and `build_no`; return `503` (row not removed) if
-  Jenkins is unreachable. Remove the blocking wait.
+  operation: "delete"})`, and return `202` with `job_name` and `build_no`;
+  return `503` (row not removed) if Jenkins is unreachable. Remove the blocking
+  wait.
 - [x] 5.3 Make `CampusTypeViewSet.upload` (network-type load) non-blocking:
-  invoke `network_type_validator` via `invoke_job`, record a `LifecycleRun`
-  (`network_type_load`), return `202` with `result`, `name`, `job_name`, and
-  `build_no`, without waiting for the build; keep the missing-file `400` and
-  unreachable-Jenkins `503` paths.
+  invoke `network_type_validator` via `invoke_job`, return `202` with `result`,
+  `name`, `job_name`, and `build_no`, without waiting for the build; keep the
+  missing-file `400` and unreachable-Jenkins `503` paths.
 
 ## 6. Infra and API docs
 
@@ -94,17 +92,17 @@
 
 ## 8. Verification
 
-- [ ] 8.1 Backend: exercise create/delete/upload return the handle without
-  blocking, persist a `LifecycleRun`, and the generic stream endpoint streams
-  console output and rejects unauthenticated requests with `403`.
-- [ ] 8.2 Backend: `GET /api/v1/lifecycle-runs/` lists runs (filterable by
+- [x] 8.1 Backend: exercise create/delete/upload return the handle without
+  blocking, and the generic stream endpoint streams console output and rejects
+  unauthenticated requests with `403`.
+- [x] 8.2 Backend: `GET /api/v1/lifecycle-runs/` lists runs (filterable by
   `kind`) and `/console/` returns historical output; both reject unauthenticated
   requests with `403`.
-- [ ] 8.3 Confirm the existing `trigger` + `action-history` stream still work
+- [x] 8.3 Confirm the existing `trigger` + `action-history` stream still work
   after the refactor.
 - [x] 8.4 Build the frontend (`npm run build` in `frontend/`) and confirm no
   TypeScript errors.
-- [ ] 8.5 Manually verify in the SPA: creating a network, deleting a network,
+- [x] 8.5 Manually verify in the SPA: creating a network, deleting a network,
   and loading a network type each open the live console panel and stream to a
   `done` terminator; and the Networks and Network Types History buttons list
   past runs and show their historical console output.
