@@ -67,7 +67,6 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
-    LifecycleRun,
     Workbook,
 )
 from ngcn.networktypeparser import NetworkTypeParser
@@ -311,16 +310,6 @@ class CampusTypeViewSet(
         else:
             data = {"result": "failure", "reason": str(result)}
             http_status = status.HTTP_400_BAD_REQUEST
-        if data.get("result") == "success" and "build_no" in data:
-            from ngcn.models import LifecycleRun
-
-            LifecycleRun.objects.create(
-                kind=LifecycleRun.KIND_NETWORK_TYPE_LOAD,
-                subject=data.get("name", file_name),
-                job_name=data["job_name"],
-                build_no=data["build_no"],
-                status="Loading",
-            )
         return Response(data, status=http_status)
 
 
@@ -375,13 +364,11 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
         Persists the network row immediately with status ``Initializing``,
         triggers the ``network_template_mgr`` job (``operation=create``) via the
-        shared invoke helper, records a ``LifecycleRun``, and returns ``201``
-        with the network data plus ``job_name`` and ``build_no`` so the client
-        can open a live console stream. Returns ``503`` (no row persisted) if
-        Jenkins is unreachable.
+        shared invoke helper, and returns ``201`` with the network data plus
+        ``job_name`` and ``build_no`` so the client can open a live console
+        stream. Returns ``503`` (no row persisted) if Jenkins is unreachable.
         """
         from ngcn import jenkins_jobs
-        from ngcn.models import LifecycleRun
         from ngcn.utils import ServerProperties
 
         serializer = self.get_serializer(data=request.data)
@@ -421,13 +408,6 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save(status="Initializing")
-        LifecycleRun.objects.create(
-            kind=LifecycleRun.KIND_NETWORK_CREATE,
-            subject=network_name,
-            job_name=action_url,
-            build_no=build_no,
-            status="Initializing",
-        )
         headers = self.get_success_headers(serializer.data)
         data = dict(serializer.data)
         data["job_name"] = action_url
@@ -439,13 +419,11 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
 
         Triggers the ``network_template_mgr`` job (``operation=delete``) via the
         shared invoke helper, removes the database row once the build has been
-        queued, records a ``LifecycleRun``, and returns ``202`` with
-        ``job_name`` and ``build_no`` so the client can open a live console
-        stream. If Jenkins is unreachable the row is left in place and ``503``
-        is returned.
+        queued, and returns ``202`` with ``job_name`` and ``build_no`` so the
+        client can open a live console stream. If Jenkins is unreachable the row
+        is left in place and ``503`` is returned.
         """
         from ngcn import jenkins_jobs
-        from ngcn.models import LifecycleRun
         from ngcn.utils import ServerProperties
 
         instance = self.get_object()
@@ -480,13 +458,6 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             )
 
         self.perform_destroy(instance)
-        LifecycleRun.objects.create(
-            kind=LifecycleRun.KIND_NETWORK_DELETE,
-            subject=network_name,
-            job_name=action_url,
-            build_no=build_no,
-            status="Deleting",
-        )
         return Response(
             {"name": network_name, "job_name": action_url, "build_no": build_no},
             status=status.HTTP_202_ACCEPTED,
@@ -939,8 +910,101 @@ class JenkinsJobStreamView(APIView):
         return jenkins_jobs.stream_response(job_name, int(build_no))
 
 
-@extend_schema_view(
-    list=extend_schema(
+class LifecycleRunViewSet(viewsets.ViewSet):
+    """Network lifecycle job history, derived live from Jenkins build records.
+
+    Instead of reading a local table, this queries the relevant Jenkins jobs
+    directly so the history reflects every run (including those triggered
+    outside the React UI) and is not lost when the database is reset.
+
+    ``GET /api/v1/lifecycle-runs/?kind=network_create``
+        List runs of a given kind (or all kinds when ``kind`` is omitted),
+        newest-first. Each entry has ``id`` (``"<job>#<build>"``), ``kind``,
+        ``subject``, ``job_name``, ``build_no``, ``timestamp`` and ``status``.
+
+    ``GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>``
+        Return the historical Jenkins console log for a single build.
+    """
+
+    # Map each lifecycle kind to its Jenkins job and the build "operation" param
+    # value that identifies that kind within the (shared) job.
+    _KIND_JOB = {
+        "network_create": ("network_template_mgr", "create"),
+        "network_delete": ("network_template_mgr", "delete"),
+        "network_type_load": ("network_type_validator", "add"),
+    }
+    # Maximum number of recent builds per job to inspect.
+    _MAX_BUILDS = 50
+
+    @staticmethod
+    def _status_from_result(result):
+        """Translate a Jenkins build result into a display status string."""
+        if result is None:
+            return "Running"
+        return {
+            "SUCCESS": "Success",
+            "FAILURE": "Failed",
+            "ABORTED": "Aborted",
+            "UNSTABLE": "Unstable",
+        }.get(result, str(result).title())
+
+    @staticmethod
+    def _build_params(build_info):
+        """Flatten a Jenkins build's parameter actions into a name/value dict."""
+        params = {}
+        for action_obj in build_info.get("actions") or []:
+            for param in (action_obj or {}).get("parameters") or []:
+                params[param.get("name")] = param.get("value")
+        return params
+
+    def _runs_for_kind(self, server, kind):
+        """Return synthesized history entries for a single lifecycle kind."""
+        import os
+        from datetime import UTC, datetime
+
+        job_name, operation = self._KIND_JOB[kind]
+        try:
+            info = server.get_job_info(job_name)
+        except Exception:
+            logger.warning("Jenkins job %s unavailable for lifecycle history", job_name)
+            return []
+
+        runs = []
+        for build in (info.get("builds") or [])[: self._MAX_BUILDS]:
+            number = build["number"]
+            try:
+                build_info = server.get_build_info(job_name, number)
+            except Exception:
+                continue
+            params = self._build_params(build_info)
+            if (params.get("operation") or "").lower() != operation:
+                continue
+
+            if kind == "network_type_load":
+                raw = params.get("file_name") or params.get("network_name") or ""
+                subject = os.path.basename(str(raw))
+                if subject.endswith(".zip"):
+                    subject = subject[:-4]
+            else:
+                subject = params.get("network_name") or ""
+
+            timestamp = datetime.fromtimestamp(
+                build_info.get("timestamp", 0) / 1000, tz=UTC
+            ).isoformat()
+            runs.append(
+                {
+                    "id": f"{job_name}#{number}",
+                    "kind": kind,
+                    "subject": subject,
+                    "job_name": job_name,
+                    "build_no": number,
+                    "timestamp": timestamp,
+                    "status": self._status_from_result(build_info.get("result")),
+                }
+            )
+        return runs
+
+    @extend_schema(
         parameters=[
             OpenApiParameter(
                 "kind",
@@ -952,42 +1016,55 @@ class JenkinsJobStreamView(APIView):
                     "or network_type_load."
                 ),
             ),
-        ]
+        ],
+        responses={"200": LifecycleRunSerializer(many=True)},
     )
-)
-class LifecycleRunViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only list/retrieve of network lifecycle job runs, newest-first.
+    def list(self, request):
+        """List lifecycle job runs derived from Jenkins, newest-first."""
+        from ngcn.views import _make_jenkins_server
 
-    Supports ``?kind=`` filtering. The ``/console/`` action proxies the stored
-    Jenkins build's console log for a given run.
-    """
+        kind = request.query_params.get("kind")
+        kinds = [kind] if kind in self._KIND_JOB else list(self._KIND_JOB)
 
-    queryset = LifecycleRun.objects.all().order_by("-timestamp")
-    serializer_class = LifecycleRunSerializer
+        try:
+            server = _make_jenkins_server()
+        except Exception:
+            logger.warning("Jenkins unreachable while loading lifecycle history")
+            return Response([])
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        kind = self.request.query_params.get("kind")
-        if kind:
-            qs = qs.filter(kind=kind)
-        return qs
+        runs = []
+        for k in kinds:
+            runs.extend(self._runs_for_kind(server, k))
+        runs.sort(key=lambda r: r["timestamp"], reverse=True)
+        return Response(runs)
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter("job_name", type=str, location="query", required=True),
+            OpenApiParameter("build_no", type=int, location="query", required=True),
+        ],
         responses={
             "200": {"type": "object", "properties": {"console": {"type": "string"}}}
         },
     )
-    @action(detail=True, methods=["get"], url_path="console")
-    def console(self, request, pk=None):
-        """Return the historical Jenkins console log for this lifecycle run."""
+    @action(detail=False, methods=["get"], url_path="console")
+    def console(self, request):
+        """Return the historical Jenkins console log for a single build."""
         import re
 
         from ngcn.views import _make_jenkins_server
 
-        run = self.get_object()
+        job_name = request.query_params.get("job_name", "")
+        build_no = request.query_params.get("build_no", "")
+        if not re.fullmatch(r"[A-Za-z0-9_.\-]+", job_name) or not build_no.isdigit():
+            return Response(
+                {"console": "Invalid job name or build number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         server = _make_jenkins_server()
         try:
-            output = server.get_build_console_output(run.job_name, run.build_no)
+            output = server.get_build_console_output(job_name, int(build_no))
             ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
             return Response({"console": ansi_escape.sub("", output)})
         except Exception:

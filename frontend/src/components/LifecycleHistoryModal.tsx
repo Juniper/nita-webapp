@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 
 export interface LifecycleRun {
-  id: number
+  id: string
   kind: string
   subject: string
   job_name: string
@@ -83,7 +83,9 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
     setConsoleText('')
     setConsoleError(null)
     setConsoleLoading(true)
-    apiFetch(`/api/v1/lifecycle-runs/${run.id}/console/`)
+    apiFetch(
+      `/api/v1/lifecycle-runs/console/?job_name=${encodeURIComponent(run.job_name)}&build_no=${run.build_no}`
+    )
       .then(res => {
         if (!res.ok) throw new Error(`Failed to load console: ${res.status}`)
         return res.json() as Promise<{ console: string }>
