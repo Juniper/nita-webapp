@@ -45,7 +45,7 @@ def test_stream_yields_sse_events_and_done(api_client, action_history):
         "event: done\ndata: \n\n",
     ]
     with patch(
-        "ngcn.api.views._jenkins_progressive_text_generator",
+        "ngcn.jenkins_jobs.progressive_text_events",
         return_value=iter(fake_events),
     ):
         response = api_client.get(
@@ -77,13 +77,13 @@ def test_stream_requires_authentication(action_history):
 
 def test_generator_emits_error_event_on_jenkins_failure():
     """Generator yields a single error event when urllib raises URLError."""
-    from ngcn.api.views import _jenkins_progressive_text_generator
+    from ngcn.jenkins_jobs import progressive_text_events
 
     with patch(
         "urllib.request.urlopen",
         side_effect=urllib.error.URLError("connection refused"),
     ):
-        events = list(_jenkins_progressive_text_generator("job-test", 1))
+        events = list(progressive_text_events("job-test", 1))
 
     assert len(events) == 1
     assert events[0].startswith("event: error")
@@ -93,7 +93,7 @@ def test_generator_emits_done_when_no_more_data():
     """Generator yields data lines then done when X-More-Data is absent/false."""
     from unittest.mock import MagicMock
 
-    from ngcn.api.views import _jenkins_progressive_text_generator
+    from ngcn.jenkins_jobs import progressive_text_events
 
     fake_response = MagicMock()
     fake_response.read.return_value = b"build step one\nbuild step two\n"
@@ -105,7 +105,7 @@ def test_generator_emits_done_when_no_more_data():
     fake_response.__exit__ = MagicMock(return_value=False)
 
     with patch("urllib.request.urlopen", return_value=fake_response):
-        events = list(_jenkins_progressive_text_generator("job-test", 1))
+        events = list(progressive_text_events("job-test", 1))
 
     data_events = [e for e in events if e.startswith("data:")]
     done_events = [e for e in events if e.startswith("event: done")]
