@@ -152,4 +152,3 @@ class LifecycleRun(models.Model):
 
     def __str__(self):
         return f"{self.kind}:{self.subject} ({self.job_name}#{self.build_no})"
-
