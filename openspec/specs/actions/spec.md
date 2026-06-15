@@ -9,16 +9,28 @@ belong to.
 
 ### Requirement: List Actions
 The system SHALL return a paginated list of actions via GET /api/v1/actions/.
+The list endpoint SHALL accept both `?campus_type_id=<id>` and `?action_category_id=<id>`
+as independent, combinable query parameters to filter results.
 
 #### Scenario: List all actions
 - GIVEN actions are registered for one or more network types
-- WHEN GET /api/v1/actions/ is called
+- WHEN GET /api/v1/actions/ is called with no query parameters
 - THEN a 200 paginated response with all actions is returned
 
 #### Scenario: Filter by campus type
 - GIVEN actions for multiple network types exist
 - WHEN GET /api/v1/actions/?campus_type_id=<id> is called
 - THEN only actions belonging to that network type are returned
+
+#### Scenario: Filter by action category
+- GIVEN actions with different categories (e.g. BUILD, TEST) exist
+- WHEN GET /api/v1/actions/?action_category_id=<id> is called
+- THEN only actions belonging to that category are returned
+
+#### Scenario: Combined filter
+- GIVEN actions belonging to multiple types and categories exist
+- WHEN GET /api/v1/actions/?campus_type_id=<id>&action_category_id=<id> is called
+- THEN only actions matching both filters are returned
 
 ### Requirement: Retrieve an Action
 The system SHALL return full action detail including nested action_property and
@@ -61,6 +73,8 @@ POST /api/v1/networks/{id}/trigger/{action_id}/.
 ### Requirement: Action History
 The system SHALL record every triggered action and make the history available
 via GET /api/v1/action-history/.
+The list endpoint SHALL accept both `?campus_network_id=<id>` and
+`?action_category_id=<id>` as independent, combinable query parameters.
 
 #### Scenario: History entry created on trigger
 - GIVEN a successful trigger call
@@ -71,6 +85,16 @@ via GET /api/v1/action-history/.
 - GIVEN action history entries for multiple networks
 - WHEN GET /api/v1/action-history/?campus_network_id=<id> is called
 - THEN only entries for that network are returned
+
+#### Scenario: Filter history by action category
+- GIVEN action history entries with different categories exist
+- WHEN GET /api/v1/action-history/?action_category_id=<id> is called
+- THEN only entries belonging to that action category are returned
+
+#### Scenario: Combined history filter
+- GIVEN action history for multiple networks and categories
+- WHEN GET /api/v1/action-history/?campus_network_id=<id>&action_category_id=<id> is called
+- THEN only entries matching both network and category are returned
 
 ### Requirement: Jenkins Console Log Proxy
 The system SHALL proxy the Jenkins build console output for a history entry via

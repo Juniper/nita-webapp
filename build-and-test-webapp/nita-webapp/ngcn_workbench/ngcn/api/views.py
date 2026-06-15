@@ -24,11 +24,16 @@ Endpoints
     ``?campus_network_id=``, with a Jenkins console proxy action.
 """
 
+import base64
 import json
 import logging
 import traceback
 
+from django.contrib.auth import authenticate
+from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout as auth_logout
 from django.http import FileResponse
+from django.middleware.csrf import get_token
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -38,9 +43,23 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
+
+class SSERenderer(BaseRenderer):
+    """Passthrough renderer for Server-Sent Events (text/event-stream)."""
+
+    media_type = "text/event-stream"
+    format = "event-stream"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
+
 
 from ngcn.models import (
     Action,
@@ -65,10 +84,108 @@ from .serializers import (
     ActionSerializer,
     CampusNetworkSerializer,
     CampusTypeSerializer,
+    LifecycleRunSerializer,
     WorkbookSerializer,
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Session auth views ─────────────────────────────────────────────────────────
+
+
+@extend_schema(
+    responses={
+        200: {"type": "object", "properties": {"csrfToken": {"type": "string"}}}
+    },
+    auth=[],
+    summary="Return the CSRF token (no authentication required)",
+)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def csrf_view(request):
+    """Return the current CSRF token as JSON. Also sets the csrftoken cookie."""
+    return Response({"csrfToken": get_token(request)})
+
+
+@extend_schema(
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "username": {"type": "string"},
+                "password": {"type": "string"},
+            },
+            "required": ["username", "password"],
+        }
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "username": {"type": "string"},
+                "is_superuser": {"type": "boolean"},
+            },
+        },
+        400: OpenApiResponse(description="Invalid credentials"),
+        403: OpenApiResponse(description="CSRF verification failed"),
+    },
+    auth=[],
+    summary="Log in with username and password, open a Django session",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def login_view(request):
+    """Authenticate and open a Django session. Requires a valid X-CSRFToken header."""
+    username = request.data.get("username", "")
+    password = request.data.get("password", "")
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return Response(
+            {"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST
+        )
+    auth_login(request, user)
+    return Response(
+        {"id": user.pk, "username": user.username, "is_superuser": user.is_superuser}
+    )
+
+
+@extend_schema(
+    responses={204: OpenApiResponse(description="Session destroyed. No content.")},
+    summary="Log out and destroy the current Django session",
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """Destroy the current session. Authentication required."""
+    auth_logout(request)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "username": {"type": "string"},
+                "is_superuser": {"type": "boolean"},
+            },
+        }
+    },
+    summary="Return the currently authenticated user's info",
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me_view(request):
+    """Return the authenticated user's id, username, and is_superuser."""
+    user = request.user
+    return Response(
+        {"id": user.pk, "username": user.username, "is_superuser": user.is_superuser}
+    )
+
+
+# ── End session auth views ─────────────────────────────────────────────────────
 
 WORKBOOK_ITEM_SCHEMA = {
     "type": "object",
@@ -242,11 +359,115 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             qs = qs.filter(campus_type_id=campus_type_id)
         return qs
 
+    def create(self, request, *args, **kwargs):
+        """Create a network, triggering the Jenkins build job without blocking.
+
+        Persists the network row immediately with status ``Initializing``,
+        triggers the ``network_template_mgr`` job (``operation=create``) via the
+        shared invoke helper, and returns ``201`` with the network data plus
+        ``job_name`` and ``build_no`` so the client can open a live console
+        stream. Returns ``503`` (no row persisted) if Jenkins is unreachable.
+        """
+        from ngcn import jenkins_jobs
+        from ngcn.utils import ServerProperties
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        campus_type = validated["campus_type"]
+        network_name = validated["name"]
+        host_file = validated.get("host_file", "")
+        network_desc = validated.get("description", "")
+
+        src = ServerProperties.getWorkspaceLocation() + "/" + campus_type.app_zip_name
+        action_url = "network_template_mgr"
+        build_params = {
+            "operation": "create",
+            "src": src,
+            "network_name": network_name,
+            "hosts": host_file,
+            "network_desc": network_desc,
+        }
+
+        try:
+            build_no = jenkins_jobs.invoke_job(action_url, build_params=build_params)
+        except Exception as exc:
+            logger.error(
+                "Jenkins unreachable while creating network %s: %s",
+                network_name,
+                exc,
+            )
+            return Response(
+                {
+                    "status": "failure",
+                    "name": network_name,
+                    "reason": "Jenkins service unavailable.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        serializer.save(status="Initializing")
+        headers = self.get_success_headers(serializer.data)
+        data = dict(serializer.data)
+        data["job_name"] = action_url
+        data["build_no"] = build_no
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a network, triggering the Jenkins build job without blocking.
+
+        Triggers the ``network_template_mgr`` job (``operation=delete``) via the
+        shared invoke helper, removes the database row once the build has been
+        queued, and returns ``202`` with ``job_name`` and ``build_no`` so the
+        client can open a live console stream. If Jenkins is unreachable the row
+        is left in place and ``503`` is returned.
+        """
+        from ngcn import jenkins_jobs
+        from ngcn.utils import ServerProperties
+
+        instance = self.get_object()
+        network_name = instance.name
+        src = (
+            ServerProperties.getWorkspaceLocation()
+            + "/"
+            + instance.campus_type.app_zip_name
+        )
+        action_url = "network_template_mgr"
+        build_params = {
+            "operation": "delete",
+            "src": src,
+            "network_name": network_name,
+        }
+
+        try:
+            build_no = jenkins_jobs.invoke_job(action_url, build_params=build_params)
+        except Exception as exc:
+            logger.error(
+                "Jenkins unreachable while deleting network %s: %s",
+                network_name,
+                exc,
+            )
+            return Response(
+                {
+                    "status": "failure",
+                    "name": network_name,
+                    "reason": "Jenkins service unavailable.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        self.perform_destroy(instance)
+        return Response(
+            {"name": network_name, "job_name": action_url, "build_no": build_no},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
     @extend_schema(
         request={
             "multipart/form-data": {
                 "type": "object",
-                "properties": {"up_file": {"type": "string", "format": "binary"}},
+                "properties": {"file": {"type": "string", "format": "binary"}},
             }
         },
         responses={200: WORKBOOK_RESPONSE_SCHEMA},
@@ -258,8 +479,11 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         url_path="workbook/upload",
     )
     def upload_workbook(self, request, pk=None):
-        """Upload an Excel workbook to populate configuration data for this network."""
-        up_file = request.FILES.get("up_file")
+        """Upload an Excel workbook to populate configuration data for this network.
+
+        Expects multipart/form-data with field name ``file``.
+        """
+        up_file = request.FILES.get("file")
         if not up_file:
             return Response(
                 {"status": "failure", "message": "No file provided."},
@@ -269,7 +493,15 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             result = parse_workbook(up_file, pk)
             if result != "invalid_host":
                 dm = GridDataManager()
-                sheets = dm.get_sheets_by_campus_network(pk)
+                raw_sheets = dm.get_sheets_by_campus_network(pk)
+                sheets = []
+                for sheet in raw_sheets:
+                    name = sheet.get("name", "")
+                    columns = sheet.get("columns", [])
+                    headers = [col["name"] for col in columns]
+                    raw_rows = sheet.get(name, [])
+                    rows = [list(row.values()) for row in raw_rows]
+                    sheets.append({"name": name, "headers": headers, "rows": rows})
                 return Response({"workbook": sheets, "status": "success"})
             return Response(
                 {
@@ -288,10 +520,23 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     @extend_schema(responses={200: WORKBOOK_RESPONSE_SCHEMA})
     @action(detail=True, methods=["get"], url_path="workbook")
     def get_workbook(self, request, pk=None):
-        """Return the current configuration grid data for this network."""
+        """Return the current configuration grid data for this network.
+
+        Each sheet is returned as ``{"name", "headers", "rows"}`` where
+        ``headers`` is the list of column names and ``rows`` is a list of
+        value arrays (one array per data row).
+        """
         try:
             dm = GridDataManager()
-            sheets = dm.get_sheets_by_campus_network(pk)
+            raw_sheets = dm.get_sheets_by_campus_network(pk)
+            sheets = []
+            for sheet in raw_sheets:
+                name = sheet.get("name", "")
+                columns = sheet.get("columns", [])
+                headers = [col["name"] for col in columns]
+                raw_rows = sheet.get(name, [])
+                rows = [list(row.values()) for row in raw_rows]
+                sheets.append({"name": name, "headers": headers, "rows": rows})
             return Response({"workbook": sheets, "status": "success"})
         except Exception as exc:
             logger.error("Error fetching workbook: %s", exc)
@@ -313,19 +558,27 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["post"], url_path="workbook/save")
     def save_workbook(self, request, pk=None):
-        """Save updated configuration grid data for this network."""
+        """Save updated configuration grid data for this network.
+
+        Expects a JSON body ``{"data": [{"name": "...", "headers": [...], "rows": [[...]]}]}``.
+        """
         try:
             import collections
 
-            grid_list = json.JSONDecoder(
-                object_pairs_hook=collections.OrderedDict
-            ).decode(request.body.decode("utf-8"))
+            payload = json.loads(request.body.decode("utf-8"))
             dm = GridDataManager()
             sheets = dm.get_sheets_by_campus_network(pk)
-            for grid in grid_list["data"]:
+            for grid in payload["data"]:
+                grid_name = grid["name"]
+                headers = grid.get("headers", [])
+                new_rows = grid.get("rows", [])
+                # Reconstruct rows as ordered dicts (internal storage format)
+                rows_as_dicts = [
+                    collections.OrderedDict(zip(headers, row)) for row in new_rows
+                ]
                 for sheet in sheets:
-                    if sheet["name"] == grid["name"]:
-                        sheet[grid["name"]] = grid[grid["name"]]
+                    if sheet["name"] == grid_name:
+                        sheet[grid_name] = rows_as_dicts
             dm.create_or_update_db(pk, sheets)
             return Response({"status": "success"})
         except Exception as exc:
@@ -407,22 +660,23 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         """
         Trigger a Jenkins action for this network.
 
+        Communicates with Jenkins using authenticated python/jenkinsapi calls
+        with a CSRF crumb (Jenkins rejects anonymous build requests with 403).
+
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
         """
-        from jenkinsapi.jenkins import Jenkins
-        from jenkinsapi.utils.crumb_requester import CrumbRequester
-
-        from ngcn.views import (
-            JENKINS_SERVER_PASS,
-            JENKINS_SERVER_URL,
-            JENKINS_SERVER_USER,
-            _make_jenkins_server,
-            updateCampusNetworkStatusOnDB,
-        )
+        from ngcn.views import updateCampusNetworkStatusOnDB
 
         try:
             action_obj = Action.objects.get(pk=action_id)
+        except Action.DoesNotExist:
+            return Response(
+                {"status": "failure", "reason": "Action not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
             campus_network = CampusNetwork.objects.get(pk=pk)
 
             if Workbook.objects.filter(campus_network_id=pk).count() == 0:
@@ -441,29 +695,27 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             workbook_name = create_workbook_from_db(pk)
             configuration_data = create_new_inv(workbook_name)
 
-            if campus_network.dynamic_ansible_workspace:
-                build_dir = (
-                    "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-                )
-            else:
-                build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
+            build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
 
-            server = _make_jenkins_server()
-            current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-            crumb = CrumbRequester(
-                baseurl=JENKINS_SERVER_URL,
-                username=JENKINS_SERVER_USER,
-                password=JENKINS_SERVER_PASS,
-            )
-            Jenkins(
-                JENKINS_SERVER_URL,
-                username=JENKINS_SERVER_USER,
-                password=JENKINS_SERVER_PASS,
-                requester=crumb,
-            ).get_job(action_url).invoke(
-                files={"data.json": json.dumps(configuration_data)},
-                build_params={"build_dir": build_dir},
-            )
+            # Trigger the job through the shared authenticated invoke helper (a
+            # CSRF crumb is required; Jenkins rejects anonymous build requests
+            # with 403).
+            from ngcn import jenkins_jobs
+
+            try:
+                current_build_number = jenkins_jobs.invoke_job(
+                    action_url,
+                    build_params={"build_dir": build_dir},
+                    files={"data.json": json.dumps(configuration_data)},
+                )
+            except Exception as exc:
+                logger.error(
+                    "Jenkins unreachable during trigger on %s: %s", action_url, exc
+                )
+                return Response(
+                    {"error": "Jenkins service unavailable"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
             history = ActionHistory(
                 action_id=action_obj,
@@ -478,11 +730,6 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
             return Response(
                 {"status": "accepted", "action_history_id": history.id},
                 status=status.HTTP_202_ACCEPTED,
-            )
-        except Action.DoesNotExist:
-            return Response(
-                {"status": "failure", "reason": "Action not found."},
-                status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as exc:
             logger.error("Error triggering action: %s", exc)
@@ -502,15 +749,22 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 location="query",
                 required=False,
                 description="Filter by campus type ID.",
-            )
+            ),
+            OpenApiParameter(
+                "action_category_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by action category ID.",
+            ),
         ]
     )
 )
 class ActionViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for Action objects.
 
-    Supports ``?campus_type_id=<id>`` query parameter to filter actions
-    that belong to a specific network type.
+    Supports ``?campus_type_id=<id>`` and ``?action_category_id=<id>`` query
+    parameters (combinable) to filter actions by network type and/or category.
     """
 
     queryset = Action.objects.all()
@@ -521,6 +775,9 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
         campus_type_id = self.request.query_params.get("campus_type_id")
         if campus_type_id:
             qs = qs.filter(campus_type_id=campus_type_id)
+        action_category_id = self.request.query_params.get("action_category_id")
+        if action_category_id:
+            qs = qs.filter(action_category_id=action_category_id)
         return qs
 
 
@@ -533,26 +790,42 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                 location="query",
                 required=False,
                 description="Filter by campus network ID.",
-            )
+            ),
+            OpenApiParameter(
+                "action_category_id",
+                type=int,
+                location="query",
+                required=False,
+                description="Filter by action category ID.",
+            ),
         ]
     )
 )
 class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
-    Supports ``?campus_network_id=<id>`` query parameter to filter history
-    for a specific network.  The ``/console/`` action proxies the Jenkins
-    console log for a given history entry.
+    Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
+    parameters (combinable) to filter history by network and/or category.
+    The ``/console/`` action proxies the Jenkins console log for a given entry.
     """
 
     queryset = ActionHistory.objects.all().order_by("-timestamp")
     serializer_class = ActionHistorySerializer
+
+    def get_renderers(self):
+        """Use SSERenderer for the stream action; default renderers otherwise."""
+        if getattr(self, "action", None) == "stream":
+            return [SSERenderer()]
+        return super().get_renderers()
 
     def get_queryset(self):
         qs = super().get_queryset()
         campus_network_id = self.request.query_params.get("campus_network_id")
         if campus_network_id:
             qs = qs.filter(campus_network_id=campus_network_id)
+        action_category_id = self.request.query_params.get("action_category_id")
+        if action_category_id:
+            qs = qs.filter(category_id=action_category_id)
         return qs
 
     @extend_schema(
@@ -574,6 +847,229 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
             output = server.get_build_console_output(
                 job_url, history.jenkins_job_build_no
             )
+            ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+            return Response({"console": ansi_escape.sub("", output)})
+        except Exception:
+            return Response(
+                {"console": "Build is queued or console output is not yet available."}
+            )
+
+    @extend_schema(
+        responses={
+            (200, "text/event-stream"): OpenApiResponse(
+                response=OpenApiTypes.STR,
+                description=(
+                    "SSE stream of Jenkins console output. "
+                    "Events: data (log line), done (build finished), "
+                    "error (Jenkins unreachable), timeout (30-min cap reached)."
+                ),
+            )
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="stream")
+    def stream(self, request, pk=None):
+        """Stream Jenkins console output as Server-Sent Events."""
+        from ngcn import jenkins_jobs
+
+        history = self.get_object()
+        job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
+        build_no = history.jenkins_job_build_no
+        return jenkins_jobs.stream_response(job_url, build_no)
+
+
+class JenkinsJobStreamView(APIView):
+    """Generic authenticated SSE stream of any Jenkins job build's console.
+
+    ``GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/``
+
+    Used by the network lifecycle flows (create/delete/network-type load) which
+    only have a ``job_name`` + ``build_no`` handle rather than an
+    ``ActionHistory`` row. Requires authentication; unauthenticated requests are
+    rejected with ``403`` (consistent with the action-history stream).
+    """
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [SSERenderer]
+
+    @extend_schema(
+        responses={
+            (200, "text/event-stream"): OpenApiResponse(
+                response=OpenApiTypes.STR,
+                description=(
+                    "SSE stream of Jenkins console output for the given job and "
+                    "build. Events: data (log line), done (build finished), "
+                    "error (Jenkins unreachable), timeout (30-min cap reached)."
+                ),
+            )
+        },
+    )
+    def get(self, request, job_name, build_no):
+        """Stream the console output for ``job_name`` build ``build_no``."""
+        from ngcn import jenkins_jobs
+
+        return jenkins_jobs.stream_response(job_name, int(build_no))
+
+
+class LifecycleRunViewSet(viewsets.ViewSet):
+    """Network lifecycle job history, derived live from Jenkins build records.
+
+    Instead of reading a local table, this queries the relevant Jenkins jobs
+    directly so the history reflects every run (including those triggered
+    outside the React UI) and is not lost when the database is reset.
+
+    ``GET /api/v1/lifecycle-runs/?kind=network_create``
+        List runs of a given kind (or all kinds when ``kind`` is omitted),
+        newest-first. Each entry has ``id`` (``"<job>#<build>"``), ``kind``,
+        ``subject``, ``job_name``, ``build_no``, ``timestamp`` and ``status``.
+
+    ``GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>``
+        Return the historical Jenkins console log for a single build.
+    """
+
+    # Map each lifecycle kind to its Jenkins job and the build "operation" param
+    # value that identifies that kind within the (shared) job.
+    _KIND_JOB = {
+        "network_create": ("network_template_mgr", "create"),
+        "network_delete": ("network_template_mgr", "delete"),
+        "network_type_load": ("network_type_validator", "add"),
+    }
+    # Maximum number of recent builds per job to inspect.
+    _MAX_BUILDS = 50
+
+    @staticmethod
+    def _status_from_result(result):
+        """Translate a Jenkins build result into a display status string."""
+        if result is None:
+            return "Running"
+        return {
+            "SUCCESS": "Success",
+            "FAILURE": "Failed",
+            "ABORTED": "Aborted",
+            "UNSTABLE": "Unstable",
+        }.get(result, str(result).title())
+
+    @staticmethod
+    def _build_params(build_info):
+        """Flatten a Jenkins build's parameter actions into a name/value dict."""
+        params = {}
+        for action_obj in build_info.get("actions") or []:
+            for param in (action_obj or {}).get("parameters") or []:
+                params[param.get("name")] = param.get("value")
+        return params
+
+    def _runs_for_kind(self, server, kind):
+        """Return synthesized history entries for a single lifecycle kind."""
+        import os
+        from datetime import UTC, datetime
+
+        job_name, operation = self._KIND_JOB[kind]
+        try:
+            info = server.get_job_info(job_name)
+        except Exception:
+            logger.warning("Jenkins job %s unavailable for lifecycle history", job_name)
+            return []
+
+        runs = []
+        for build in (info.get("builds") or [])[: self._MAX_BUILDS]:
+            number = build["number"]
+            try:
+                build_info = server.get_build_info(job_name, number)
+            except Exception:
+                logger.warning(
+                    "Skipping unreadable build %s#%s in lifecycle history",
+                    job_name,
+                    number,
+                )
+                continue
+            params = self._build_params(build_info)
+            if (params.get("operation") or "").lower() != operation:
+                continue
+
+            if kind == "network_type_load":
+                raw = params.get("file_name") or params.get("network_name") or ""
+                subject = os.path.basename(str(raw))
+                if subject.endswith(".zip"):
+                    subject = subject[:-4]
+            else:
+                subject = params.get("network_name") or ""
+
+            timestamp = datetime.fromtimestamp(
+                build_info.get("timestamp", 0) / 1000, tz=UTC
+            ).isoformat()
+            runs.append(
+                {
+                    "id": f"{job_name}#{number}",
+                    "kind": kind,
+                    "subject": subject,
+                    "job_name": job_name,
+                    "build_no": number,
+                    "timestamp": timestamp,
+                    "status": self._status_from_result(build_info.get("result")),
+                }
+            )
+        return runs
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "kind",
+                type=str,
+                location="query",
+                required=False,
+                description=(
+                    "Filter by lifecycle kind: network_create, network_delete, "
+                    "or network_type_load."
+                ),
+            ),
+        ],
+        responses={"200": LifecycleRunSerializer(many=True)},
+    )
+    def list(self, request):
+        """List lifecycle job runs derived from Jenkins, newest-first."""
+        from ngcn.views import _make_jenkins_server
+
+        kind = request.query_params.get("kind")
+        kinds = [kind] if kind in self._KIND_JOB else list(self._KIND_JOB)
+
+        try:
+            server = _make_jenkins_server()
+        except Exception:
+            logger.warning("Jenkins unreachable while loading lifecycle history")
+            return Response([])
+
+        runs = []
+        for k in kinds:
+            runs.extend(self._runs_for_kind(server, k))
+        runs.sort(key=lambda r: r["timestamp"], reverse=True)
+        return Response(runs)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_name", type=str, location="query", required=True),
+            OpenApiParameter("build_no", type=int, location="query", required=True),
+        ],
+        responses={
+            "200": {"type": "object", "properties": {"console": {"type": "string"}}}
+        },
+    )
+    @action(detail=False, methods=["get"], url_path="console")
+    def console(self, request):
+        """Return the historical Jenkins console log for a single build."""
+        import re
+
+        from ngcn.views import _make_jenkins_server
+
+        job_name = request.query_params.get("job_name", "")
+        build_no = request.query_params.get("build_no", "")
+        if not re.fullmatch(r"[A-Za-z0-9_.\-]+", job_name) or not build_no.isdigit():
+            return Response(
+                {"console": "Invalid job name or build number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        server = _make_jenkins_server()
+        try:
+            output = server.get_build_console_output(job_name, int(build_no))
             ansi_escape = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
             return Response({"console": ansi_escape.sub("", output)})
         except Exception:

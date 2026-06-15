@@ -97,8 +97,6 @@ class CampusNetworkForm(ModelForm):
     )
     host_file = forms.FileField()
 
-    dynamic_ansible_workspace = forms.BooleanField(initial=True, required=False)
-
     class Meta:
         model = CampusNetwork
         fields = [
@@ -107,7 +105,6 @@ class CampusNetworkForm(ModelForm):
             "status",
             "host_file",
             "campus_type",
-            "dynamic_ansible_workspace",
         ]
         fields_required = ["name", "description", "campus_type"]
         exclude = ("status",)
@@ -128,8 +125,6 @@ class EditCampusNetworkForm(ModelForm):
         widget=forms.Textarea(),
     )
 
-    dynamic_ansible_workspace = forms.BooleanField(required=False)
-
     class Meta:
         model = CampusNetwork
         fields = [
@@ -138,7 +133,6 @@ class EditCampusNetworkForm(ModelForm):
             "status",
             "host_file",
             "campus_type",
-            "dynamic_ansible_workspace",
         ]
         fields_required = ["name", "description", "campus_type"]
         exclude = ("status",)

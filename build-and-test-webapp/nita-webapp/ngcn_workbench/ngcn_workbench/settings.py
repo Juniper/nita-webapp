@@ -138,9 +138,16 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
 ]
 
+# WhiteNoise serves the compiled React SPA assets (JS/CSS) at their root-relative
+# paths (e.g. /assets/index-xxx.js) without going through collectstatic.
+WHITENOISE_ROOT = os.environ.get(
+    "FRONTEND_DIST",
+    os.path.join(BASE_DIR, "../../../frontend/dist"),
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "ngcn.api.authentication.LabSessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -155,6 +162,10 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "NITA Webapp API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "ngcn.api.schema_hooks.bound_array_lengths",
+    ],
 }
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -195,11 +206,23 @@ LOGGING = {
     },
     "loggers": {
         # Application logger: file + console
-        "ngcn": {"handlers": ["default", "console"], "level": "DEBUG", "propagate": False},
+        "ngcn": {
+            "handlers": ["default", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         # Django core: console only (errors + warnings surface in kubectl logs)
         "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         # HTTP 500/400 errors — always log at ERROR so they appear in kubectl logs
-        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
-        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
 }

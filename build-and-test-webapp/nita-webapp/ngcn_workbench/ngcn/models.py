@@ -16,22 +16,12 @@ class ActionCategory(models.Model):
         return self.category_name
 
 
-class Role(models.Model):
-    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
-
-
-class Resource(models.Model):
-    name = models.CharField(max_length=255, verbose_name="Name", unique=True)
-
-
 class CampusType(models.Model):
     name = models.CharField(
         max_length=255, verbose_name=_("network_type_heading") + " Name", unique=True
     )
     description = models.CharField(max_length=255, verbose_name="Description")
     app_zip_name = models.CharField(max_length=255, unique=True)
-    roles = models.ManyToManyField(Role)
-    resources = models.ManyToManyField(Resource)
 
     def __str__(self):
         return self.name
@@ -77,9 +67,6 @@ class CampusNetwork(models.Model):
     host_file = models.TextField()
     campus_type = models.ForeignKey(
         CampusType, on_delete=models.CASCADE, verbose_name=_("network_type_heading")
-    )
-    dynamic_ansible_workspace = models.BooleanField(
-        verbose_name="Dynamic Ansible workspace", default=True
     )
 
     # class Meta:
@@ -137,3 +124,31 @@ class Worksheets(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class LifecycleRun(models.Model):
+    """Record of a network lifecycle Jenkins job (create/delete/type-load).
+
+    Stored independently of ``ActionHistory`` so that a run survives the
+    deletion of its network row. ``subject`` is a plain string (the network or
+    network-type name) rather than a foreign key for the same reason.
+    """
+
+    KIND_NETWORK_CREATE = "network_create"
+    KIND_NETWORK_DELETE = "network_delete"
+    KIND_NETWORK_TYPE_LOAD = "network_type_load"
+    KIND_CHOICES = (
+        (KIND_NETWORK_CREATE, "Network create"),
+        (KIND_NETWORK_DELETE, "Network delete"),
+        (KIND_NETWORK_TYPE_LOAD, "Network type load"),
+    )
+
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES)
+    subject = models.CharField(max_length=255)
+    job_name = models.CharField(max_length=255)
+    build_no = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=64)
+
+    def __str__(self):
+        return f"{self.kind}:{self.subject} ({self.job_name}#{self.build_no})"

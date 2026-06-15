@@ -46,3 +46,4 @@ super-linter.log
 .roo/
 .trae/
 .windsurf/
+frontend/node_modules/

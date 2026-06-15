@@ -7,7 +7,7 @@ Each model in ``ngcn.models`` has a corresponding serializer here.  Where
 useful, read-only computed / nested fields are added so that API consumers
 get enough context without having to make extra requests:
 
-* ``CampusTypeSerializer``     — includes nested ``roles`` and ``resources``
+* ``CampusTypeSerializer``     — network type fields
 * ``ActionSerializer``         — includes nested ``action_property`` and
   ``action_category``
 * ``CampusNetworkSerializer``  — adds a ``campus_type_name`` string field
@@ -29,8 +29,7 @@ from ngcn.models import (
     ActionProperty,
     CampusNetwork,
     CampusType,
-    Resource,
-    Role,
+    LifecycleRun,
     Workbook,
     Worksheets,
 )
@@ -44,27 +43,8 @@ class ActionCategorySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class RoleSerializer(serializers.ModelSerializer):
-    """Serializer for Role (Ansible role assigned to a network type)."""
-
-    class Meta:
-        model = Role
-        fields = "__all__"
-
-
-class ResourceSerializer(serializers.ModelSerializer):
-    """Serializer for Resource (resource allocated to a network type)."""
-
-    class Meta:
-        model = Resource
-        fields = "__all__"
-
-
 class CampusTypeSerializer(serializers.ModelSerializer):
-    """Serializer for CampusType.  Includes nested roles and resources lists."""
-
-    roles = RoleSerializer(many=True, read_only=True)
-    resources = ResourceSerializer(many=True, read_only=True)
+    """Serializer for CampusType."""
 
     class Meta:
         model = CampusType
@@ -151,3 +131,19 @@ class WorkbookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workbook
         fields = ["id", "name", "campus_network_id", "sheets"]
+
+
+class LifecycleRunSerializer(serializers.ModelSerializer):
+    """Serializer for a network lifecycle Jenkins job run (history entry)."""
+
+    class Meta:
+        model = LifecycleRun
+        fields = [
+            "id",
+            "kind",
+            "subject",
+            "job_name",
+            "build_no",
+            "timestamp",
+            "status",
+        ]

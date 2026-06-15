@@ -41,8 +41,6 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
-    Resource,
-    Role,
     Workbook,
     Worksheets,
 )
@@ -563,25 +561,11 @@ def deleteCampusTypeView(request):
                 }
             )
 
-        # Intentionally imported here rather than at module level (pkgutil.ImpImporter
-        # was removed in Python 3.12; lazy import keeps startup path clean).
-        from jenkinsapi.jenkins import Jenkins  # noqa: PLC0415
-        from jenkinsapi.utils.crumb_requester import CrumbRequester  # noqa: PLC0415
+        from ngcn import jenkins_jobs  # noqa: PLC0415
 
         action_url = "network_type_validator"
-        server = _make_jenkins_server()
-        current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
-        crumb = CrumbRequester(
-            baseurl=JENKINS_SERVER_URL,
-            username=JENKINS_SERVER_USER,
-            password=JENKINS_SERVER_PASS,
-        )
-        Jenkins(
-            JENKINS_SERVER_URL,
-            username=JENKINS_SERVER_USER,
-            password=JENKINS_SERVER_PASS,
-            requester=crumb,
-        ).get_job(action_url).invoke(
+        current_build_number = jenkins_jobs.invoke_job(
+            action_url,
             build_params={
                 "file_name": campusType.app_zip_name,
                 "operation": "delete",
@@ -598,6 +582,9 @@ def deleteCampusTypeView(request):
 
 @login_required(login_url="/admin/login/")
 def addCampusNetworkView(request):
+    # TODO(deprecated): This legacy view makes direct authenticated Jenkins calls.
+    # The new SPA uses POST /api/v1/networks/{id}/trigger/{action_id}/ instead,
+    # which uses unauthenticated plain HTTP on the internal service network.
     server = _make_jenkins_server()
     if request.method == "POST":
         form = CampusNetworkForm(data=request.POST, files=request.FILES)
@@ -605,7 +592,6 @@ def addCampusNetworkView(request):
             data = form.cleaned_data
             campusNetwork = CampusNetwork(name=data["name"].strip())
             campusNetwork.description = data["description"].strip()
-            campusNetwork.dynamic_ansible_workspace = data["dynamic_ansible_workspace"]
             # campusNetwork.status=data['status'].strip();
             campusNetwork.status = "Initialized"
             campusNetwork.host_file = data["host_file"].read().decode()
@@ -626,9 +612,6 @@ def addCampusNetworkView(request):
             project_yaml["name"] = network_name
             project_yaml["description"] = campusNetwork.description
             project_yaml["action"] = []
-            project_yaml["roles_and_resources"] = {}
-            project_yaml["roles_and_resources"]["roles"] = []
-            project_yaml["roles_and_resources"]["resources"] = []
 
             action_suffix = "(" + network_name + ")"
 
@@ -661,32 +644,6 @@ def addCampusNetworkView(request):
                 logger.debug(
                     "configuration[custom_workspace] "
                     + str(configuration["custom_workspace"])
-                )
-
-            roles_list = Role.objects.all().filter(campustype=campusNetwork.campus_type)
-            if roles_list:
-                for role in roles_list:
-                    project_yaml["roles_and_resources"]["roles"].append(role.name)
-            else:
-                logger.info(
-                    "roles for Campus Type: "
-                    + campusNetwork.campus_type.name
-                    + "::::: is Empty "
-                )
-
-            resources_list = Resource.objects.all().filter(
-                campustype=campusNetwork.campus_type
-            )
-            if resources_list:
-                for resource in resources_list:
-                    project_yaml["roles_and_resources"]["resources"].append(
-                        resource.name
-                    )
-            else:
-                logger.info(
-                    "resources for Campus Type: "
-                    + campusNetwork.campus_type.name
-                    + "::::: is Empty "
                 )
 
             # server.build_job(action_url,{'operation':'create', 'src':src, 'network_name':network_name, 'hosts':campusNetwork.host_file, 'project_yaml':yaml.safe_dump(project_yaml, default_flow_style=False)})
@@ -764,6 +721,9 @@ def addCampusNetworkView(request):
 
 @login_required(login_url="/admin/login/")
 def editCampusNetworkView(request, campus_network_id):
+    # TODO(deprecated): This legacy view makes direct authenticated Jenkins calls.
+    # The new SPA uses POST /api/v1/networks/{id}/trigger/{action_id}/ instead,
+    # which uses unauthenticated plain HTTP on the internal service network.
     server = _make_jenkins_server()
     if request.method == "POST":
         campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
@@ -774,7 +734,6 @@ def editCampusNetworkView(request, campus_network_id):
             campusNetwork = CampusNetwork.objects.get(pk=campus_network_id)
             data = form.cleaned_data
             campusNetwork.description = data["description"].strip()
-            campusNetwork.dynamic_ansible_workspace = data["dynamic_ansible_workspace"]
             #                 campusNetwork.status=data['status'].strip();
             # campusNetwork.host_file=data['host_file'];
             hostData = data["host_file"]  # data['host_file'].read()
@@ -1152,12 +1111,7 @@ def triggerAction(request, action_id, campus_network_id):
         logger.debug("configuration_data: " + str(configuration_data))
 
         if configuration_data != "invalid file name":
-            if campus_network.dynamic_ansible_workspace is True:
-                build_dir = (
-                    "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
-                )
-            else:
-                build_dir = configuration_data["group_vars/all.yaml"]["build_dir"]
+            build_dir = "/var/tmp/build/" + campus_type.name + "-" + campus_network.name
 
             current_build_number = server.get_job_info(action_url)["nextBuildNumber"]
             crumb = CrumbRequester(

@@ -66,6 +66,9 @@ The `openapi.yaml` file SHALL accurately reflect all implemented API endpoints,
 including their HTTP methods, path parameters, query parameters, request body
 schemas, response schemas, and security requirements.
 
+A CI-enforced test SHALL fail when the committed `openapi.yaml` differs from the
+schema generated live by `manage.py spectacular`, preventing silent drift.
+
 #### Scenario: All implemented endpoints are documented
 - **WHEN** the `openapi.yaml` is compared to the registered DRF viewsets
 - **THEN** every endpoint (including custom actions) has a corresponding path
@@ -91,4 +94,10 @@ schemas, response schemas, and security requirements.
   endpoint where credentials are in the request body)
 - **THEN** the endpoint declares `security: []` in `openapi.yaml` to override
   the global default
+
+#### Scenario: Committed schema matches live schema
+- **GIVEN** the committed `openapi.yaml` in the repository
+- **WHEN** `manage.py spectacular --file -` is executed in the test environment
+- **THEN** the output is identical to the committed file (excluding any generated
+  timestamp or comment fields), and the pytest drift test exits 0
 
