@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
 import { apiFetch, clearCsrfCache } from '../api/client'
+
+type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
+
+function parseTabParam(value: string | null): DetailTab {
+  if (value === 'workbook' || value === 'actions' || value === 'history') return value
+  return 'hosts'
+}
 interface Action {
   id: number
   action_name: string
@@ -42,10 +49,11 @@ function statusBadge(status: string): string {
 
 export function NetworkDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [network, setNetwork] = useState<CampusNetwork | null>(null)
   const [networkError, setNetworkError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'hosts' | 'workbook' | 'actions' | 'history'>('hosts')
+  const [activeTab, setActiveTab] = useState<DetailTab>(parseTabParam(searchParams.get('tab')))
   const [loaded, setLoaded] = useState({ workbook: false, actions: false, history: false })
 
   // Hosts tab
@@ -139,6 +147,17 @@ export function NetworkDetailPage() {
         .finally(() => setHistoryLoading(false))
     }
   }, [activeTab, loaded, id, network])
+
+  // Keep selected tab in sync with URL query string (supports deep links from Networks page).
+  useEffect(() => {
+    setActiveTab(parseTabParam(searchParams.get('tab')))
+  }, [searchParams])
+
+  const handleTabChange = (tab: DetailTab) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next)
+  }
 
   // Auto-scroll console
   useEffect(() => {
@@ -277,7 +296,7 @@ export function NetworkDetailPage() {
               {(['hosts', 'workbook', 'actions', 'history'] as const).map(tab => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabChange(tab)}
                   className={`px-4 py-2 text-sm font-medium capitalize ${
                     activeTab === tab
                       ? 'border-b-2 border-indigo-500 text-white'

@@ -272,10 +272,28 @@ export function NetworksPage() {
                   <td className="py-2.5 text-right whitespace-nowrap">
                     <span className="inline-flex gap-2 items-center">
                       <Link
-                        to={`/networks/${n.id}`}
+                        to={`/networks/${n.id}?tab=hosts`}
                         className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
                       >
-                        Modify
+                        Hosts
+                      </Link>
+                      <Link
+                        to={`/networks/${n.id}?tab=workbook`}
+                        className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        Workbook
+                      </Link>
+                      <Link
+                        to={`/networks/${n.id}?tab=actions`}
+                        className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        Actions
+                      </Link>
+                      <Link
+                        to={`/networks/${n.id}?tab=history`}
+                        className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                      >
+                        History
                       </Link>
                       {confirmDeleteId === n.id ? (
                         <>
