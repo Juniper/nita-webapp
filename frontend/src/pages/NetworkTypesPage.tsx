@@ -150,36 +150,38 @@ export function NetworkTypesPage() {
             </thead>
             <tbody>
               {networkTypes.map(nt => (
-                <tr key={nt.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                <tr key={nt.id} className="group border-b border-gray-800 hover:bg-gray-800/40">
                   <td className="py-2.5 pr-4 font-medium">{nt.name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{nt.description || '—'}</td>
                   <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">{nt.app_zip_name}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
-                    {confirmDeleteId === nt.id ? (
-                      <span className="inline-flex gap-2">
+                    <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                      {confirmDeleteId === nt.id ? (
+                        <>
+                          <button
+                            onClick={() => handleDelete(nt.id)}
+                            disabled={deletingId === nt.id}
+                            className="px-2.5 py-1 text-xs bg-red-700 hover:bg-red-600 rounded transition-colors disabled:opacity-50"
+                          >
+                            Confirm?
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
                         <button
                           onClick={() => handleDelete(nt.id)}
                           disabled={deletingId === nt.id}
-                          className="px-2.5 py-1 text-xs bg-red-700 hover:bg-red-600 rounded transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
                         >
-                          Confirm?
+                          Delete
                         </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleDelete(nt.id)}
-                        disabled={deletingId === nt.id}
-                        className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                    )}
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
