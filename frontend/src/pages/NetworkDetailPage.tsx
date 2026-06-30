@@ -500,18 +500,20 @@ export function NetworkDetailPage() {
                     </thead>
                     <tbody>
                       {history.map(h => (
-                        <tr key={h.id} className="border-b border-gray-800 text-white">
+                        <tr key={h.id} className="group border-b border-gray-800 text-white">
                           <td className="py-2 pr-4">{h.action_name}</td>
                           <td className="py-2 pr-4 text-gray-400">{h.category_name}</td>
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
                           <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
                           <td className="py-2 text-right">
-                            <button
-                              onClick={() => handleViewConsole(h)}
-                              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
-                            >
-                              View
-                            </button>
+                            <span className="inline-flex opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                              <button
+                                onClick={() => handleViewConsole(h)}
+                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                              >
+                                View
+                              </button>
+                            </span>
                           </td>
                         </tr>
                       ))}
