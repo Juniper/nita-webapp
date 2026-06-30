@@ -264,13 +264,13 @@ export function NetworksPage() {
             </thead>
             <tbody>
               {networks.map(n => (
-                <tr key={n.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                <tr key={n.id} className="group border-b border-gray-800 hover:bg-gray-800/40">
                   <td className="py-2.5 pr-4 font-medium">{n.name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.campus_type_name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.description || '—'}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.status || '—'}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
-                    <span className="inline-flex gap-2 items-center">
+                    <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
                       <Link
                         to={`/networks/${n.id}?tab=hosts`}
                         className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
@@ -300,7 +300,7 @@ export function NetworksPage() {
                           <button
                             onClick={() => handleDelete(n.id)}
                             disabled={deletingId === n.id}
-                            className="px-2.5 py-1 text-xs bg-red-700 hover:bg-red-600 rounded transition-colors disabled:opacity-50"
+                            className="ml-2 px-2.5 py-1 text-xs bg-red-700 hover:bg-red-600 rounded transition-colors disabled:opacity-50"
                           >
                             Confirm?
                           </button>
@@ -315,7 +315,7 @@ export function NetworksPage() {
                         <button
                           onClick={() => handleDelete(n.id)}
                           disabled={deletingId === n.id}
-                          className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
+                          className="ml-2 px-2.5 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
                         >
                           Delete
                         </button>
