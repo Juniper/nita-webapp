@@ -31,6 +31,15 @@ interface ActionHistory {
   jenkins_job_build_no: number
   jenkins_job_name: string
 }
+
+interface RobotSummary {
+  available: boolean
+  total?: number
+  passed?: number
+  failed?: number
+  skipped?: number
+  pass_percentage?: number
+}
 interface CampusNetwork {
   id: number
   name: string
@@ -88,6 +97,8 @@ export function NetworkDetailPage() {
   const [history, setHistory] = useState<ActionHistory[] | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  // Robot Framework result summaries for TEST-category runs, keyed by history id.
+  const [robotSummaries, setRobotSummaries] = useState<Record<number, RobotSummary>>({})
 
   // History console viewer (live SSE stream of the run's Jenkins console)
   const [consoleView, setConsoleView] = useState<ActionHistory | null>(null)
@@ -153,7 +164,24 @@ export function NetworkDetailPage() {
       setHistoryError(null)
       apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
         .then(r => r.json())
-        .then(d => { setHistory(d.results ?? d); setLoaded(l => ({ ...l, history: true })) })
+        .then(d => {
+          const rows: ActionHistory[] = d.results ?? d
+          setHistory(rows)
+          setLoaded(l => ({ ...l, history: true }))
+          // Lazily fetch Robot Framework summaries for TEST-category runs.
+          rows
+            .filter(h => h.category_name === 'TEST')
+            .forEach(h => {
+              apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`)
+                .then(res => (res.ok ? res.json() : null))
+                .then((summary: RobotSummary | null) => {
+                  if (summary && summary.available) {
+                    setRobotSummaries(prev => ({ ...prev, [h.id]: summary }))
+                  }
+                })
+                .catch(() => { /* summary is optional */ })
+            })
+        })
         .catch(() => setHistoryError('Failed to load history'))
         .finally(() => setHistoryLoading(false))
     }
@@ -523,7 +551,22 @@ export function NetworkDetailPage() {
                     <tbody>
                       {history.map(h => (
                         <tr key={h.id} className="group border-b border-gray-800 text-white">
-                          <td className="py-2 pr-4">{h.action_name}</td>
+                          <td className="py-2 pr-4">
+                            {h.action_name}
+                            {h.category_name === 'TEST' && robotSummaries[h.id]?.available && (
+                              <div className="mt-0.5 text-xs text-gray-400 font-mono">
+                                Total {robotSummaries[h.id].total}
+                                {' · '}
+                                <span className="text-green-400">Passed {robotSummaries[h.id].passed}</span>
+                                {' · '}
+                                <span className="text-red-400">Failed {robotSummaries[h.id].failed}</span>
+                                {' · '}
+                                Skipped {robotSummaries[h.id].skipped}
+                                {' · '}
+                                Pass {robotSummaries[h.id].pass_percentage}%
+                              </div>
+                            )}
+                          </td>
                           <td className="py-2 pr-4 text-gray-400">{h.category_name}</td>
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
                           <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>

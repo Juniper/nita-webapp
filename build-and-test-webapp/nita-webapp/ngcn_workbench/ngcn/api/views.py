@@ -876,6 +876,37 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         build_no = history.jenkins_job_build_no
         return jenkins_jobs.stream_response(job_url, build_no)
 
+    @extend_schema(
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "available": {"type": "boolean"},
+                    "total": {"type": "integer"},
+                    "passed": {"type": "integer"},
+                    "failed": {"type": "integer"},
+                    "skipped": {"type": "integer"},
+                    "pass_percentage": {"type": "number"},
+                },
+            }
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="robot-summary")
+    def robot_summary(self, request, pk=None):
+        """Return the Robot Framework result totals for this run's Jenkins build.
+
+        Relays the Jenkins Robot Framework plugin summary. Returns
+        ``{"available": false}`` when the build has no Robot results.
+        """
+        from ngcn import jenkins_jobs
+
+        history = self.get_object()
+        job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
+        summary = jenkins_jobs.robot_summary(job_url, history.jenkins_job_build_no)
+        if summary is None:
+            return Response({"available": False})
+        return Response({"available": True, **summary})
+
 
 class JenkinsJobStreamView(APIView):
     """Generic authenticated SSE stream of any Jenkins job build's console.
