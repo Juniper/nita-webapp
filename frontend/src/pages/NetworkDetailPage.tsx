@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
@@ -159,33 +159,42 @@ export function NetworkDetailPage() {
         .catch(() => setActionsError('Failed to load actions'))
         .finally(() => setActionsLoading(false))
     }
-    if (activeTab === 'history' && !loaded.history) {
-      setHistoryLoading(true)
-      setHistoryError(null)
-      apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
-        .then(r => r.json())
-        .then(d => {
-          const rows: ActionHistory[] = d.results ?? d
-          setHistory(rows)
-          setLoaded(l => ({ ...l, history: true }))
-          // Lazily fetch Robot Framework summaries for TEST-category runs.
-          rows
-            .filter(h => h.category_name === 'TEST')
-            .forEach(h => {
-              apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`)
-                .then(res => (res.ok ? res.json() : null))
-                .then((summary: RobotSummary | null) => {
-                  if (summary && summary.available) {
-                    setRobotSummaries(prev => ({ ...prev, [h.id]: summary }))
-                  }
-                })
-                .catch(() => { /* summary is optional */ })
-            })
-        })
-        .catch(() => setHistoryError('Failed to load history'))
-        .finally(() => setHistoryLoading(false))
-    }
   }, [activeTab, loaded, id, network])
+
+  // Fetch the action-history list plus TEST Robot summaries. Re-run on every
+  // switch to the History tab so the contents stay current.
+  const fetchHistory = useCallback(() => {
+    setHistoryError(null)
+    setHistoryLoading(true)
+    apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
+      .then(r => r.json())
+      .then(d => {
+        const rows: ActionHistory[] = d.results ?? d
+        setHistory(rows)
+        setLoaded(l => ({ ...l, history: true }))
+        // Refresh Robot Framework summaries for TEST-category runs.
+        setRobotSummaries({})
+        rows
+          .filter(h => h.category_name === 'TEST')
+          .forEach(h => {
+            apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`)
+              .then(res => (res.ok ? res.json() : null))
+              .then((summary: RobotSummary | null) => {
+                if (summary && summary.available) {
+                  setRobotSummaries(prev => ({ ...prev, [h.id]: summary }))
+                }
+              })
+              .catch(() => { /* summary is optional */ })
+          })
+      })
+      .catch(() => setHistoryError('Failed to load history'))
+      .finally(() => setHistoryLoading(false))
+  }, [id])
+
+  // Refresh history each time the History tab is opened.
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory()
+  }, [activeTab, fetchHistory])
 
   // Keep selected tab in sync with URL query string (supports deep links from Networks page).
   useEffect(() => {
@@ -531,7 +540,7 @@ export function NetworkDetailPage() {
             {/* History tab */}
             {activeTab === 'history' && (
               <div>
-                {historyLoading ? (
+                {historyLoading && !history ? (
                   <p className="text-gray-400">Loading history…</p>
                 ) : historyError ? (
                   <p className="text-red-400">{historyError}</p>
