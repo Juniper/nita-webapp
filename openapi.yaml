@@ -1068,6 +1068,9 @@ components:
 
         Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
         string fields so consumers can display context without extra look-ups.
+        ``jenkins_job_name`` exposes the Jenkins job for the run
+        (``{action.jenkins_url}-{network_name}``) so clients can build a link to the
+        build result.
       properties:
         id:
           type: integer
@@ -1080,6 +1083,10 @@ components:
           readOnly: true
         network_name:
           type: string
+          readOnly: true
+        jenkins_job_name:
+          type: string
+          description: Return the Jenkins job name for this run.
           readOnly: true
         timestamp:
           type: string
@@ -1107,6 +1114,7 @@ components:
       - category_name
       - id
       - jenkins_job_build_no
+      - jenkins_job_name
       - network_name
       - status
       - timestamp

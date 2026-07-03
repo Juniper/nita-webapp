@@ -29,6 +29,7 @@ interface ActionHistory {
   category_id: number
   campus_network_id: number
   jenkins_job_build_no: number
+  jenkins_job_name: string
 }
 interface CampusNetwork {
   id: number
@@ -527,7 +528,16 @@ export function NetworkDetailPage() {
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
                           <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
                           <td className="py-2 text-right">
-                            <span className="inline-flex opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                            <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                              <a
+                                href={`/jenkins/job/${encodeURIComponent(h.jenkins_job_name)}/${h.jenkins_job_build_no ? `${h.jenkins_job_build_no}/` : ''}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open this run's build result in Jenkins"
+                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                              >
+                                Jenkins ↗
+                              </a>
                               <button
                                 onClick={() => handleViewConsole(h)}
                                 className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
