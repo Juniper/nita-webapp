@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
+import { useJenkinsStream, stateLabel } from '../components/LifecycleConsole'
 import { apiFetch, clearCsrfCache } from '../api/client'
 
 type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
@@ -87,23 +88,32 @@ export function NetworkDetailPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
 
-  // History console viewer
+  // History console viewer (live SSE stream of the run's Jenkins console)
   const [consoleView, setConsoleView] = useState<ActionHistory | null>(null)
-  const [consoleViewText, setConsoleViewText] = useState('')
-  const [consoleViewLoading, setConsoleViewLoading] = useState(false)
-  const [consoleViewError, setConsoleViewError] = useState<string | null>(null)
+  const {
+    lines: consoleViewLines,
+    state: consoleViewState,
+    startUrl: startConsoleViewStream,
+    reset: resetConsoleViewStream,
+  } = useJenkinsStream()
+  const consoleViewRef = useRef<HTMLPreElement>(null)
 
   const handleViewConsole = (h: ActionHistory) => {
     setConsoleView(h)
-    setConsoleViewText('')
-    setConsoleViewError(null)
-    setConsoleViewLoading(true)
-    apiFetch(`/api/v1/action-history/${h.id}/console/`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: { console: string }) => setConsoleViewText(d.console ?? ''))
-      .catch(() => setConsoleViewError('Failed to load console output'))
-      .finally(() => setConsoleViewLoading(false))
+    startConsoleViewStream(`/api/v1/action-history/${h.id}/stream/`)
   }
+
+  const handleCloseConsoleView = () => {
+    resetConsoleViewStream()
+    setConsoleView(null)
+  }
+
+  // Auto-scroll the history console viewer as lines arrive.
+  useEffect(() => {
+    if (consoleViewRef.current) {
+      consoleViewRef.current.scrollTop = consoleViewRef.current.scrollHeight
+    }
+  }, [consoleViewLines])
 
   // Network fetch on mount
   useEffect(() => {
@@ -530,7 +540,7 @@ export function NetworkDetailPage() {
       {consoleView && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setConsoleView(null)}
+          onClick={handleCloseConsoleView}
         >
           <div
             className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[85vh] flex flex-col"
@@ -539,25 +549,33 @@ export function NetworkDetailPage() {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-700">
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium text-sm">
-                  Console — {consoleView.action_name} #{consoleView.jenkins_job_build_no}
+                  Console — {consoleView.action_name} #{consoleView.jenkins_job_build_no} {stateLabel(consoleViewState)}
                 </span>
                 <span className={statusBadge(consoleView.status)}>{consoleView.status}</span>
               </div>
               <button
-                onClick={() => setConsoleView(null)}
+                onClick={handleCloseConsoleView}
                 className="text-gray-400 hover:text-white text-sm"
               >
                 Close
               </button>
             </div>
             <div className="p-4 overflow-y-auto">
-              {consoleViewLoading ? (
+              {consoleViewState === 'error' ? (
+                <p className="text-red-400 text-sm">Failed to load console output</p>
+              ) : consoleViewState === 'timeout' ? (
+                <p className="text-yellow-400 text-sm">Console stream timed out.</p>
+              ) : consoleViewLines.length === 0 && consoleViewState === 'streaming' ? (
                 <p className="text-gray-400 text-sm">Loading console output…</p>
-              ) : consoleViewError ? (
-                <p className="text-red-400 text-sm">{consoleViewError}</p>
+              ) : consoleViewLines.length === 0 ? (
+                <p className="text-gray-400 text-sm">No console output available.</p>
               ) : (
-                <pre className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap">
-                  {consoleViewText || 'No console output available.'}
+                <pre
+                  ref={consoleViewRef}
+                  className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap overflow-y-auto"
+                  style={{ maxHeight: '60vh' }}
+                >
+                  {consoleViewLines.join('\n')}
                 </pre>
               )}
             </div>
