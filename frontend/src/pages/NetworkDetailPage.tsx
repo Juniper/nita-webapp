@@ -447,13 +447,24 @@ export function NetworkDetailPage() {
                           {acts.map(action => (
                             <div key={action.id} className="bg-gray-800 rounded p-3 flex justify-between items-center">
                               <span className="text-white">{action.action_name}</span>
-                              <button
-                                onClick={() => handleTrigger(action)}
-                                disabled={triggerLoading === action.id || streamState === 'streaming'}
-                                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
-                              >
-                                {triggerLoading === action.id ? 'Running…' : 'Run'}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={`/jenkins/job/${encodeURIComponent(`${action.jenkins_url}-${network.name}`)}/`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open this action's job in Jenkins"
+                                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
+                                >
+                                  Jenkins ↗
+                                </a>
+                                <button
+                                  onClick={() => handleTrigger(action)}
+                                  disabled={triggerLoading === action.id || streamState === 'streaming'}
+                                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
+                                >
+                                  {triggerLoading === action.id ? 'Running…' : 'Run'}
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
