@@ -52,9 +52,10 @@ interface CampusNetwork {
 
 function statusBadge(status: string): string {
   const base = 'px-2 py-0.5 rounded text-xs font-semibold uppercase'
-  if (status === 'SUCCESS') return `${base} bg-green-800 text-green-200`
-  if (status === 'FAILED' || status === 'FAILURE') return `${base} bg-red-800 text-red-200`
-  if (status === 'RUNNING' || status === 'PENDING') return `${base} bg-yellow-800 text-yellow-200`
+  const s = (status || '').toUpperCase()
+  if (s === 'SUCCESS') return `${base} bg-green-800 text-green-200`
+  if (s === 'FAILED' || s === 'FAILURE') return `${base} bg-red-800 text-red-200`
+  if (s === 'RUNNING' || s === 'PENDING') return `${base} bg-yellow-800 text-yellow-200`
   return `${base} bg-gray-700 text-gray-300`
 }
 
