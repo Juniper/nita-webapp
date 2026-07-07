@@ -19,6 +19,7 @@ get enough context without having to make extra requests:
 
 import json
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -85,6 +86,9 @@ class ActionHistorySerializer(serializers.ModelSerializer):
 
     Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
     string fields so consumers can display context without extra look-ups.
+    ``jenkins_job_name`` exposes the Jenkins job for the run
+    (``{action.jenkins_url}-{network_name}``) so clients can build a link to the
+    build result.
     """
 
     action_name = serializers.CharField(source="action_id.action_name", read_only=True)
@@ -94,6 +98,12 @@ class ActionHistorySerializer(serializers.ModelSerializer):
     network_name = serializers.CharField(
         source="campus_network_id.name", read_only=True
     )
+    jenkins_job_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_jenkins_job_name(self, obj):
+        """Return the Jenkins job name for this run."""
+        return f"{obj.action_id.jenkins_url}-{obj.campus_network_id.name}"
 
     class Meta:
         model = ActionHistory

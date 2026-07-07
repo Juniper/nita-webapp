@@ -31,11 +31,11 @@ export function useJenkinsStream() {
     setState('idle')
   }, [close])
 
-  const start = useCallback((jobName: string, buildNo: number) => {
+  const startUrl = useCallback((url: string) => {
     close()
     setLines([])
     setState('streaming')
-    const es = new EventSource(lifecycleStreamUrl(jobName, buildNo))
+    const es = new EventSource(url)
     esRef.current = es
     es.onmessage = e => {
       if (e.data) setLines(prev => [...prev, e.data])
@@ -65,13 +65,17 @@ export function useJenkinsStream() {
     }
   }, [close])
 
+  const start = useCallback((jobName: string, buildNo: number) => {
+    startUrl(lifecycleStreamUrl(jobName, buildNo))
+  }, [startUrl])
+
   // Clean up on unmount.
   useEffect(() => close, [close])
 
-  return { lines, state, start, reset, close }
+  return { lines, state, start, startUrl, reset, close }
 }
 
-function stateLabel(state: StreamState): string {
+export function stateLabel(state: StreamState): string {
   switch (state) {
     case 'streaming':
       return '(streaming…)'

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../api/client'
+import { useJenkinsStream, stateLabel } from './LifecycleConsole'
 
 export interface LifecycleRun {
   id: string
@@ -32,11 +33,12 @@ interface LifecycleHistoryModalProps {
 }
 
 /**
- * Modal listing lifecycle job runs with a per-run historical console viewer.
+ * Modal listing lifecycle job runs with a per-run live console viewer.
  *
  * Fetches `GET /api/v1/lifecycle-runs/` (one request per kind, merged and
- * sorted newest-first) and
- * `GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` on demand.
+ * sorted newest-first) and, on demand, opens a live SSE stream of the run's
+ * Jenkins console via `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`
+ * (which replays a finished build's full log and then completes).
  */
 export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistoryModalProps) {
   const [runs, setRuns] = useState<LifecycleRun[] | null>(null)
@@ -44,9 +46,13 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
   const [error, setError] = useState<string | null>(null)
 
   const [consoleRun, setConsoleRun] = useState<LifecycleRun | null>(null)
-  const [consoleText, setConsoleText] = useState('')
-  const [consoleLoading, setConsoleLoading] = useState(false)
-  const [consoleError, setConsoleError] = useState<string | null>(null)
+  const {
+    lines: consoleLines,
+    state: consoleState,
+    start: startConsoleStream,
+    reset: resetConsoleStream,
+  } = useJenkinsStream()
+  const consoleRef = useRef<HTMLPreElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -81,25 +87,30 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
 
   function viewConsole(run: LifecycleRun) {
     setConsoleRun(run)
-    setConsoleText('')
-    setConsoleError(null)
-    setConsoleLoading(true)
-    apiFetch(
-      `/api/v1/lifecycle-runs/console/?job_name=${encodeURIComponent(run.job_name)}&build_no=${run.build_no}`
-    )
-      .then(res => {
-        if (!res.ok) throw new Error(`Failed to load console: ${res.status}`)
-        return res.json() as Promise<{ console: string }>
-      })
-      .then(d => setConsoleText(d.console ?? ''))
-      .catch(() => setConsoleError('Failed to load console output'))
-      .finally(() => setConsoleLoading(false))
+    startConsoleStream(run.job_name, run.build_no)
+  }
+
+  function closeConsole() {
+    resetConsoleStream()
+    setConsoleRun(null)
+  }
+
+  // Auto-scroll the console viewer as lines stream in.
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight
+    }
+  }, [consoleLines])
+
+  function handleClose() {
+    resetConsoleStream()
+    onClose()
   }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[85vh] flex flex-col"
@@ -107,7 +118,7 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
       >
         <div className="flex justify-between items-center px-4 py-3 border-b border-gray-700">
           <span className="text-white font-medium text-sm">{title}</span>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-sm">
+          <button onClick={handleClose} className="text-gray-400 hover:text-white text-sm">
             Close
           </button>
         </div>
@@ -116,22 +127,30 @@ export function LifecycleHistoryModal({ title, kinds, onClose }: LifecycleHistor
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-white text-sm font-medium">
-                  Console — {consoleRun.subject} #{consoleRun.build_no}
+                  Console — {consoleRun.subject} #{consoleRun.build_no} {stateLabel(consoleState)}
                 </span>
                 <button
-                  onClick={() => setConsoleRun(null)}
+                  onClick={closeConsole}
                   className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
                 >
                   Back
                 </button>
               </div>
-              {consoleLoading ? (
+              {consoleState === 'error' ? (
+                <p className="text-red-400 text-sm">Failed to load console output</p>
+              ) : consoleState === 'timeout' ? (
+                <p className="text-yellow-400 text-sm">Console stream timed out.</p>
+              ) : consoleLines.length === 0 && consoleState === 'streaming' ? (
                 <p className="text-gray-400 text-sm">Loading console output…</p>
-              ) : consoleError ? (
-                <p className="text-red-400 text-sm">{consoleError}</p>
+              ) : consoleLines.length === 0 ? (
+                <p className="text-gray-400 text-sm">No console output available.</p>
               ) : (
-                <pre className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap">
-                  {consoleText || 'No console output available.'}
+                <pre
+                  ref={consoleRef}
+                  className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap overflow-y-auto"
+                  style={{ maxHeight: '60vh' }}
+                >
+                  {consoleLines.join('\n')}
                 </pre>
               )}
             </div>

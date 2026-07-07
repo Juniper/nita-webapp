@@ -27,6 +27,54 @@ logger = logging.getLogger(__name__)
 _ANSI_ESCAPE = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 
 
+def robot_summary(job_name, build_no):
+    """Return normalized Robot Framework result totals for a build, or ``None``.
+
+    Relays the Jenkins Robot Framework plugin's per-build summary
+    (``/job/{job}/{build}/robot/api/json``). Returns a dict with ``total``,
+    ``passed``, ``failed``, ``skipped`` and ``pass_percentage`` keys, or ``None``
+    when the build has no Robot results or Jenkins is unreachable.
+    """
+    import base64
+    import json
+
+    from ngcn.views import (
+        JENKINS_SERVER_PASS,
+        JENKINS_SERVER_URL,
+        JENKINS_SERVER_USER,
+    )
+
+    url = f"{JENKINS_SERVER_URL}/job/{job_name}/{build_no}/robot/api/json"
+    req = urllib.request.Request(url)
+    token = base64.b64encode(
+        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
+    ).decode()
+    req.add_header("Authorization", "Basic " + token)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # noqa: S310
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+    except Exception:
+        return None
+
+    if not isinstance(data, dict) or "overallTotal" not in data:
+        return None
+
+    total = data.get("overallTotal", 0) or 0
+    passed = data.get("overallPassed", 0) or 0
+    failed = data.get("overallFailed", 0) or 0
+    skipped = data.get("overallSkipped", 0) or 0
+    pass_percentage = data.get("passPercentage")
+    if pass_percentage is None:
+        pass_percentage = round((passed / total) * 100, 1) if total else 0.0
+    return {
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "pass_percentage": pass_percentage,
+    }
+
+
 def _make_crumbed_jenkins():
     """Return a jenkinsapi ``Jenkins`` client configured with a CSRF crumb."""
     from jenkinsapi.jenkins import Jenkins

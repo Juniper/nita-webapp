@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
+import { useJenkinsStream, stateLabel } from '../components/LifecycleConsole'
 import { apiFetch, clearCsrfCache } from '../api/client'
 
 type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
@@ -28,6 +29,16 @@ interface ActionHistory {
   category_id: number
   campus_network_id: number
   jenkins_job_build_no: number
+  jenkins_job_name: string
+}
+
+interface RobotSummary {
+  available: boolean
+  total?: number
+  passed?: number
+  failed?: number
+  skipped?: number
+  pass_percentage?: number
 }
 interface CampusNetwork {
   id: number
@@ -41,9 +52,10 @@ interface CampusNetwork {
 
 function statusBadge(status: string): string {
   const base = 'px-2 py-0.5 rounded text-xs font-semibold uppercase'
-  if (status === 'SUCCESS') return `${base} bg-green-800 text-green-200`
-  if (status === 'FAILED' || status === 'FAILURE') return `${base} bg-red-800 text-red-200`
-  if (status === 'RUNNING' || status === 'PENDING') return `${base} bg-yellow-800 text-yellow-200`
+  const s = (status || '').toUpperCase()
+  if (s === 'SUCCESS') return `${base} bg-green-800 text-green-200`
+  if (s === 'FAILED' || s === 'FAILURE') return `${base} bg-red-800 text-red-200`
+  if (s === 'RUNNING' || s === 'PENDING') return `${base} bg-yellow-800 text-yellow-200`
   return `${base} bg-gray-700 text-gray-300`
 }
 
@@ -86,24 +98,35 @@ export function NetworkDetailPage() {
   const [history, setHistory] = useState<ActionHistory[] | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  // Robot Framework result summaries for TEST-category runs, keyed by history id.
+  const [robotSummaries, setRobotSummaries] = useState<Record<number, RobotSummary>>({})
 
-  // History console viewer
+  // History console viewer (live SSE stream of the run's Jenkins console)
   const [consoleView, setConsoleView] = useState<ActionHistory | null>(null)
-  const [consoleViewText, setConsoleViewText] = useState('')
-  const [consoleViewLoading, setConsoleViewLoading] = useState(false)
-  const [consoleViewError, setConsoleViewError] = useState<string | null>(null)
+  const {
+    lines: consoleViewLines,
+    state: consoleViewState,
+    startUrl: startConsoleViewStream,
+    reset: resetConsoleViewStream,
+  } = useJenkinsStream()
+  const consoleViewRef = useRef<HTMLPreElement>(null)
 
   const handleViewConsole = (h: ActionHistory) => {
     setConsoleView(h)
-    setConsoleViewText('')
-    setConsoleViewError(null)
-    setConsoleViewLoading(true)
-    apiFetch(`/api/v1/action-history/${h.id}/console/`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
-      .then((d: { console: string }) => setConsoleViewText(d.console ?? ''))
-      .catch(() => setConsoleViewError('Failed to load console output'))
-      .finally(() => setConsoleViewLoading(false))
+    startConsoleViewStream(`/api/v1/action-history/${h.id}/stream/`)
   }
+
+  const handleCloseConsoleView = () => {
+    resetConsoleViewStream()
+    setConsoleView(null)
+  }
+
+  // Auto-scroll the history console viewer as lines arrive.
+  useEffect(() => {
+    if (consoleViewRef.current) {
+      consoleViewRef.current.scrollTop = consoleViewRef.current.scrollHeight
+    }
+  }, [consoleViewLines])
 
   // Network fetch on mount
   useEffect(() => {
@@ -137,16 +160,42 @@ export function NetworkDetailPage() {
         .catch(() => setActionsError('Failed to load actions'))
         .finally(() => setActionsLoading(false))
     }
-    if (activeTab === 'history' && !loaded.history) {
-      setHistoryLoading(true)
-      setHistoryError(null)
-      apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
-        .then(r => r.json())
-        .then(d => { setHistory(d.results ?? d); setLoaded(l => ({ ...l, history: true })) })
-        .catch(() => setHistoryError('Failed to load history'))
-        .finally(() => setHistoryLoading(false))
-    }
   }, [activeTab, loaded, id, network])
+
+  // Fetch the action-history list plus TEST Robot summaries. Re-run on every
+  // switch to the History tab so the contents stay current.
+  const fetchHistory = useCallback(() => {
+    setHistoryError(null)
+    setHistoryLoading(true)
+    apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
+      .then(r => r.json())
+      .then(d => {
+        const rows: ActionHistory[] = d.results ?? d
+        setHistory(rows)
+        setLoaded(l => ({ ...l, history: true }))
+        // Refresh Robot Framework summaries for TEST-category runs.
+        setRobotSummaries({})
+        rows
+          .filter(h => h.category_name === 'TEST')
+          .forEach(h => {
+            apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`)
+              .then(res => (res.ok ? res.json() : null))
+              .then((summary: RobotSummary | null) => {
+                if (summary && summary.available) {
+                  setRobotSummaries(prev => ({ ...prev, [h.id]: summary }))
+                }
+              })
+              .catch(() => { /* summary is optional */ })
+          })
+      })
+      .catch(() => setHistoryError('Failed to load history'))
+      .finally(() => setHistoryLoading(false))
+  }, [id])
+
+  // Refresh history each time the History tab is opened.
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory()
+  }, [activeTab, fetchHistory])
 
   // Keep selected tab in sync with URL query string (supports deep links from Networks page).
   useEffect(() => {
@@ -437,13 +486,24 @@ export function NetworkDetailPage() {
                           {acts.map(action => (
                             <div key={action.id} className="bg-gray-800 rounded p-3 flex justify-between items-center">
                               <span className="text-white">{action.action_name}</span>
-                              <button
-                                onClick={() => handleTrigger(action)}
-                                disabled={triggerLoading === action.id || streamState === 'streaming'}
-                                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
-                              >
-                                {triggerLoading === action.id ? 'Running…' : 'Run'}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={`/jenkins/job/${encodeURIComponent(`${action.jenkins_url}-${network.name}`)}/`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open this action's job in Jenkins"
+                                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
+                                >
+                                  Jenkins ↗
+                                </a>
+                                <button
+                                  onClick={() => handleTrigger(action)}
+                                  disabled={triggerLoading === action.id || streamState === 'streaming'}
+                                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded"
+                                >
+                                  {triggerLoading === action.id ? 'Running…' : 'Run'}
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -481,7 +541,7 @@ export function NetworkDetailPage() {
             {/* History tab */}
             {activeTab === 'history' && (
               <div>
-                {historyLoading ? (
+                {historyLoading && !history ? (
                   <p className="text-gray-400">Loading history…</p>
                 ) : historyError ? (
                   <p className="text-red-400">{historyError}</p>
@@ -501,12 +561,36 @@ export function NetworkDetailPage() {
                     <tbody>
                       {history.map(h => (
                         <tr key={h.id} className="group border-b border-gray-800 text-white">
-                          <td className="py-2 pr-4">{h.action_name}</td>
+                          <td className="py-2 pr-4">
+                            {h.action_name}
+                            {h.category_name === 'TEST' && robotSummaries[h.id]?.available && (
+                              <div className="mt-0.5 text-xs text-gray-400 font-mono">
+                                Total {robotSummaries[h.id].total}
+                                {' · '}
+                                <span className="text-green-400">Passed {robotSummaries[h.id].passed}</span>
+                                {' · '}
+                                <span className="text-red-400">Failed {robotSummaries[h.id].failed}</span>
+                                {' · '}
+                                Skipped {robotSummaries[h.id].skipped}
+                                {' · '}
+                                Pass {robotSummaries[h.id].pass_percentage}%
+                              </div>
+                            )}
+                          </td>
                           <td className="py-2 pr-4 text-gray-400">{h.category_name}</td>
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
                           <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
                           <td className="py-2 text-right">
-                            <span className="inline-flex opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                            <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                              <a
+                                href={`/jenkins/job/${encodeURIComponent(h.jenkins_job_name)}/${h.jenkins_job_build_no ? `${h.jenkins_job_build_no}/` : ''}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open this run's build result in Jenkins"
+                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                              >
+                                Jenkins ↗
+                              </a>
                               <button
                                 onClick={() => handleViewConsole(h)}
                                 className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
@@ -530,7 +614,7 @@ export function NetworkDetailPage() {
       {consoleView && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setConsoleView(null)}
+          onClick={handleCloseConsoleView}
         >
           <div
             className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[85vh] flex flex-col"
@@ -539,25 +623,33 @@ export function NetworkDetailPage() {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-700">
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium text-sm">
-                  Console — {consoleView.action_name} #{consoleView.jenkins_job_build_no}
+                  Console — {consoleView.action_name} #{consoleView.jenkins_job_build_no} {stateLabel(consoleViewState)}
                 </span>
                 <span className={statusBadge(consoleView.status)}>{consoleView.status}</span>
               </div>
               <button
-                onClick={() => setConsoleView(null)}
+                onClick={handleCloseConsoleView}
                 className="text-gray-400 hover:text-white text-sm"
               >
                 Close
               </button>
             </div>
             <div className="p-4 overflow-y-auto">
-              {consoleViewLoading ? (
+              {consoleViewState === 'error' ? (
+                <p className="text-red-400 text-sm">Failed to load console output</p>
+              ) : consoleViewState === 'timeout' ? (
+                <p className="text-yellow-400 text-sm">Console stream timed out.</p>
+              ) : consoleViewLines.length === 0 && consoleViewState === 'streaming' ? (
                 <p className="text-gray-400 text-sm">Loading console output…</p>
-              ) : consoleViewError ? (
-                <p className="text-red-400 text-sm">{consoleViewError}</p>
+              ) : consoleViewLines.length === 0 ? (
+                <p className="text-gray-400 text-sm">No console output available.</p>
               ) : (
-                <pre className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap">
-                  {consoleViewText || 'No console output available.'}
+                <pre
+                  ref={consoleViewRef}
+                  className="bg-black text-green-400 font-mono text-sm p-4 rounded whitespace-pre-wrap overflow-y-auto"
+                  style={{ maxHeight: '60vh' }}
+                >
+                  {consoleViewLines.join('\n')}
                 </pre>
               )}
             </div>

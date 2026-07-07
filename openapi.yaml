@@ -136,6 +136,45 @@ paths:
                   console:
                     type: string
           description: ''
+  /api/v1/action-history/{id}/robot-summary/:
+    get:
+      operationId: v1_action_history_robot_summary_retrieve
+      description: |-
+        Return the Robot Framework result totals for this run's Jenkins build.
+
+        Relays the Jenkins Robot Framework plugin summary. Returns
+        ``{"available": false}`` when the build has no Robot results.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this action history.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  total:
+                    type: integer
+                  passed:
+                    type: integer
+                  failed:
+                    type: integer
+                  skipped:
+                    type: integer
+                  pass_percentage:
+                    type: number
+          description: ''
   /api/v1/action-history/{id}/stream/:
     get:
       operationId: v1_action_history_stream_retrieve
@@ -1068,6 +1107,9 @@ components:
 
         Adds ``action_name``, ``category_name``, and ``network_name`` as read-only
         string fields so consumers can display context without extra look-ups.
+        ``jenkins_job_name`` exposes the Jenkins job for the run
+        (``{action.jenkins_url}-{network_name}``) so clients can build a link to the
+        build result.
       properties:
         id:
           type: integer
@@ -1080,6 +1122,10 @@ components:
           readOnly: true
         network_name:
           type: string
+          readOnly: true
+        jenkins_job_name:
+          type: string
+          description: Return the Jenkins job name for this run.
           readOnly: true
         timestamp:
           type: string
@@ -1107,6 +1153,7 @@ components:
       - category_name
       - id
       - jenkins_job_build_no
+      - jenkins_job_name
       - network_name
       - status
       - timestamp
