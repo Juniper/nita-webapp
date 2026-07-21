@@ -70,7 +70,7 @@ from ngcn.models import (
     Workbook,
 )
 from ngcn.networktypeparser import NetworkTypeParser
-from ngcn.views import (
+from ngcn.workbook import (
     GridDataManager,
     create_new_inv,
     create_workbook,
@@ -666,7 +666,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
         Returns 202 Accepted with the ActionHistory ID immediately.
         Poll GET /api/v1/action-history/{id}/ for status updates.
         """
-        from ngcn.views import updateCampusNetworkStatusOnDB
+        from ngcn.workbook import updateCampusNetworkStatusOnDB
 
         try:
             action_obj = Action.objects.get(pk=action_id)
@@ -838,7 +838,7 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         """Return the Jenkins console log for this action history entry."""
         import re
 
-        from ngcn.views import _make_jenkins_server
+        from ngcn.jenkins_config import _make_jenkins_server
 
         history = self.get_object()
         job_url = history.action_id.jenkins_url + "-" + history.campus_network_id.name
@@ -1057,7 +1057,7 @@ class LifecycleRunViewSet(viewsets.ViewSet):
     )
     def list(self, request):
         """List lifecycle job runs derived from Jenkins, newest-first."""
-        from ngcn.views import _make_jenkins_server
+        from ngcn.jenkins_config import _make_jenkins_server
 
         kind = request.query_params.get("kind")
         kinds = [kind] if kind in self._KIND_JOB else list(self._KIND_JOB)
@@ -1088,7 +1088,7 @@ class LifecycleRunViewSet(viewsets.ViewSet):
         """Return the historical Jenkins console log for a single build."""
         import re
 
-        from ngcn.views import _make_jenkins_server
+        from ngcn.jenkins_config import _make_jenkins_server
 
         job_name = request.query_params.get("job_name", "")
         build_no = request.query_params.get("build_no", "")

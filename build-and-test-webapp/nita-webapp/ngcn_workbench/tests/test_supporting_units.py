@@ -1,10 +1,10 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for supporting modules: middleware, status updater, models, and tables.
+"""Unit tests for supporting modules: middleware, status updater, and models.
 
 Covers servicestartupmiddleware, statusupdater, model validation logic, and
-django-tables2 table classes that sit outside the main views and API layers.
+workbook helpers that sit outside the API layer.
 """
 
 import json
@@ -14,9 +14,8 @@ import pytest
 from django.utils import timezone
 from ngcn import servicestartupmiddleware, statusupdater
 from ngcn.models import ActionHistory, ActionProperty, CampusType, Workbook, Worksheets
-from ngcn.tables import CampusNetworkActionListTable
 from ngcn.templatetags.json_filters import jsonify
-from ngcn.views import GridDataManager, escape_ansi
+from ngcn.workbook import GridDataManager, escape_ansi
 
 
 @pytest.mark.django_db
@@ -142,14 +141,6 @@ def test_model_string_representations(
     assert str(action) == action.action_name
     assert str(history) == action.action_name
     assert str(worksheet) == "sheet1"
-
-
-@pytest.mark.django_db
-def test_campus_network_action_list_table_renders_suffixed_url(action):
-    table = CampusNetworkActionListTable.__new__(CampusNetworkActionListTable)
-    table.network_name = "campus_one"
-
-    assert table.render_jenkins_url(action.jenkins_url, action) == "job-test-campus_one"
 
 
 def test_escape_ansi_strips_escape_sequences():

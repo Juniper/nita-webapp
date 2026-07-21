@@ -39,8 +39,6 @@ INSTALLED_APPS = [
     #   ngcn
     "ngcn",
     #   Frameworks
-    "djangoformsetjs",
-    "django_tables2",
     "rest_framework",
     "rest_framework.authtoken",
     "drf_spectacular",

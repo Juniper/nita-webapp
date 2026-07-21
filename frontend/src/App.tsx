@@ -10,7 +10,7 @@ import { NetworkDetailPage } from './pages/NetworkDetailPage'
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename="/app">
+      <BrowserRouter basename="/">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
