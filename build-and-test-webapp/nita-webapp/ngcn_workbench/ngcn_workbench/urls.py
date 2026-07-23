@@ -28,7 +28,7 @@ class TokenAuthView(ObtainAuthToken):
 
 
 def spa_index(request, **kwargs):
-    """Serve the compiled React SPA for all /app/* routes."""
+    """Serve the compiled React SPA for the root and its client-side routes."""
     index_path = os.path.join(
         getattr(settings, "WHITENOISE_ROOT", ""),
         "index.html",
@@ -55,8 +55,10 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
-    # React SPA — served at /app/ with React Router basename="/app"
-    path("app/", spa_index, name="spa"),
-    re_path(r"^app/.*$", spa_index),
-    path("", include("ngcn.urls")),
+    # React SPA is the default app at "/" — served for the root and the SPA's
+    # own client-side routes only. Keep the allowlist below in sync with the
+    # top-level routes in frontend/src/App.tsx. Any other path (including every
+    # removed legacy URL) falls through to Django's default 404.
+    path("", spa_index, name="spa"),
+    re_path(r"^(?:login|network-types|networks)(?:/.*)?$", spa_index),
 ]

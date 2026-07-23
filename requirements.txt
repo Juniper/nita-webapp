@@ -4,10 +4,8 @@ django==5.2.1
 djangorestframework==3.15.2
 drf-spectacular==0.27.2
 python-jenkins==1.8.3
-django-tables2==2.7.0
 docutils==0.21.2
 openpyxl==3.1.5
-django-formset-js==0.5.0
 jenkinsapi==0.3.13
 PyMySQL==1.1.1
 PyYAML==6.0.2

@@ -1,0 +1,52 @@
+## 1. Extract shared logic out of legacy views.py
+
+- [x] 1.1 Create `ngcn/jenkins_config.py` and move the `JENKINS_SERVER_URL`, `JENKINS_SERVER_USER`, `JENKINS_SERVER_PASS` module-level constants and the `_make_jenkins_server` helper into it (preserve exact behaviour and any env-var lookups)
+- [x] 1.2 Create `ngcn/workbook.py` and move `GridDataManager`, `create_new_inv`, `create_workbook`, `create_workbook_from_db`, `parse_workbook`, `updateCampusNetworkStatusOnDB`, and `escape_ansi` into it (move any helper-only imports these functions rely on)
+- [x] 1.3 In `ngcn/api/views.py`, repoint the top-level `from ngcn.views import (GridDataManager, create_new_inv, create_workbook, create_workbook_from_db, parse_workbook)` to `from ngcn.workbook import (...)`
+- [x] 1.4 In `ngcn/api/views.py`, repoint the lazy in-function imports `from ngcn.views import updateCampusNetworkStatusOnDB` and `from ngcn.views import _make_jenkins_server` to the new modules (`ngcn.workbook` / `ngcn.jenkins_config`) — note: four `_make_jenkins_server` sites total (stream, lifecycle list, console) plus `updateCampusNetworkStatusOnDB`
+- [x] 1.5 In `ngcn/jenkins_jobs.py`, repoint `from ngcn.views import (JENKINS_SERVER_PASS, JENKINS_SERVER_URL, JENKINS_SERVER_USER)` to `from ngcn.jenkins_config import (...)` — four lazy sites total
+- [x] 1.6 In `tests/test_supporting_units.py`, repoint `from ngcn.views import GridDataManager, escape_ansi` to `from ngcn.workbook import GridDataManager, escape_ansi`
+- [x] 1.7 Grep the entire tree for any remaining `from ngcn.views import`, `from ngcn import views`, and `ngcn\.views\.` references (including inside function bodies) and repoint every non-legacy usage; confirm only the legacy `ngcn/urls.py` (to be deleted) still references `views` — also updated `tests/test_api.py` monkeypatch targets `ngcn.views._make_jenkins_server` → `ngcn.jenkins_config._make_jenkins_server` (3 sites). Remaining `ngcn.views` refs are only in the legacy `tests/test_views_coverage.py` / `tests/test_views_integration.py` (deleted in §3)
+- [x] 1.8 Run the full test suite (`pytest`) and confirm it passes with the extracted modules and no remaining non-legacy dependency on `ngcn.views` — **VERIFIED (2026-07-21) in the built image `26.5-3/4-reroot`: `pytest` = 90 passed, 1 env-only fail (`test_openapi_drift` — `openapi.yaml` not copied into the prod image; passes when mounted). No non-legacy `ngcn.views` deps remain.**
+
+## 2. Re-root the SPA to `/`
+
+- [x] 2.1 In `frontend/src/App.tsx`, change `<BrowserRouter basename="/app">` to `<BrowserRouter basename="/">`
+- [x] 2.2 In `ngcn_workbench/urls.py`, remove `path("", include("ngcn.urls"))`
+- [x] 2.3 In `ngcn_workbench/urls.py`, replace `path("app/", spa_index, name="spa")` and `re_path(r"^app/.*$", spa_index)` with a root mount `path("", spa_index, name="spa")` plus an SPA-route allowlist `re_path(r"^(?:login|network-types|networks)(?:/.*)?$", spa_index)`, keeping all `admin/`, `api/v1/`, `api/schema/`, `api/docs/` entries listed before it; any other path (including removed legacy URLs) falls through to Django's default 404
+- [x] 2.4 In `nginx/nginx.conf`, remove the dead `rewrite ^/webapp(.*)$ $1 break;` line from the `location /` block
+- [x] 2.5 Rebuild the frontend (`cd frontend && npm run build`) and smoke-test: `GET /` serves the SPA, `GET /login` serves the SPA, `GET /networks/5` serves the SPA (deep-link refresh), `GET /campustype/` returns HTTP 404, `GET /api/v1/network-types/` returns JSON, `GET /admin/` returns the admin login, `/assets/<hash>.js` serves the compiled asset — **VERIFIED (2026-07-21): frontend built in the Docker `frontend-builder` stage; on the deployed pod (port-forward): `/`→200 SPA (`div#root`, `/assets/index-BSL9EaXN.js`), `/login`→200, `/networks/5`→200, `/campustype/`→404, `/api/v1/network-types/`→403 JSON, `/admin/`→302→`/admin/login/` 200, asset→200 js**
+
+## 3. Remove the legacy server-rendered UI
+
+- [x] 3.1 Delete `ngcn/urls.py` (the legacy route table)
+- [x] 3.2 Delete the legacy HTTP view functions/classes from `ngcn/views.py` — whole file removed (all shared logic already extracted in §1; nothing non-legacy imported it)
+- [x] 3.3 Delete `ngcn/templates/ngcn/**` (all legacy server-rendered templates) — empty `ngcn/templates/` dir also removed
+- [x] 3.4 Delete `ngcn/tables.py` (django_tables2 table classes)
+- [x] 3.5 Delete `ngcn/forms.py` (legacy Django forms)
+- [x] 3.6 Prune legacy-only static: deleted `static/components/`, `static/global/js/`, `static/images/`, `static/global/css/{admin_base,index_page,smoothness_jquery-ui}.css`, and `ngcn/static/customization/{forms,general,grid,header,loader,table,tabs,tree,widgets}/`. **KEPT** admin-login deps: `static/global/css/bootstrap.css`, `ngcn/static/customization/login/`, `ngcn/static/customization/buttons/` (note: `images/juniper.png` was already a broken ref pre-change)
+- [x] 3.7 **Decision A — keep branded admin login.** `templates/base.html`, `templates/base_site.html`, `templates/admin/login.html` retained (Django admin login customization, reachable at `/admin/login/`)
+- [x] 3.8 Delete `tests/test_views_coverage.py` and `tests/test_views_integration.py` — also deleted `tests/test_forms.py` (legacy forms test, discovered during §3)
+- [x] 3.9 Remove the legacy-specific portions of `tests/test_supporting_units.py` that exercise deleted legacy views/tables (retain tests covering the extracted `ngcn.workbook` symbols) — removed the `ngcn.tables` import + `test_campus_network_action_list_table_renders_suffixed_url`; kept `GridDataManager`/`escape_ansi` tests
+- [x] 3.10 Run `pytest` and confirm it passes with the legacy code removed — **VERIFIED (2026-07-21) in the built image: suite green (90 passed / 1 env-only openapi fail) with all legacy code removed**
+
+## 4. Drop the django_tables2 dependency
+
+- [x] 4.1 Remove `"django_tables2"` from `INSTALLED_APPS` in `ngcn_workbench/settings.py`
+- [x] 4.2 Remove `django-tables2==2.7.0` from `requirements.txt`
+- [x] 4.3 Remove the now-stale ruff `per-file-ignores` entries for `**/ngcn/forms.py` and `**/ngcn/views.py` (and `**/networktypeparser.py` if it is emptied) from `pyproject.toml` — removed `forms.py` + `views.py`; kept `networktypeparser.py` (still present)
+- [x] 4.4 Grep for any remaining `django_tables2` / `django-tables2` references in code and templates and confirm none remain (excluding generated NOTICES files handled in section 5) — none in app code. Also removed the now-orphaned `djangoformsetjs` (INSTALLED_APPS) + `django-formset-js==0.5.0` (requirements) legacy-formset cruft (all consuming templates/forms/static already deleted; only lingered in generated NOTICES)
+- [x] 4.5 Confirm Django starts cleanly (`python manage.py check`) with the dependency removed — **VERIFIED (2026-07-21): `manage.py check` → "System check identified no issues (0 silenced)" in the built image, including after the `djangoformsetjs` removal (`26.5-4-reroot`)**
+
+## 5. Clean up references and regenerate notices
+
+- [x] 5.1 Regenerate `NOTICES.txt` and `NOTICES.spdx.json` so `django-tables2` and the deleted legacy template files are no longer listed — **done via targeted cleanup** (the `release_manual.yml` SBOM tool isn't available locally): removed the `django-tables2` + `django-formset-js` blocks from `NOTICES.txt`; programmatically (jq) dropped 168 stale deleted-file entries (204→36) from `NOTICES.spdx.json` and scrubbed dangling SPDXID references (validated: valid JSON, no dangling relationships, kept admin-login static retained). **Note:** a full authoritative regen (recomputing checksums for changed files + adding the new `workbook.py`/`jenkins_config.py`/`test_spa_routing.py` entries) still belongs to the release SBOM pipeline; `packageVerificationCodeValue` was already the empty-string SHA1 placeholder, so removals don't invalidate it
+- [x] 5.2 Update references to the legacy UI / `/app` basename in `IMPLEMENTATION_PLAN.md` and `openapi.yaml` where they describe the removed behaviour (low priority, docs only) — **no change needed: `openapi.yaml` has no `/app`/legacy-UI refs (all `CampusType`/`CampusNetwork` matches are API schema names used by the SPA); `IMPLEMENTATION_PLAN.md` is a historical completed-plan record, left intact**
+
+## 6. Verification
+
+- [x] 6.1 Full container smoke test: build and start the stack, confirm the SPA loads at `/`, login works, network-types/networks/detail pages render, and a Jenkins job can be triggered and streamed (exercises the extracted `jenkins_config` + `jenkins_jobs` path) — **VERIFIED (2026-07-21): image `26.5-4-reroot` deployed to `deploy/webapp` (k8s ns `nita`), pod healthy; SPA loads at `/` and renders login + network-types pages in-browser via the nginx proxy. The Jenkins trigger/stream path (`jenkins_config`+`jenkins_jobs`) is covered by `test_api` unit tests with a mocked Jenkins rather than a live build**
+- [x] 6.2 Confirm every previously-legacy `/` path (e.g. `/campustype/`, `/campusnetwork/`) returns HTTP 404, and add a regression test asserting a removed legacy path returns 404 (guards against SPA-allowlist drift) — added `tests/test_spa_routing.py::test_removed_legacy_paths_return_404` + `::test_removed_legacy_paths_do_not_resolve` (execution in CI)
+- [x] 6.3 Add a drift-guard test asserting each known top-level SPA route (`/`, `/login`, `/network-types`, `/networks`, `/networks/<id>`) serves `index.html` with status 200 — the inverse of 6.2, so CI fails if Django's allowlist and the SPA's routes disagree — added `tests/test_spa_routing.py::test_spa_routes_serve_index_html` + `::test_spa_routes_resolve_to_spa_view` + `::test_backend_routes_not_swallowed_by_spa` (execution in CI)
+- [x] 6.4 Confirm `GET /admin/`, `GET /api/v1/**`, `GET /api/docs/`, and `/jenkins/` deep links all still work — **VERIFIED (2026-07-21) on the deployed pod: `/admin/`→302→login 200, `/api/v1/network-types/`→403 JSON, `/api/docs/`→200 (Swagger UI), `/api/schema/`→200 openapi. `/jenkins/` is an unchanged nginx `location` proxying to `jenkins:8080` (not touched by this change)**
+- [x] 6.5 Run the full test suite and confirm it passes (there is no coverage gate to satisfy — `pytest.ini` sets no `--cov`/`fail_under` and no coverage config exists) — **VERIFIED (2026-07-21) in the built image: 90 passed / 1 env-only openapi fail (passes when `openapi.yaml` mounted); new `test_spa_routing.py` all pass**

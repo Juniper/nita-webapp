@@ -1,15 +1,4 @@
-## ADDED Requirements
-
-### Requirement: Django serves SPA static assets via WhiteNoise
-Django SHALL use `whitenoise.middleware.WhiteNoiseMiddleware` to serve files from the `WHITENOISE_ROOT` directory (pointing to `frontend/dist/`). Asset requests matching files on disk SHALL be served with appropriate caching headers without reaching URL routing.
-
-#### Scenario: Vite-built JS asset is served
-- **WHEN** a GET request is made to `/assets/index-<hash>.js`
-- **THEN** the response is the compiled JavaScript file with a 200 status
-
-#### Scenario: Vite-built CSS asset is served
-- **WHEN** a GET request is made to `/assets/index-<hash>.css`
-- **THEN** the response is the compiled CSS file with a 200 status
+## MODIFIED Requirements
 
 ### Requirement: Django serves SPA index.html for root routes
 Django SHALL serve `frontend/dist/index.html` for `GET /` and for `GET /<subpath>` that belongs to the SPA's own client-side routes (the configured top-level SPA route segments and their sub-paths). Requests that match neither a backend route (`api/`, `admin/`, `api/schema`, `api/docs`) nor a SPA route SHALL return Django's default HTTP 404 — they MUST NOT be served the SPA shell. This makes the React SPA the default application, served at the site root.
@@ -64,6 +53,8 @@ All existing Django API and admin endpoints SHALL continue to respond as before 
 - **WHEN** a GET request is made to `/api/docs/`
 - **THEN** the Swagger UI is served as before
 
+## ADDED Requirements
+
 ### Requirement: Legacy server-rendered UI is removed
 The legacy server-rendered Django template UI that previously occupied the site root SHALL be removed. Its URL routes, templates, `django_tables2` tables, and forms SHALL no longer exist, and no non-legacy module SHALL import from the legacy `ngcn.views` module.
 
@@ -74,3 +65,13 @@ The legacy server-rendered Django template UI that previously occupied the site 
 #### Scenario: Legacy management path no longer serves a legacy page
 - **WHEN** a GET request is made to a former legacy path such as `/campustype/`
 - **THEN** the response is HTTP 404 (the route no longer exists and the SPA shell is not served)
+
+## REMOVED Requirements
+
+### Requirement: Django serves SPA index.html for /app/ routes
+**Reason**: The SPA is re-rooted from `/app/` to `/`; superseded by "Django serves SPA index.html for root routes".
+**Migration**: Requests to `/app/` and `/app/<subpath>` are replaced by `/` and `/<subpath>`. Update any bookmarks or links that referenced `/app/...`.
+
+### Requirement: React Router uses /app basename
+**Reason**: The SPA is re-rooted to `/`; superseded by "React Router uses root basename".
+**Migration**: `basename="/app"` becomes `basename="/"`; client-side routes drop the `/app` prefix.

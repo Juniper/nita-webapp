@@ -5,7 +5,6 @@ import configparser
 
 # from pykwalify.core import Core
 import logging
-import os
 import re
 import shutil
 import tempfile
@@ -21,6 +20,11 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.utils.translation import gettext as _
 
+from ngcn.jenkins_config import (
+    JENKINS_SERVER_PASS,
+    JENKINS_SERVER_URL,
+    JENKINS_SERVER_USER,
+)
 from ngcn.models import Action, ActionCategory, ActionProperty, CampusType
 
 # from ngcn.models import JenkinsJobProperty
@@ -34,11 +38,6 @@ logger = logging.getLogger(__name__)
 config = configparser.ConfigParser()
 config_location = settings.BASE_DIR + "/../"
 config.read_file(open(config_location + "server_details.ini"))
-jenkins_host_name = config["jenkins.server.details"]["hostname"]
-jenkins_port = config["jenkins.server.details"]["port"]
-JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
-JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
-JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 
 class NetworkTypeParser:

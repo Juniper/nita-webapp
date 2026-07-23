@@ -1,10 +1,10 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for supporting modules: middleware, status updater, models, and tables.
+"""Unit tests for supporting modules: middleware, status updater, and models.
 
 Covers servicestartupmiddleware, statusupdater, model validation logic, and
-django-tables2 table classes that sit outside the main views and API layers.
+workbook helpers that sit outside the API layer.
 """
 
 import json
@@ -14,9 +14,8 @@ import pytest
 from django.utils import timezone
 from ngcn import servicestartupmiddleware, statusupdater
 from ngcn.models import ActionHistory, ActionProperty, CampusType, Workbook, Worksheets
-from ngcn.tables import CampusNetworkActionListTable
 from ngcn.templatetags.json_filters import jsonify
-from ngcn.views import GridDataManager, escape_ansi
+from ngcn.workbook import GridDataManager, escape_ansi
 
 
 @pytest.mark.django_db
@@ -47,11 +46,22 @@ def test_status_startup_service_middleware_calls_updater(monkeypatch):
 
 def test_status_updater_get_build_status_uses_server_result(monkeypatch):
     updater = statusupdater.StatusUpdater()
-    updater.SERVER = SimpleNamespace(
-        get_build_info=lambda _name, _number: {"result": "SUCCESS"}
-    )
+    captured = {}
+
+    class FakeJenkins:
+        def __init__(self, base_url, username, password):
+            captured["base_url"] = base_url
+            captured["username"] = username
+            captured["password"] = password
+
+        def get_build_info(self, _name, _number):
+            return {"result": "SUCCESS"}
+
+    monkeypatch.setattr(statusupdater.StatusUpdater, "SERVER", None)
+    monkeypatch.setattr(statusupdater.jenkins, "Jenkins", FakeJenkins)
 
     assert updater.getBuildStatus("job-name", 1) == "SUCCESS"
+    assert captured["base_url"].endswith("/jenkins")
 
 
 @pytest.mark.django_db
@@ -142,14 +152,6 @@ def test_model_string_representations(
     assert str(action) == action.action_name
     assert str(history) == action.action_name
     assert str(worksheet) == "sheet1"
-
-
-@pytest.mark.django_db
-def test_campus_network_action_list_table_renders_suffixed_url(action):
-    table = CampusNetworkActionListTable.__new__(CampusNetworkActionListTable)
-    table.network_name = "campus_one"
-
-    assert table.render_jenkins_url(action.jenkins_url, action) == "job-test-campus_one"
 
 
 def test_escape_ansi_strips_escape_sequences():

@@ -38,7 +38,7 @@ def robot_summary(job_name, build_no):
     import base64
     import json
 
-    from ngcn.views import (
+    from ngcn.jenkins_config import (
         JENKINS_SERVER_PASS,
         JENKINS_SERVER_URL,
         JENKINS_SERVER_USER,
@@ -80,7 +80,7 @@ def _make_crumbed_jenkins():
     from jenkinsapi.jenkins import Jenkins
     from jenkinsapi.utils.crumb_requester import CrumbRequester
 
-    from ngcn.views import (
+    from ngcn.jenkins_config import (
         JENKINS_SERVER_PASS,
         JENKINS_SERVER_URL,
         JENKINS_SERVER_USER,
@@ -112,7 +112,7 @@ def invoke_job(job_name, build_params=None, files=None):
     :param files: optional dict of files to upload (e.g. ``{"app.zip": fh}``).
     :returns: the reserved build number for this invocation.
     """
-    from ngcn.views import _make_jenkins_server
+    from ngcn.jenkins_config import _make_jenkins_server
 
     server = _make_jenkins_server()
     build_number = server.get_job_info(job_name)["nextBuildNumber"]
@@ -149,7 +149,7 @@ def progressive_text_events(job_name, build_no):
     during which the build is still queued (Jenkins returns ``404``) is
     tolerated for up to ``max_queued_polls`` attempts.
     """
-    from ngcn.views import JENKINS_SERVER_URL
+    from ngcn.jenkins_config import JENKINS_SERVER_URL
 
     base_url = f"{JENKINS_SERVER_URL}/job/{job_name}/{build_no}/logText/progressiveText"
     offset = 0

@@ -4,10 +4,15 @@
 import configparser
 import jenkins
 import logging
-import os
 from time import sleep
 
 from django.conf import settings
+
+from ngcn.jenkins_config import (
+    JENKINS_SERVER_PASS,
+    JENKINS_SERVER_URL,
+    JENKINS_SERVER_USER,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +68,6 @@ def wait_and_get_build_status(action_url, build_number):
 
 
 def getBuildStatus(build_name, build_no):
-    # Intentionally imported here rather than at module level.
-    config = configparser.ConfigParser()
-    config.read_file(open(settings.BASE_DIR + "/../server_details.ini"))
-    jenkins_host_name = config["jenkins.server.details"]["hostname"]
-    jenkins_port = config["jenkins.server.details"]["port"]
-    JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port)
-    JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
-    JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
     SERVER = jenkins.Jenkins(
         JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
     )
