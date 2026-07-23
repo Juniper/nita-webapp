@@ -46,11 +46,22 @@ def test_status_startup_service_middleware_calls_updater(monkeypatch):
 
 def test_status_updater_get_build_status_uses_server_result(monkeypatch):
     updater = statusupdater.StatusUpdater()
-    updater.SERVER = SimpleNamespace(
-        get_build_info=lambda _name, _number: {"result": "SUCCESS"}
-    )
+    captured = {}
+
+    class FakeJenkins:
+        def __init__(self, base_url, username, password):
+            captured["base_url"] = base_url
+            captured["username"] = username
+            captured["password"] = password
+
+        def get_build_info(self, _name, _number):
+            return {"result": "SUCCESS"}
+
+    monkeypatch.setattr(statusupdater.StatusUpdater, "SERVER", None)
+    monkeypatch.setattr(statusupdater.jenkins, "Jenkins", FakeJenkins)
 
     assert updater.getBuildStatus("job-name", 1) == "SUCCESS"
+    assert captured["base_url"].endswith("/jenkins")
 
 
 @pytest.mark.django_db
