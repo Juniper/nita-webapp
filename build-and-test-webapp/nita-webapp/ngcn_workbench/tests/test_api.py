@@ -442,7 +442,9 @@ def test_trigger_action_returns_202_and_creates_history(
         "create_new_inv",
         lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/build"}},
     )
-    monkeypatch.setattr("ngcn.jenkins_config._make_jenkins_server", lambda: _FakeServer())
+    monkeypatch.setattr(
+        "ngcn.jenkins_config._make_jenkins_server", lambda: _FakeServer()
+    )
     monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", _FakeJenkinsClient)
     monkeypatch.setattr(jenkinsapi_crumb, "CrumbRequester", lambda *a, **kw: object())
 
@@ -539,7 +541,9 @@ def test_action_history_filter_by_campus_network(
 def test_action_history_console_returns_ansi_stripped_output(
     api_client, action_history, monkeypatch
 ):
-    monkeypatch.setattr("ngcn.jenkins_config._make_jenkins_server", lambda: _FakeServer())
+    monkeypatch.setattr(
+        "ngcn.jenkins_config._make_jenkins_server", lambda: _FakeServer()
+    )
     response = api_client.get(f"/api/v1/action-history/{action_history.id}/console/")
     assert response.status_code == 200
     data = response.json()
@@ -553,7 +557,9 @@ def test_action_history_console_returns_ansi_stripped_output(
 def test_action_history_console_returns_fallback_when_jenkins_unavailable(
     api_client, action_history, monkeypatch
 ):
-    monkeypatch.setattr("ngcn.jenkins_config._make_jenkins_server", lambda: _RaisingServer())
+    monkeypatch.setattr(
+        "ngcn.jenkins_config._make_jenkins_server", lambda: _RaisingServer()
+    )
     response = api_client.get(f"/api/v1/action-history/{action_history.id}/console/")
     assert response.status_code == 200
     assert "queued" in response.json()["console"].lower()

@@ -19,7 +19,9 @@ import urllib.request
 
 jenkins_host_name = sys.argv[1]
 jenkins_port = sys.argv[2]
-JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
+JENKINS_SERVER_URL = (
+    "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
+)
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
 JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
@@ -64,9 +66,9 @@ def set_jenkins_url():
     groovy = (
         "import jenkins.model.JenkinsLocationConfiguration\n"
         f"def config = JenkinsLocationConfiguration.get()\n"
-        f"config.setUrl(\"{JENKINS_SERVER_URL}/\")\n"
+        f'config.setUrl("{JENKINS_SERVER_URL}/")\n'
         "config.save()\n"
-        "println \"Jenkins URL configured: \" + config.getUrl()\n"
+        'println "Jenkins URL configured: " + config.getUrl()\n'
     )
 
     payload = urllib.parse.urlencode({"script": groovy}).encode()

@@ -20,7 +20,9 @@ config_location = settings.BASE_DIR + "/../"
 config.read_file(open(config_location + "server_details.ini"))
 jenkins_host_name = config["jenkins.server.details"]["hostname"]
 jenkins_port = config["jenkins.server.details"]["port"]
-JENKINS_SERVER_URL = "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
+JENKINS_SERVER_URL = (
+    "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
+)
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
 JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
