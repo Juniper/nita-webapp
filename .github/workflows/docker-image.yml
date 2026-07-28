@@ -126,6 +126,34 @@ jobs:
           cache-from: type=gha,scope=publish-${{ matrix.architecture }}
           cache-to: type=gha,mode=max,scope=publish-${{ matrix.architecture }}
 
+      - name: Smoke-test published platform digest
+        env:
+          PUBLISHED_IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        run: |
+          docker pull "${PUBLISHED_IMAGE}"
+          docker run --rm --entrypoint sh "${PUBLISHED_IMAGE}" -ec '
+            python3 -c "import django, MySQLdb, pymysql"
+            test -s /app/frontend/dist/index.html
+          '
+
+      - name: Scan published platform digest
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: json
+          output: trivy-published-${{ matrix.architecture }}.json
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+      - name: Upload published-digest vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: trivy-published-nita-webapp-${{ matrix.architecture }}
+          path: trivy-published-${{ matrix.architecture }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Export digest marker
         run: |
           mkdir -p "${RUNNER_TEMP}/digests"
@@ -188,6 +216,12 @@ jobs:
             tags+=("${IMAGE_NAME}:latest")
           else
             primary_tag="${GITHUB_REF#refs/tags/}"
+            if ((${#primary_tag} > 128)) ||
+              [[ ! "${primary_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+              echo "::error::Git tag '${primary_tag}' cannot be published unchanged as a Docker tag."
+              echo "::error::Use 1-128 ASCII letters, digits, underscores, periods, or dashes."
+              exit 1
+            fi
             tags+=("${IMAGE_NAME}:${primary_tag}")
           fi
 
