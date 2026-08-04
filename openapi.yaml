@@ -333,7 +333,8 @@ paths:
   /api/v1/auth/me/:
     get:
       operationId: v1_auth_me_retrieve
-      description: Return the authenticated user's id, username, and is_superuser.
+      description: Return the authenticated user's id, username, is_superuser, role,
+        teams.
       summary: Return the currently authenticated user's info
       tags:
       - v1
@@ -352,7 +353,48 @@ paths:
                     type: string
                   is_superuser:
                     type: boolean
+                  role:
+                    type: string
+                  teams:
+                    type: array
+                    items:
+                      type: integer
           description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: v1_auth_register_create
+      description: Self-service registration. New accounts always get ``role=user``.
+      summary: Register a new account (defaults to role=user)
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  role:
+                    type: string
+          description: ''
+        '400':
+          description: Validation error (duplicate/weak input)
   /api/v1/auth/token/:
     post:
       operationId: v1_auth_token_create
@@ -465,8 +507,12 @@ paths:
   /api/v1/network-types/:
     get:
       operationId: v1_network_types_list
-      description: Network types. Create via POST /upload/ (zip); delete via DELETE
-        /{id}/.
+      description: |-
+        Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
+
+        Read (list/retrieve) is open to any authenticated user. Create (upload) is
+        restricted to ``power_user``/``admin``; delete is restricted to the creating
+        user or an admin.
       parameters:
       - in: query
         name: name
@@ -493,8 +539,12 @@ paths:
   /api/v1/network-types/{id}/:
     get:
       operationId: v1_network_types_retrieve
-      description: Network types. Create via POST /upload/ (zip); delete via DELETE
-        /{id}/.
+      description: |-
+        Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
+
+        Read (list/retrieve) is open to any authenticated user. Create (upload) is
+        restricted to ``power_user``/``admin``; delete is restricted to the creating
+        user or an admin.
       parameters:
       - in: path
         name: id
@@ -515,8 +565,12 @@ paths:
           description: ''
     delete:
       operationId: v1_network_types_destroy
-      description: Network types. Create via POST /upload/ (zip); delete via DELETE
-        /{id}/.
+      description: |-
+        Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
+
+        Read (list/retrieve) is open to any authenticated user. Create (upload) is
+        restricted to ``power_user``/``admin``; delete is restricted to the creating
+        user or an admin.
       parameters:
       - in: path
         name: id
@@ -1053,6 +1107,432 @@ paths:
                 - status
                 - workbook
           description: ''
+  /api/v1/teams/:
+    get:
+      operationId: v1_teams_list
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamList'
+          description: ''
+    post:
+      operationId: v1_teams_create
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Team'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Team'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Team'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+  /api/v1/teams/{id}/:
+    get:
+      operationId: v1_teams_retrieve
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    put:
+      operationId: v1_teams_update
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Team'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Team'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Team'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    patch:
+      operationId: v1_teams_partial_update
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeam'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeam'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeam'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    delete:
+      operationId: v1_teams_destroy
+      description: |-
+        Team management.
+
+        ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+        the teams they created while an ``admin`` manages all teams. Regular ``user``
+        accounts have no access to this resource (403 on list).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/teams/{id}/members/:
+    post:
+      operationId: v1_teams_members_create
+      description: 'Add a user to this team. Body: ``{"user_id": <id>}``.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+              required:
+              - user_id
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+        '400':
+          description: Missing or invalid user_id
+  /api/v1/teams/{id}/members/{user_id}/:
+    delete:
+      operationId: v1_teams_members_destroy
+      description: Remove a user from this team.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: path
+        name: user_id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: Member removed. No content.
+  /api/v1/users/:
+    get:
+      operationId: v1_users_list
+      description: |-
+        Admin-only user management (list, retrieve, role/status update, delete).
+
+        Deletion is PROTECT-guarded: a user who still owns networks or network types
+        cannot be deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: v1_users_retrieve
+      description: |-
+        Admin-only user management (list, retrieve, role/status update, delete).
+
+        Deletion is PROTECT-guarded: a user who still owns networks or network types
+        cannot be deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: v1_users_update
+      description: |-
+        Admin-only user management (list, retrieve, role/status update, delete).
+
+        Deletion is PROTECT-guarded: a user who still owns networks or network types
+        cannot be deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_users_partial_update
+      description: |-
+        Admin-only user management (list, retrieve, role/status update, delete).
+
+        Deletion is PROTECT-guarded: a user who still owns networks or network types
+        cannot be deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: v1_users_destroy
+      description: Delete a user, unless they are the caller or still own resources.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/{id}/transfer/:
+    post:
+      operationId: v1_users_transfer_create
+      description: |-
+        Reassign the target user's owned networks and/or created types.
+
+        Body may contain ``networks_to`` and/or ``types_to`` (recipient user
+        ids). Both reassignments run in a single transaction.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                networks_to:
+                  type: integer
+                types_to:
+                  type: integer
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: ''
+        '400':
+          description: Invalid recipient user id
 components:
   schemas:
     Action:
@@ -1197,7 +1677,11 @@ components:
       - username
     CampusNetwork:
       type: object
-      description: Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
+      description: |-
+        Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
+
+        ``owner`` is read-only (assigned automatically to the creating user);
+        ``team`` is writable so an owner/admin can share the network with a team.
       properties:
         id:
           type: integer
@@ -1220,6 +1704,13 @@ components:
         campus_type:
           type: integer
           title: Network Type
+        owner:
+          type: integer
+          readOnly: true
+          nullable: true
+        team:
+          type: integer
+          nullable: true
       required:
       - campus_type
       - campus_type_name
@@ -1227,12 +1718,16 @@ components:
       - host_file
       - id
       - name
+      - owner
       - status
     CampusType:
       type: object
       description: Serializer for CampusType.
       properties:
         id:
+          type: integer
+          readOnly: true
+        created_by:
           type: integer
           readOnly: true
         name:
@@ -1247,6 +1742,7 @@ components:
           maxLength: 255
       required:
       - app_zip_name
+      - created_by
       - description
       - id
       - name
@@ -1410,9 +1906,59 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CampusType'
+    PaginatedTeamList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
     PatchedCampusNetwork:
       type: object
-      description: Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
+      description: |-
+        Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
+
+        ``owner`` is read-only (assigned automatically to the creating user);
+        ``team`` is writable so an owner/admin can share the network with a team.
       properties:
         id:
           type: integer
@@ -1435,6 +1981,165 @@ components:
         campus_type:
           type: integer
           title: Network Type
+        owner:
+          type: integer
+          readOnly: true
+          nullable: true
+        team:
+          type: integer
+          nullable: true
+    PatchedTeam:
+      type: object
+      description: Serializer for Team. ``members`` is a list of user ids.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Team Name
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        created_by:
+          type: integer
+          readOnly: true
+        members:
+          type: array
+          items:
+            type: integer
+    PatchedUser:
+      type: object
+      description: |-
+        Serializer for the admin user-management API.
+
+        ``role`` and ``is_active`` are writable (admin-only via the viewset);
+        ``username`` and ``email`` are read-only here.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+    RoleEnum:
+      enum:
+      - user
+      - power_user
+      - admin
+      type: string
+      description: |-
+        * `user` - User
+        * `power_user` - Power user
+        * `admin` - Admin
+    Team:
+      type: object
+      description: Serializer for Team. ``members`` is a list of user ids.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Team Name
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        created_by:
+          type: integer
+          readOnly: true
+        members:
+          type: array
+          items:
+            type: integer
+      required:
+      - created_by
+      - id
+      - name
+    User:
+      type: object
+      description: |-
+        Serializer for the admin user-management API.
+
+        ``role`` and ``is_active`` are writable (admin-only via the viewset);
+        ``username`` and ``email`` are read-only here.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - email
+      - id
+      - username
+    UserRegistration:
+      type: object
+      description: |-
+        Serializer for self-service registration.
+
+        Forces ``role=user`` regardless of any supplied value and validates the
+        password with Django's configured password validators.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+      required:
+      - id
+      - password
+      - role
+      - username
   securitySchemes:
     tokenAuth:
       type: apiKey

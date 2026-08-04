@@ -19,6 +19,8 @@ get enough context without having to make extra requests:
 
 import json
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -31,9 +33,66 @@ from ngcn.models import (
     CampusNetwork,
     CampusType,
     LifecycleRun,
+    Team,
     Workbook,
     Worksheets,
 )
+
+User = get_user_model()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer for the admin user-management API.
+
+    ``role`` and ``is_active`` are writable (admin-only via the viewset);
+    ``username`` and ``email`` are read-only here.
+    """
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "role", "is_active"]
+        read_only_fields = ["id", "username", "email"]
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for self-service registration.
+
+    Forces ``role=user`` regardless of any supplied value and validates the
+    password with Django's configured password validators.
+    """
+
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "password", "email", "role"]
+        read_only_fields = ["id", "role"]
+        extra_kwargs = {"email": {"required": False}}
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        validated_data.pop("role", None)
+        password = validated_data.pop("password")
+        user = User(role=User.ROLE_USER, **validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    """Serializer for Team. ``members`` is a list of user ids."""
+
+    members = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=User.objects.all(), required=False
+    )
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Team
+        fields = ["id", "name", "description", "created_by", "members"]
 
 
 class ActionCategorySerializer(serializers.ModelSerializer):
@@ -46,6 +105,8 @@ class ActionCategorySerializer(serializers.ModelSerializer):
 
 class CampusTypeSerializer(serializers.ModelSerializer):
     """Serializer for CampusType."""
+
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = CampusType
@@ -72,13 +133,18 @@ class ActionSerializer(serializers.ModelSerializer):
 
 
 class CampusNetworkSerializer(serializers.ModelSerializer):
-    """Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience."""
+    """Serializer for CampusNetwork.  Adds ``campus_type_name`` for convenience.
+
+    ``owner`` is read-only (assigned automatically to the creating user);
+    ``team`` is writable so an owner/admin can share the network with a team.
+    """
 
     campus_type_name = serializers.CharField(source="campus_type.name", read_only=True)
 
     class Meta:
         model = CampusNetwork
         fields = "__all__"
+        read_only_fields = ["owner"]
 
 
 class ActionHistorySerializer(serializers.ModelSerializer):

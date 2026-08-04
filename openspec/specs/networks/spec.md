@@ -6,7 +6,8 @@ specific deployment with its own host inventory and configuration data.
 ## Requirements
 ### Requirement: Create a Network
 The system SHALL create a new network via POST /api/v1/networks/ with name,
-status, description, host_file, and campus_type fields.
+status, description, host_file, and campus_type fields. The system SHALL
+automatically set `owner` to the authenticated requesting user.
 
 Creation SHALL be non-blocking. The system SHALL persist the network row
 immediately with status `Initializing`, invoke the `network_template_mgr`
@@ -24,6 +25,7 @@ error state for the user to delete.
 - GIVEN a valid campus_type id and an Ansible INI inventory string
 - WHEN POST /api/v1/networks/ is called with the required fields
 - THEN the network row is persisted immediately with status `Initializing`
+- AND `owner` is set to the requesting user
 - AND the `network_template_mgr` create job is invoked
 - AND a `201` response is returned with the network data and a streaming handle
   (`job_name`, `build_no`) without waiting for the build to finish
@@ -111,4 +113,3 @@ the permanent, only behaviour.
 - GIVEN any network
 - WHEN a build action is triggered
 - THEN the build directory is set to /var/tmp/build/<type>-<network>
-

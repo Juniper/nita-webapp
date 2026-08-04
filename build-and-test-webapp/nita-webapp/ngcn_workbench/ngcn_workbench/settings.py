@@ -27,6 +27,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
+# Custom user model with a role field (user / power_user / admin).
+AUTH_USER_MODEL = "ngcn.User"
+
 # Application definition
 
 INSTALLED_APPS = [

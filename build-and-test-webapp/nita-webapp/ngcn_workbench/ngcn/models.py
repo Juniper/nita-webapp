@@ -1,10 +1,64 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext as _
 
 # Create your models here.
+
+
+class User(AbstractUser):
+    """Custom user model with a three-tier application role.
+
+    ``role`` drives all application-level access control (see
+    ``ngcn.api.permissions``). Django's ``is_staff`` / ``is_superuser`` flags are
+    retained for the admin panel only and are NOT used for API role checks.
+    """
+
+    ROLE_USER = "user"
+    ROLE_POWER_USER = "power_user"
+    ROLE_ADMIN = "admin"
+    ROLE_CHOICES = (
+        (ROLE_USER, "User"),
+        (ROLE_POWER_USER, "Power user"),
+        (ROLE_ADMIN, "Admin"),
+    )
+
+    role = models.CharField(
+        max_length=16,
+        choices=ROLE_CHOICES,
+        default=ROLE_USER,
+        verbose_name="Role",
+    )
+
+
+class Team(models.Model):
+    """A collaborative group. Power users create teams and manage membership;
+    networks can be shared with a team so all members gain read access."""
+
+    name = models.CharField(max_length=255, unique=True, verbose_name="Team Name")
+    description = models.CharField(
+        max_length=255, null=True, blank=True, verbose_name="Description"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_teams",
+        verbose_name="Created By",
+    )
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="teams",
+        blank=True,
+        verbose_name="Members",
+    )
+
+    def __str__(self):
+        return self.name
 
 
 class ActionCategory(models.Model):
@@ -22,6 +76,14 @@ class CampusType(models.Model):
     )
     description = models.CharField(max_length=255, verbose_name="Description")
     app_zip_name = models.CharField(max_length=255, unique=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_types",
+        verbose_name="Created By",
+    )
 
     def __str__(self):
         return self.name
@@ -67,6 +129,22 @@ class CampusNetwork(models.Model):
     host_file = models.TextField()
     campus_type = models.ForeignKey(
         CampusType, on_delete=models.CASCADE, verbose_name=_("network_type_heading")
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="owned_networks",
+        verbose_name="Owner",
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="networks",
+        verbose_name="Team",
     )
 
     # class Meta:

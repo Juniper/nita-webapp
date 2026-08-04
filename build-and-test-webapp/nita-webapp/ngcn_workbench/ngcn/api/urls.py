@@ -39,10 +39,13 @@ from .views import (
     CampusTypeViewSet,
     JenkinsJobStreamView,
     LifecycleRunViewSet,
+    TeamViewSet,
+    UserViewSet,
     csrf_view,
     login_view,
     logout_view,
     me_view,
+    register_view,
 )
 
 router = DefaultRouter()
@@ -52,6 +55,8 @@ router.register(r"actions", ActionViewSet, basename="action")
 router.register(r"action-categories", ActionCategoryViewSet, basename="actioncategory")
 router.register(r"action-history", ActionHistoryViewSet, basename="actionhistory")
 router.register(r"lifecycle-runs", LifecycleRunViewSet, basename="lifecyclerun")
+router.register(r"teams", TeamViewSet, basename="team")
+router.register(r"users", UserViewSet, basename="user")
 
 urlpatterns = router.urls + [
     re_path(
@@ -63,4 +68,5 @@ urlpatterns = router.urls + [
     path("auth/login/", login_view, name="auth-login"),
     path("auth/logout/", logout_view, name="auth-logout"),
     path("auth/me/", me_view, name="auth-me"),
+    path("auth/register/", register_view, name="auth-register"),
 ]

@@ -60,5 +60,5 @@ urlpatterns = [
     # top-level routes in frontend/src/App.tsx. Any other path (including every
     # removed legacy URL) falls through to Django's default 404.
     path("", spa_index, name="spa"),
-    re_path(r"^(?:login|network-types|networks)(?:/.*)?$", spa_index),
+    re_path(r"^(?:login|network-types|networks|users)(?:/.*)?$", spa_index),
 ]

@@ -32,6 +32,7 @@ import traceback
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
+from django.db.models import Q
 from django.http import FileResponse
 from django.middleware.csrf import get_token
 from django.utils import timezone
@@ -67,6 +68,8 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
+    Team,
+    User,
     Workbook,
 )
 from ngcn.networktypeparser import NetworkTypeParser
@@ -78,6 +81,12 @@ from ngcn.workbook import (
     parse_workbook,
 )
 
+from .permissions import (
+    IsAdminRole,
+    IsOwnerOrAdmin,
+    IsOwnerOrTeamMemberOrAdmin,
+    IsPowerUserOrAdmin,
+)
 from .serializers import (
     ActionCategorySerializer,
     ActionHistorySerializer,
@@ -85,6 +94,9 @@ from .serializers import (
     CampusNetworkSerializer,
     CampusTypeSerializer,
     LifecycleRunSerializer,
+    TeamSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
     WorkbookSerializer,
 )
 
@@ -170,6 +182,8 @@ def logout_view(request):
                 "id": {"type": "integer"},
                 "username": {"type": "string"},
                 "is_superuser": {"type": "boolean"},
+                "role": {"type": "string"},
+                "teams": {"type": "array", "items": {"type": "integer"}},
             },
         }
     },
@@ -178,10 +192,45 @@ def logout_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me_view(request):
-    """Return the authenticated user's id, username, and is_superuser."""
+    """Return the authenticated user's id, username, is_superuser, role, teams."""
     user = request.user
     return Response(
-        {"id": user.pk, "username": user.username, "is_superuser": user.is_superuser}
+        {
+            "id": user.pk,
+            "username": user.username,
+            "is_superuser": user.is_superuser,
+            "role": getattr(user, "role", None),
+            "teams": list(user.teams.values_list("id", flat=True)),
+        }
+    )
+
+
+@extend_schema(
+    request=UserRegistrationSerializer,
+    responses={
+        201: {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "username": {"type": "string"},
+                "role": {"type": "string"},
+            },
+        },
+        400: OpenApiResponse(description="Validation error (duplicate/weak input)"),
+    },
+    auth=[],
+    summary="Register a new account (defaults to role=user)",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def register_view(request):
+    """Self-service registration. New accounts always get ``role=user``."""
+    serializer = UserRegistrationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.save()
+    return Response(
+        {"id": user.pk, "username": user.username, "role": user.role},
+        status=status.HTTP_201_CREATED,
     )
 
 
@@ -257,9 +306,21 @@ class CampusTypeViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/."""
+    """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
+
+    Read (list/retrieve) is open to any authenticated user. Create (upload) is
+    restricted to ``power_user``/``admin``; delete is restricted to the creating
+    user or an admin.
+    """
 
     serializer_class = CampusTypeSerializer
+
+    def get_permissions(self):
+        if self.action == "upload":
+            return [IsAuthenticated(), IsPowerUserOrAdmin()]
+        if self.action == "destroy":
+            return [IsAuthenticated(), IsPowerUserOrAdmin(), IsOwnerOrAdmin()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         qs = CampusType.objects.all()
@@ -310,6 +371,9 @@ class CampusTypeViewSet(
         else:
             data = {"result": "failure", "reason": str(result)}
             http_status = status.HTTP_400_BAD_REQUEST
+        # Record the creating user on a freshly registered network type.
+        if http_status == status.HTTP_200_OK and data.get("id") is not None:
+            CampusType.objects.filter(pk=data["id"]).update(created_by=request.user)
         return Response(data, status=http_status)
 
 
@@ -352,8 +416,17 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     queryset = CampusNetwork.objects.all()
     serializer_class = CampusNetworkSerializer
 
+    def get_permissions(self):
+        """Detail actions enforce owner/team-member/admin object permissions."""
+        if self.action in ("list", "create"):
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsOwnerOrTeamMemberOrAdmin()]
+
     def get_queryset(self):
         qs = CampusNetwork.objects.all()
+        user = self.request.user
+        if getattr(user, "role", None) != User.ROLE_ADMIN:
+            qs = qs.filter(Q(owner=user) | Q(team__members=user)).distinct()
         campus_type_id = self.request.query_params.get("campus_type_id")
         if campus_type_id:
             qs = qs.filter(campus_type_id=campus_type_id)
@@ -407,7 +480,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        serializer.save(status="Initializing")
+        serializer.save(status="Initializing", owner=request.user)
         headers = self.get_success_headers(serializer.data)
         data = dict(serializer.data)
         data["job_name"] = action_url
@@ -1107,3 +1180,186 @@ class LifecycleRunViewSet(viewsets.ViewSet):
             return Response(
                 {"console": "Build is queued or console output is not yet available."}
             )
+
+
+class TeamViewSet(viewsets.ModelViewSet):
+    """Team management.
+
+    ``power_user`` and ``admin`` may create teams; a ``power_user`` manages only
+    the teams they created while an ``admin`` manages all teams. Regular ``user``
+    accounts have no access to this resource (403 on list).
+    """
+
+    serializer_class = TeamSerializer
+
+    def get_permissions(self):
+        if self.action in ("list", "create"):
+            return [IsAuthenticated(), IsPowerUserOrAdmin()]
+        return [IsAuthenticated(), IsPowerUserOrAdmin(), IsOwnerOrAdmin()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if getattr(user, "role", None) == User.ROLE_ADMIN:
+            return Team.objects.all()
+        # For the list view a power_user sees only teams they created. Detail
+        # actions use the full set so a non-creator gets a 403 (object
+        # permission) rather than a 404.
+        if self.action == "list":
+            return Team.objects.filter(created_by=user)
+        return Team.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"user_id": {"type": "integer"}},
+                "required": ["user_id"],
+            }
+        },
+        responses={
+            200: TeamSerializer,
+            400: OpenApiResponse(description="Missing or invalid user_id"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="members")
+    def add_member(self, request, pk=None):
+        """Add a user to this team. Body: ``{"user_id": <id>}``."""
+        team = self.get_object()
+        user_id = request.data.get("user_id")
+        try:
+            member = User.objects.get(pk=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"detail": "Invalid user_id."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        team.members.add(member)
+        return Response(TeamSerializer(team).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        responses={204: OpenApiResponse(description="Member removed. No content.")}
+    )
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"members/(?P<user_id>[0-9]+)",
+    )
+    def remove_member(self, request, pk=None, user_id=None):
+        """Remove a user from this team."""
+        team = self.get_object()
+        try:
+            member = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Invalid user_id."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        team.members.remove(member)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Admin-only user management (list, retrieve, role/status update, delete).
+
+    Deletion is PROTECT-guarded: a user who still owns networks or network types
+    cannot be deleted until an admin transfers those resources via
+    ``POST /api/v1/users/{id}/transfer/``.
+    """
+
+    queryset = User.objects.all().order_by("id")
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a user, unless they are the caller or still own resources."""
+        target = self.get_object()
+        if target == request.user:
+            return Response(
+                {"detail": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        owned_networks = list(
+            CampusNetwork.objects.filter(owner=target).values_list("name", flat=True)
+        )
+        owned_types = list(
+            CampusType.objects.filter(created_by=target).values_list("name", flat=True)
+        )
+        if owned_networks or owned_types:
+            return Response(
+                {
+                    "detail": (
+                        "User still owns resources. Transfer them before deletion."
+                    ),
+                    "networks": owned_networks,
+                    "types": owned_types,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "networks_to": {"type": "integer"},
+                    "types_to": {"type": "integer"},
+                },
+            }
+        },
+        responses={
+            200: {"type": "object", "properties": {"status": {"type": "string"}}},
+            400: OpenApiResponse(description="Invalid recipient user id"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="transfer")
+    def transfer(self, request, pk=None):
+        """Reassign the target user's owned networks and/or created types.
+
+        Body may contain ``networks_to`` and/or ``types_to`` (recipient user
+        ids). Both reassignments run in a single transaction.
+        """
+        from django.db import transaction
+
+        target = self.get_object()
+        networks_to = request.data.get("networks_to")
+        types_to = request.data.get("types_to")
+
+        def _resolve(user_id):
+            try:
+                return User.objects.get(pk=user_id)
+            except (User.DoesNotExist, ValueError, TypeError):
+                return None
+
+        net_recipient = None
+        type_recipient = None
+        if networks_to is not None:
+            net_recipient = _resolve(networks_to)
+            if net_recipient is None:
+                return Response(
+                    {"detail": "Invalid networks_to user id."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if types_to is not None:
+            type_recipient = _resolve(types_to)
+            if type_recipient is None:
+                return Response(
+                    {"detail": "Invalid types_to user id."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        with transaction.atomic():
+            if net_recipient is not None:
+                CampusNetwork.objects.filter(owner=target).update(owner=net_recipient)
+            if type_recipient is not None:
+                CampusType.objects.filter(created_by=target).update(
+                    created_by=type_recipient
+                )
+        return Response({"status": "transferred"}, status=status.HTTP_200_OK)

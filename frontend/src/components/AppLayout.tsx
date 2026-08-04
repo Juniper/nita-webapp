@@ -19,7 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/networks', label: 'Networks' },
 ]
 
-function Sidebar() {
+function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   return (
     <nav className="w-56 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col py-4">
       {NAV_ITEMS.map(({ to, label, end }) => (
@@ -39,6 +39,21 @@ function Sidebar() {
           {label}
         </NavLink>
       ))}
+      {isAdmin && (
+        <NavLink
+          to="/users"
+          className={({ isActive }) =>
+            [
+              'px-4 py-2.5 text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800',
+            ].join(' ')
+          }
+        >
+          User Management
+        </NavLink>
+      )}
     </nav>
   )
 }
@@ -83,7 +98,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Body: sidebar + main */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar isAdmin={Boolean(user?.is_superuser || user?.role === 'admin')} />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>

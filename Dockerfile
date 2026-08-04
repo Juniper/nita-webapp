@@ -54,3 +54,7 @@ EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget -qO- http://localhost:8000/api/v1/auth/token/ || exit 1
+
+# Default startup: wait for DB, migrate, bootstrap admin, configure Jenkins, serve.
+# docker-compose overrides this via its own `command:`; kept so the image runs standalone.
+CMD ["bash", "build-and-test-webapp/wait-for-db.sh"]

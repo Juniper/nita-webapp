@@ -21,6 +21,13 @@ services:
       - JENKINS_PASS
       - JENKINS_PORT
       - JENKINS_URL
+#
+# Bootstrap the initial admin account (role=admin) on a fresh deployment.
+# These only take effect when the database has zero users. Uncomment and set
+# strong values before first start, then remove/rotate after the admin exists.
+#      - NITA_BOOTSTRAP_ADMIN_USERNAME=admin
+#      - NITA_BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+#      - NITA_BOOTSTRAP_ADMIN_PASSWORD=change-me
     restart: always
 #
 # For external Jenkins hosts, uncomment the lines below and change IP
@@ -31,8 +38,8 @@ services:
 #    extra_hosts:
 #      - "jenkins:192.168.X.y"
   db:
-    image: mariadb:10.4.12
-    command: --default-authentication-plugin=mysql_native_password
+    # MariaDB 10.5+ is required by Django 5.2 (10.4 fails migrate with NotSupportedError).
+    image: mariadb:10.11
     environment:
       MYSQL_DATABASE: Sites
       MYSQL_ROOT_PASSWORD: root
