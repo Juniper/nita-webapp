@@ -1,51 +1,234 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-name: Docker Image CI
+name: Container Image
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["**"]
+    tags: ["*"]
   pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: ghcr.io/juniper/nita-webapp
+  TEST_IMAGE: local/nita-webapp:test
 
 jobs:
+  validate:
+    name: Validate ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            architecture: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            architecture: arm64
+            runner: ubuntu-24.04-arm
 
-  build:
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6.0.2
 
-    runs-on: ubuntu-latest
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
 
+      - name: Build validation image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: ${{ env.TEST_IMAGE }}
+          labels: org.opencontainers.image.source=https://github.com/Juniper/nita-webapp
+          cache-from: type=gha,scope=validate-${{ matrix.architecture }}
+          cache-to: type=gha,mode=max,scope=validate-${{ matrix.architecture }}
+
+      - name: Smoke-test Webapp runtime
+        run: |
+          docker run --rm --entrypoint sh "${TEST_IMAGE}" -ec '
+            python3 -c "import django, MySQLdb, pymysql"
+            test -s /app/frontend/dist/index.html
+          '
+
+      - name: Scan HIGH and CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TEST_IMAGE }}
+          format: json
+          output: trivy-${{ matrix.architecture }}.json
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: trivy-nita-webapp-${{ matrix.architecture }}
+          path: trivy-${{ matrix.architecture }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  publish-platform:
+    name: Publish ${{ matrix.platform }} digest
+    needs: validate
+    if: >-
+      github.event_name == 'push' &&
+      github.repository == 'Juniper/nita-webapp' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            architecture: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            architecture: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push platform digest
+        id: build
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: org.opencontainers.image.source=https://github.com/Juniper/nita-webapp
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=publish-${{ matrix.architecture }}
+          cache-to: type=gha,mode=max,scope=publish-${{ matrix.architecture }}
+
+      - name: Smoke-test published platform digest
+        env:
+          PUBLISHED_IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        run: |
+          docker pull "${PUBLISHED_IMAGE}"
+          docker run --rm --entrypoint sh "${PUBLISHED_IMAGE}" -ec '
+            python3 -c "import django, MySQLdb, pymysql"
+            test -s /app/frontend/dist/index.html
+          '
+
+      - name: Scan published platform digest
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: json
+          output: trivy-published-${{ matrix.architecture }}.json
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+      - name: Upload published-digest vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: trivy-published-nita-webapp-${{ matrix.architecture }}
+          path: trivy-published-${{ matrix.architecture }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Export digest marker
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest='${{ steps.build.outputs.digest }}'
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+
+      - name: Upload digest marker
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: digest-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-manifest:
+    name: Publish multi-platform manifest
+    needs: publish-platform
+    if: >-
+      github.event_name == 'push' &&
+      github.repository == 'Juniper/nita-webapp' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
 
     steps:
-    - uses: actions/checkout@v6.0.2
+      - name: Download digest markers
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
 
-    - name: Set up Node.js 24
-      uses: actions/setup-node@v6.4.0
-      with:
-        node-version: 24
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
 
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag juniper/nita-webapp:$(cat VERSION.txt)
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Log in to GitHub Container Registry
-      if: github.event_name == 'push'
-      uses: docker/login-action@v4.1.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Assemble and inspect manifest
+        shell: bash
+        run: |
+          mapfile -t digest_files < <(find "${RUNNER_TEMP}/digests" -maxdepth 1 -type f | sort)
+          test "${#digest_files[@]}" -eq 2
 
-    - name: Push to GitHub Container Registry
-      if: github.event_name == 'push'
-      run: |
-        VERSION=$(cat VERSION.txt)
-        IMAGE=ghcr.io/${{ github.repository }}
-        docker tag juniper/nita-webapp:${VERSION} ${IMAGE,,}:${VERSION}
-        docker tag juniper/nita-webapp:${VERSION} ${IMAGE,,}:latest
-        docker push ${IMAGE,,}:${VERSION}
-        docker push ${IMAGE,,}:latest
+          sources=()
+          for digest_file in "${digest_files[@]}"; do
+            sources+=("${IMAGE_NAME}@sha256:$(basename "${digest_file}")")
+          done
+
+          short_sha="${GITHUB_SHA:0:12}"
+          tags=("${IMAGE_NAME}:sha-${short_sha}")
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            primary_tag=latest
+            tags+=("${IMAGE_NAME}:latest")
+          else
+            primary_tag="${GITHUB_REF#refs/tags/}"
+            if ((${#primary_tag} > 128)) ||
+              [[ ! "${primary_tag}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+              echo "::error::Git tag '${primary_tag}' cannot be published unchanged as a Docker tag."
+              echo "::error::Use 1-128 ASCII letters, digits, underscores, periods, or dashes."
+              exit 1
+            fi
+            tags+=("${IMAGE_NAME}:${primary_tag}")
+          fi
+
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag "${tag}")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "${IMAGE_NAME}:${primary_tag}"
