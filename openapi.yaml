@@ -413,7 +413,6 @@ paths:
             schema:
               $ref: '#/components/schemas/AuthToken'
         required: true
-      security: []
       responses:
         '200':
           content:

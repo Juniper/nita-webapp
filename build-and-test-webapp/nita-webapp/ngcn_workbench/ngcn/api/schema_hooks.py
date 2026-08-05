@@ -44,9 +44,28 @@ def bound_array_lengths(result, generator, request, public):
 def add_global_security(result, generator, request, public):
     """Declare a document-level default security requirement (``tokenAuth``).
 
-    Individual public endpoints still opt out with an empty ``security: []``.
+    Public endpoints inherit this default (see ``drop_empty_operation_security``).
     Satisfies checkov ``CKV_OPENAPI_4`` (global security field defined).
     """
     if not result.get("security"):
         result["security"] = [{"tokenAuth": []}]
+    return result
+
+
+def drop_empty_operation_security(result, generator, request, public):
+    """Remove empty operation-level ``security: []`` entries.
+
+    Public endpoints (login, register, token issuance) carry no authentication,
+    which drf-spectacular renders as an empty ``security: []``. checkov flags any
+    empty security array as an unsecured operation (``CKV_OPENAPI_5``). Dropping
+    the empty override lets these endpoints inherit the non-empty document-level
+    default declared by :func:`add_global_security`, keeping the schema free of
+    empty security arrays without changing runtime access control.
+    """
+    for path_item in result.get("paths", {}).values():
+        if not isinstance(path_item, dict):
+            continue
+        for operation in path_item.values():
+            if isinstance(operation, dict) and operation.get("security") == []:
+                del operation["security"]
     return result

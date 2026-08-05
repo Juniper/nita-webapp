@@ -170,6 +170,7 @@ SPECTACULAR_SETTINGS = {
         "drf_spectacular.hooks.postprocess_schema_enums",
         "ngcn.api.schema_hooks.bound_array_lengths",
         "ngcn.api.schema_hooks.add_global_security",
+        "ngcn.api.schema_hooks.drop_empty_operation_security",
     ],
 }
 
