@@ -18,7 +18,7 @@ from ngcn_workbench.urls import spa_index
 
 # Top-level SPA routes — keep in sync with frontend/src/App.tsx and the
 # allowlist regex in ngcn_workbench/urls.py.
-SPA_ROUTES = ["/", "/login", "/network-types", "/networks", "/networks/5", "/users"]
+SPA_ROUTES = ["/", "/login", "/network-types", "/networks", "/networks/5", "/users", "/teams"]
 
 # Paths that used to be served by the deleted legacy server-rendered UI.
 REMOVED_LEGACY_ROUTES = [

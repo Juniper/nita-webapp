@@ -137,9 +137,20 @@ class CampusNetworkSerializer(serializers.ModelSerializer):
 
     ``owner`` is read-only (assigned automatically to the creating user);
     ``team`` is writable so an owner/admin can share the network with a team.
+    ``owner_username`` and ``team_name`` are read-only display helpers.
     """
 
     campus_type_name = serializers.CharField(source="campus_type.name", read_only=True)
+    owner_username = serializers.SerializerMethodField()
+    team_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_owner_username(self, obj):
+        return obj.owner.username if obj.owner_id else None
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_team_name(self, obj):
+        return obj.team.name if obj.team_id else None
 
     class Meta:
         model = CampusNetwork

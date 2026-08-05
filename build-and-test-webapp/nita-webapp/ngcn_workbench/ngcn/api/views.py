@@ -1277,6 +1277,32 @@ class UserViewSet(
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        responses={
+            200: {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "username": {"type": "string"},
+                    },
+                },
+            }
+        },
+        summary="Minimal id+username roster for member selection",
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="directory",
+        permission_classes=[IsAuthenticated, IsPowerUserOrAdmin],
+    )
+    def directory(self, request):
+        """Return an id+username roster for power_user/admin (e.g. team member pickers)."""
+        roster = User.objects.order_by("username").values("id", "username")
+        return Response(list(roster))
+
     def destroy(self, request, *args, **kwargs):
         """Delete a user, unless they are the caller or still own resources."""
         target = self.get_object()

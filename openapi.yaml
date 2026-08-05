@@ -1533,6 +1533,30 @@ paths:
           description: ''
         '400':
           description: Invalid recipient user id
+  /api/v1/users/directory/:
+    get:
+      operationId: v1_users_directory_retrieve
+      description: Return an id+username roster for power_user/admin (e.g. team member
+        pickers).
+      summary: Minimal id+username roster for member selection
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    username:
+                      type: string
+          description: ''
 components:
   schemas:
     Action:
@@ -1682,11 +1706,18 @@ components:
 
         ``owner`` is read-only (assigned automatically to the creating user);
         ``team`` is writable so an owner/admin can share the network with a team.
+        ``owner_username`` and ``team_name`` are read-only display helpers.
       properties:
         id:
           type: integer
           readOnly: true
         campus_type_name:
+          type: string
+          readOnly: true
+        owner_username:
+          type: string
+          readOnly: true
+        team_name:
           type: string
           readOnly: true
         name:
@@ -1719,7 +1750,9 @@ components:
       - id
       - name
       - owner
+      - owner_username
       - status
+      - team_name
     CampusType:
       type: object
       description: Serializer for CampusType.
@@ -1959,11 +1992,18 @@ components:
 
         ``owner`` is read-only (assigned automatically to the creating user);
         ``team`` is writable so an owner/admin can share the network with a team.
+        ``owner_username`` and ``team_name`` are read-only display helpers.
       properties:
         id:
           type: integer
           readOnly: true
         campus_type_name:
+          type: string
+          readOnly: true
+        owner_username:
+          type: string
+          readOnly: true
+        team_name:
           type: string
           readOnly: true
         name:

@@ -69,3 +69,34 @@ endpoints. A regular `user` SHALL NOT have access to this screen.
 - **GIVEN** a logged-in user with `role=user`
 - **WHEN** they attempt to open `/teams`
 - **THEN** the client redirects them to `/`
+
+### Requirement: Member Picker Directory
+The system SHALL provide a read-only roster endpoint `GET /api/v1/users/directory/`
+returning only `id` and `username` for each user, accessible to `power_user` and
+`admin`, so team member pickers can select users by name rather than by raw id.
+
+#### Scenario: Power user retrieves the roster
+- **GIVEN** a logged-in `power_user`
+- **WHEN** `GET /api/v1/users/directory/` is called
+- **THEN** a 200 response is returned listing `{id, username}` for all users
+
+#### Scenario: Regular user cannot access the roster
+- **GIVEN** a logged-in user with `role=user`
+- **WHEN** `GET /api/v1/users/directory/` is called
+- **THEN** a 403 response is returned
+
+### Requirement: Network Ownership and Team Visible in the SPA
+The `CampusNetwork` API SHALL expose read-only `owner_username` and `team_name`
+fields. The SPA networks list SHALL show Owner and Team, and the network detail
+view SHALL let an owner/admin (or team-managing power_user) assign or clear the
+network's team via `PATCH /api/v1/networks/{id}/`.
+
+#### Scenario: Networks list shows owner and team
+- **GIVEN** a network owned by a user and shared with a team
+- **WHEN** the networks list is rendered
+- **THEN** the row shows the owner's username and the team's name
+
+#### Scenario: Owner assigns a team from the detail view
+- **GIVEN** an owner viewing their network's detail page with teams available
+- **WHEN** they select a team
+- **THEN** `PATCH /api/v1/networks/{id}/` is sent with the team id and the network reflects the new team

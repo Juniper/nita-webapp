@@ -18,6 +18,8 @@ interface Network {
   campus_type: number
   campus_type_name: string
   host_file: string
+  owner_username: string | null
+  team_name: string | null
 }
 
 interface PaginatedNetworks {
@@ -258,6 +260,8 @@ export function NetworksPage() {
                 <th className="pb-2 pr-4 font-medium">Name</th>
                 <th className="pb-2 pr-4 font-medium">Network Type</th>
                 <th className="pb-2 pr-4 font-medium">Description</th>
+                <th className="pb-2 pr-4 font-medium">Owner</th>
+                <th className="pb-2 pr-4 font-medium">Team</th>
                 <th className="pb-2 pr-4 font-medium">Status</th>
                 <th className="pb-2 font-medium"></th>
               </tr>
@@ -268,6 +272,12 @@ export function NetworksPage() {
                   <td className="py-2.5 pr-4 font-medium">{n.name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.campus_type_name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.description || '—'}</td>
+                  <td className="py-2.5 pr-4 text-gray-400">{n.owner_username || '—'}</td>
+                  <td className="py-2.5 pr-4 text-gray-400">
+                    {n.team_name ? (
+                      <span className="px-1.5 py-0.5 text-xs bg-sky-900/60 border border-sky-700 rounded">{n.team_name}</span>
+                    ) : '—'}
+                  </td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.status || '—'}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
                     <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, useIsAdmin } from '../context/AuthContext'
+import { TransferUserDialog } from '../components/TransferUserDialog'
 
 interface ManagedUser {
   id: number
@@ -30,13 +31,16 @@ const ROLE_BADGE: Record<ManagedUser['role'], string> = {
 
 export function UsersPage() {
   const { user: currentUser } = useAuth()
+  const isAdmin = useIsAdmin()
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-
-  const isAdmin = Boolean(currentUser?.is_superuser || currentUser?.role === 'admin')
+  const [search, setSearch] = useState('')
+  const [transfer, setTransfer] = useState<
+    { id: number; username: string; networks: string[]; types: string[] } | null
+  >(null)
 
   async function fetchUsers() {
     setLoading(true)
@@ -80,30 +84,50 @@ export function UsersPage() {
       setConfirmDeleteId(id)
       return
     }
-    setBusyId(id)
     setConfirmDeleteId(null)
+    await doDelete(id)
+  }
+
+  // Returns true when the account was deleted; on 409 opens the transfer dialog.
+  async function doDelete(id: number): Promise<boolean> {
+    setBusyId(id)
     setError(null)
     try {
       const res = await apiFetch(`/api/v1/users/${id}/`, { method: 'DELETE' })
       if (res.status === 204) {
         setUsers(prev => prev.filter(u => u.id !== id))
-        return
+        return true
       }
-      // 409 (owns resources) / 400 (self) return a JSON detail we surface.
       const data = await res.json().catch(() => null)
       if (res.status === 409 && data) {
-        const nets = (data.networks ?? []).join(', ')
-        const types = (data.types ?? []).join(', ')
-        const parts = [nets && `networks: ${nets}`, types && `types: ${types}`].filter(Boolean)
-        throw new Error(`${data.detail} (${parts.join('; ')})`)
+        const target = users.find(u => u.id === id)
+        setTransfer({
+          id,
+          username: target?.username ?? String(id),
+          networks: data.networks ?? [],
+          types: data.types ?? [],
+        })
+        return false
       }
       throw new Error(data?.detail ?? `Delete failed: ${res.status}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Delete failed')
+      return false
     } finally {
       setBusyId(null)
     }
   }
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return users
+    return users.filter(
+      u =>
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q),
+    )
+  }, [users, search])
 
   if (!isAdmin) return <Navigate to="/" replace />
 
@@ -111,12 +135,21 @@ export function UsersPage() {
     <AppLayout>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">User Management</h2>
-        <button
-          onClick={fetchUsers}
-          className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search users…"
+            className="px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          />
+          <button
+            onClick={fetchUsers}
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -129,6 +162,8 @@ export function UsersPage() {
         <p className="text-gray-400 text-sm">Loading…</p>
       ) : users.length === 0 ? (
         <p className="text-gray-400 text-sm">No users found.</p>
+      ) : filteredUsers.length === 0 ? (
+        <p className="text-gray-400 text-sm">No users match “{search}”.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -142,7 +177,7 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => {
+              {filteredUsers.map(u => {
                 const isSelf = u.id === currentUser?.id
                 return (
                   <tr key={u.id} className="group border-b border-gray-800 hover:bg-gray-800/40">
@@ -219,6 +254,22 @@ export function UsersPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {transfer && (
+        <TransferUserDialog
+          userId={transfer.id}
+          username={transfer.username}
+          networks={transfer.networks}
+          types={transfer.types}
+          recipients={users}
+          onCancel={() => setTransfer(null)}
+          onTransferred={async () => {
+            const id = transfer.id
+            setTransfer(null)
+            await doDelete(id)
+          }}
+        />
       )}
     </AppLayout>
   )

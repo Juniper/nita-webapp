@@ -7,6 +7,7 @@ import { NetworkTypesPage } from './pages/NetworkTypesPage'
 import { NetworksPage } from './pages/NetworksPage'
 import { NetworkDetailPage } from './pages/NetworkDetailPage'
 import { UsersPage } from './pages/UsersPage'
+import { TeamsPage } from './pages/TeamsPage'
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <UsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teams"
+            element={
+              <ProtectedRoute>
+                <TeamsPage />
               </ProtectedRoute>
             }
           />

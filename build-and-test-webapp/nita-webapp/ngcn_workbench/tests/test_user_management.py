@@ -508,3 +508,46 @@ def test_bootstrap_admin_noop_when_users_exist(monkeypatch, regular_user):
     assert bootstrap_admin_from_env() is None
     assert not User.objects.filter(username="envadmin").exists()
 
+
+# ── User directory (member picker) ────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_directory_lists_id_and_username_for_power_user(power_user, regular_user, admin_user):
+    resp = _client(power_user).get("/api/v1/users/directory/")
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert {"power", "regular", "admin"} <= {r["username"] for r in rows}
+    assert set(rows[0].keys()) == {"id", "username"}
+
+
+@pytest.mark.django_db
+def test_directory_forbidden_for_regular_user(regular_user):
+    resp = _client(regular_user).get("/api/v1/users/directory/")
+    assert resp.status_code == 403
+
+
+# ── Network serializer owner/team display fields ─────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_network_exposes_owner_username_and_team_name(regular_user, campus_type):
+    team = Team.objects.create(name="Blue", created_by=regular_user)
+    team.members.add(regular_user)
+    net = _make_network("Net-A", regular_user, campus_type, team=team)
+    resp = _client(regular_user).get(f"/api/v1/networks/{net.id}/")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["owner_username"] == "regular"
+    assert data["team_name"] == "Blue"
+
+
+@pytest.mark.django_db
+def test_network_owner_team_null_when_unset(admin_user, campus_type):
+    net = CampusNetwork.objects.create(
+        name="Orphan", status="ok", description="d", host_file="h", campus_type=campus_type
+    )
+    resp = _client(admin_user).get(f"/api/v1/networks/{net.id}/")
+    assert resp.status_code == 200
+    assert resp.json()["owner_username"] is None
+    assert resp.json()["team_name"] is None
