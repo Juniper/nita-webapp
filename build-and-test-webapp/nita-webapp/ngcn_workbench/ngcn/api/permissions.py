@@ -86,7 +86,6 @@ class IsOwnerOrTeamMemberOrAdmin(BasePermission):
                 return True
             team = getattr(obj, "team", None)
             return bool(
-                team is not None
-                and team.members.filter(pk=request.user.pk).exists()
+                team is not None and team.members.filter(pk=request.user.pk).exists()
             )
         return is_owner

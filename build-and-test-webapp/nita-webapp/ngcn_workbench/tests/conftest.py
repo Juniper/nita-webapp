@@ -23,9 +23,7 @@ def user(db):
     exercised by dedicated fixtures/tests in ``test_user_management.py``.
     """
     model = get_user_model()
-    return model.objects.create_user(
-        username="tester", password="secret", role="admin"
-    )
+    return model.objects.create_user(username="tester", password="secret", role="admin")
 
 
 @pytest.fixture

@@ -24,9 +24,7 @@ class UserAdmin(DjangoUserAdmin):
     list_display = ("username", "email", "role", "is_staff", "is_active")
     list_filter = ("role", "is_staff", "is_superuser", "is_active")
     fieldsets = DjangoUserAdmin.fieldsets + (("Role", {"fields": ("role",)}),)
-    add_fieldsets = DjangoUserAdmin.add_fieldsets + (
-        ("Role", {"fields": ("role",)}),
-    )
+    add_fieldsets = DjangoUserAdmin.add_fieldsets + (("Role", {"fields": ("role",)}),)
 
 
 @admin.register(Team)

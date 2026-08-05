@@ -125,9 +125,7 @@ def test_power_user_creates_team(power_user):
 
 @pytest.mark.django_db
 def test_regular_user_cannot_create_team(regular_user):
-    resp = _client(regular_user).post(
-        "/api/v1/teams/", {"name": "Nope"}, format="json"
-    )
+    resp = _client(regular_user).post("/api/v1/teams/", {"name": "Nope"}, format="json")
     assert resp.status_code == 403
 
 
@@ -513,7 +511,9 @@ def test_bootstrap_admin_noop_when_users_exist(monkeypatch, regular_user):
 
 
 @pytest.mark.django_db
-def test_directory_lists_id_and_username_for_power_user(power_user, regular_user, admin_user):
+def test_directory_lists_id_and_username_for_power_user(
+    power_user, regular_user, admin_user
+):
     resp = _client(power_user).get("/api/v1/users/directory/")
     assert resp.status_code == 200
     rows = resp.json()
@@ -545,7 +545,11 @@ def test_network_exposes_owner_username_and_team_name(regular_user, campus_type)
 @pytest.mark.django_db
 def test_network_owner_team_null_when_unset(admin_user, campus_type):
     net = CampusNetwork.objects.create(
-        name="Orphan", status="ok", description="d", host_file="h", campus_type=campus_type
+        name="Orphan",
+        status="ok",
+        description="d",
+        host_file="h",
+        campus_type=campus_type,
     )
     resp = _client(admin_user).get(f"/api/v1/networks/{net.id}/")
     assert resp.status_code == 200

@@ -67,9 +67,9 @@ def test_custom_user_migration_ordered_before_dependents():
     idx_token = plan.find("authtoken.0001_initial")
 
     assert idx_user != -1, f"ngcn.0005 not in plan:\n{plan}"
-    assert idx_admin != -1 and idx_user < idx_admin, (
-        f"ngcn.0005 must come before admin.0001:\n{plan}"
-    )
-    assert idx_token != -1 and idx_user < idx_token, (
-        f"ngcn.0005 must come before authtoken.0001:\n{plan}"
-    )
+    assert (
+        idx_admin != -1 and idx_user < idx_admin
+    ), f"ngcn.0005 must come before admin.0001:\n{plan}"
+    assert (
+        idx_token != -1 and idx_user < idx_token
+    ), f"ngcn.0005 must come before authtoken.0001:\n{plan}"
