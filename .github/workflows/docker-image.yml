@@ -55,17 +55,22 @@ jobs:
         run: |
           docker run --rm --entrypoint sh "${TEST_IMAGE}" -ec '
             python3 -c "import django, MySQLdb, pymysql"
+            python3 -m pip check
             test -s /app/frontend/dist/index.html
           '
 
       - name: Scan HIGH and CRITICAL vulnerabilities
+        env:
+          TRIVY_SHOW_SUPPRESSED: "true"
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: v0.66.0
           image-ref: ${{ env.TEST_IMAGE }}
           format: json
           output: trivy-${{ matrix.architecture }}.json
           severity: HIGH,CRITICAL
           exit-code: "0"
+          trivyignores: .trivyignore.yaml
 
       - name: Upload vulnerability report
         if: always()
@@ -75,6 +80,16 @@ jobs:
           path: trivy-${{ matrix.architecture }}.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Enforce CRITICAL vulnerability baseline
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          version: v0.66.0
+          image-ref: ${{ env.TEST_IMAGE }}
+          format: table
+          severity: CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore.yaml
 
   publish-platform:
     name: Publish ${{ matrix.platform }} digest
@@ -133,17 +148,22 @@ jobs:
           docker pull "${PUBLISHED_IMAGE}"
           docker run --rm --entrypoint sh "${PUBLISHED_IMAGE}" -ec '
             python3 -c "import django, MySQLdb, pymysql"
+            python3 -m pip check
             test -s /app/frontend/dist/index.html
           '
 
       - name: Scan published platform digest
+        env:
+          TRIVY_SHOW_SUPPRESSED: "true"
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: v0.66.0
           image-ref: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
           format: json
           output: trivy-published-${{ matrix.architecture }}.json
           severity: HIGH,CRITICAL
           exit-code: "0"
+          trivyignores: .trivyignore.yaml
 
       - name: Upload published-digest vulnerability report
         if: always()
@@ -153,6 +173,16 @@ jobs:
           path: trivy-published-${{ matrix.architecture }}.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Enforce published CRITICAL vulnerability baseline
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          version: v0.66.0
+          image-ref: ${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: table
+          severity: CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore.yaml
 
       - name: Export digest marker
         run: |

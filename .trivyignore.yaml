@@ -1,0 +1,53 @@
+vulnerabilities:
+  - id: CVE-2026-13221
+    purls:
+      - pkg:deb/debian/perl-base
+    statement: >-
+      The base interpreter is not used to compile attacker-controlled
+      65,535-branch Perl regular expressions. NITA maintainers own this
+      trusted-lab exception under https://github.com/Juniper/nita/issues/75
+      pending a Debian stable fix.
+    expired_at: 2026-11-03
+  - id: CVE-2026-42496
+    purls:
+      - pkg:deb/debian/perl-base
+    statement: >-
+      The Webapp does not use Perl Archive::Tar to extract untrusted archives.
+      NITA maintainers own this trusted-lab exception under
+      https://github.com/Juniper/nita/issues/75 pending a Debian stable fix.
+    expired_at: 2026-11-03
+  - id: CVE-2026-57433
+    purls:
+      - pkg:deb/debian/perl-base
+    statement: >-
+      The Webapp does not deserialize untrusted Perl Storable data. NITA
+      maintainers own this trusted-lab exception under
+      https://github.com/Juniper/nita/issues/75 pending a Debian stable fix.
+    expired_at: 2026-11-03
+  - id: CVE-2026-8376
+    purls:
+      - pkg:deb/debian/perl-base
+    statement: >-
+      This overflow is limited to 32-bit Perl builds; the published amd64 and
+      arm64 images are 64-bit. NITA maintainers own this exception under
+      https://github.com/Juniper/nita/issues/75 pending a Debian stable fix.
+    expired_at: 2026-11-03
+  - id: CVE-2026-44172
+    purls:
+      - pkg:deb/debian/libmariadb3
+      - pkg:deb/debian/mariadb-common
+    statement: >-
+      The Django application uses parameterized ORM queries with its default
+      UTF-8 connection, not mysql_real_escape_string with untrusted Big5 input.
+      NITA maintainers own this exception under
+      https://github.com/Juniper/nita/issues/75 pending the Debian point release.
+    expired_at: 2026-11-03
+  - id: CVE-2026-49261
+    purls:
+      - pkg:deb/debian/libmariadb3
+      - pkg:deb/debian/mariadb-common
+    statement: >-
+      The image contains only MariaDB client libraries, not a Galera server with
+      wsrep_notify_cmd enabled. NITA maintainers own this exception under
+      https://github.com/Juniper/nita/issues/75 pending the Debian point release.
+    expired_at: 2026-11-03
