@@ -163,9 +163,13 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "NITA Webapp API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # HTTPS server (TLS terminated at the nginx proxy) so the token API key is
+    # not advertised as sent over cleartext.
+    "SERVERS": [{"url": "https://localhost", "description": "NITA Webapp (HTTPS)"}],
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
         "ngcn.api.schema_hooks.bound_array_lengths",
+        "ngcn.api.schema_hooks.add_global_security",
     ],
 }
 
