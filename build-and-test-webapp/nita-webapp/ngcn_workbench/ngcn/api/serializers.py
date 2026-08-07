@@ -54,6 +54,48 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "username", "email"]
 
 
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for admin-driven user creation.
+
+    Accepts a writable ``username``, ``email``, ``role``, and a write-only
+    ``password`` validated with Django's configured password validators. The
+    password is never echoed back — the response uses the read representation.
+    """
+
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "password", "email", "role", "is_active"]
+        read_only_fields = ["id", "is_active"]
+        extra_kwargs = {"email": {"required": False}}
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
+class SetPasswordSerializer(serializers.Serializer):
+    """Serializer for an admin setting/resetting a user's password.
+
+    Carries a single write-only ``password`` validated with Django's configured
+    password validators. It is never echoed back in any response.
+    """
+
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for self-service registration.
 

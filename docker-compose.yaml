@@ -22,6 +22,12 @@ services:
       - JENKINS_PORT
       - JENKINS_URL
 #
+# Onboarding: self-service registration is ENABLED by default (both public
+# sign-up and admin-created accounts are active). Set this to False to disable
+# public POST /api/v1/auth/register/ and rely on admin-created accounts only.
+# Only the exact value "True" enables it; anything else disables it.
+#      - NITA_SELF_REGISTRATION_ENABLED=True
+#
 # Bootstrap the initial admin account (role=admin) on a fresh deployment.
 # These only take effect when the database has zero users. Uncomment and set
 # strong values before first start, then remove/rotate after the admin exists.

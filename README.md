@@ -33,6 +33,35 @@ The default user credentials for the NITA webapp and Jenkins are listed below:
 | Webapp| vagrant | vagrant123 |
 | Jenkins | admin | admin|
 
+## User Onboarding
+
+There are two ways to create webapp accounts:
+
+1. **Self-service registration** — the public `POST /api/v1/auth/register/`
+   endpoint. New accounts always get `role=user`.
+2. **Admin-created accounts** — an admin uses `POST /api/v1/users/` (or the
+   **User Management** screen) to create a user and choose their role
+   (`user`, `power_user`, or `admin`) with an initial password.
+
+Self-service registration is controlled by the `NITA_SELF_REGISTRATION_ENABLED`
+environment variable, which defaults to **enabled** so that both onboarding
+paths are active out of the box:
+
+| `NITA_SELF_REGISTRATION_ENABLED` | Effect |
+|---|---|
+| unset or `True` (default) | Public registration **and** admin-created accounts are both active. |
+| any other value (`False`, `0`, empty, …) | Public registration is disabled (returns `403`); only admins can create accounts. |
+
+Only the exact string `True` enables registration; any other value disables it.
+Set it as a webapp environment variable (see the commented stub in
+`docker-compose.yaml`).
+
+Admins can also reset any user's password via
+`POST /api/v1/users/{id}/set_password/` (or the **Reset password** action on the
+User Management screen). The last active administrator is protected: an
+operation that would demote, deactivate, or delete the only remaining active
+admin is rejected.
+
 ## NITA Command Line Interface
 
 A number of CLI scripts are installed with NITA which you can use to manage the Webapp:

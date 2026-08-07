@@ -30,6 +30,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 # Custom user model with a role field (user / power_user / admin).
 AUTH_USER_MODEL = "ngcn.User"
 
+# ── Onboarding ─────────────────────────────────────────────────────────────────
+# There are two ways an account can be created:
+#   1. Self-service registration  — public POST /api/v1/auth/register/ (role=user)
+#   2. Admin-created accounts      — POST /api/v1/users/ (admin chooses the role)
+#
+# SELF_REGISTRATION_ENABLED toggles path (1). It defaults to True so BOTH paths
+# are active out of the box (backwards compatible). Set the environment variable
+# NITA_SELF_REGISTRATION_ENABLED=False to disable public sign-up and rely on
+# admin-created accounts only; the register endpoint then returns 403.
+#
+# Truthiness follows the same convention as DJANGO_DEBUG: only the exact string
+# "True" enables it — anything else ("False", "0", "", etc.) disables it.
+SELF_REGISTRATION_ENABLED = (
+    os.getenv("NITA_SELF_REGISTRATION_ENABLED", "True") == "True"
+)
+
 # Application definition
 
 INSTALLED_APPS = [

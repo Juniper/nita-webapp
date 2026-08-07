@@ -364,7 +364,12 @@ paths:
   /api/v1/auth/register/:
     post:
       operationId: v1_auth_register_create
-      description: Self-service registration. New accounts always get ``role=user``.
+      description: |-
+        Self-service registration. New accounts always get ``role=user``.
+
+        Gated by the ``SELF_REGISTRATION_ENABLED`` setting
+        (env ``NITA_SELF_REGISTRATION_ENABLED``, default enabled). When disabled,
+        returns 403 and directs the requester to an administrator.
       summary: Register a new account (defaults to role=user)
       tags:
       - v1
@@ -396,6 +401,8 @@ paths:
           description: ''
         '400':
           description: Validation error (duplicate/weak input)
+        '403':
+          description: Self-registration is disabled
   /api/v1/auth/token/:
     post:
       operationId: v1_auth_token_create
@@ -1352,11 +1359,14 @@ paths:
     get:
       operationId: v1_users_list
       description: |-
-        Admin-only user management (list, retrieve, role/status update, delete).
+        Admin-only user management (create, list, retrieve, role/status update, delete).
 
-        Deletion is PROTECT-guarded: a user who still owns networks or network types
-        cannot be deleted until an admin transfers those resources via
-        ``POST /api/v1/users/{id}/transfer/``.
+        Creation accepts a username, email, role, and an initial password. Deletion
+        is PROTECT-guarded: a user who still owns networks or network types cannot be
+        deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``. Operations that would leave zero active
+        administrators (demote, deactivate, or delete the last active admin) are
+        rejected with ``400``.
       parameters:
       - name: page
         required: false
@@ -1375,15 +1385,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedUserList'
           description: ''
+    post:
+      operationId: v1_users_create
+      description: Create a user, returning the read representation (no password echoed).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreate'
+          description: ''
   /api/v1/users/{id}/:
     get:
       operationId: v1_users_retrieve
       description: |-
-        Admin-only user management (list, retrieve, role/status update, delete).
+        Admin-only user management (create, list, retrieve, role/status update, delete).
 
-        Deletion is PROTECT-guarded: a user who still owns networks or network types
-        cannot be deleted until an admin transfers those resources via
-        ``POST /api/v1/users/{id}/transfer/``.
+        Creation accepts a username, email, role, and an initial password. Deletion
+        is PROTECT-guarded: a user who still owns networks or network types cannot be
+        deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``. Operations that would leave zero active
+        administrators (demote, deactivate, or delete the last active admin) are
+        rejected with ``400``.
       parameters:
       - in: path
         name: id
@@ -1404,12 +1443,8 @@ paths:
           description: ''
     put:
       operationId: v1_users_update
-      description: |-
-        Admin-only user management (list, retrieve, role/status update, delete).
-
-        Deletion is PROTECT-guarded: a user who still owns networks or network types
-        cannot be deleted until an admin transfers those resources via
-        ``POST /api/v1/users/{id}/transfer/``.
+      description: Update a user, blocking changes that would remove the last active
+        admin.
       parameters:
       - in: path
         name: id
@@ -1442,11 +1477,14 @@ paths:
     patch:
       operationId: v1_users_partial_update
       description: |-
-        Admin-only user management (list, retrieve, role/status update, delete).
+        Admin-only user management (create, list, retrieve, role/status update, delete).
 
-        Deletion is PROTECT-guarded: a user who still owns networks or network types
-        cannot be deleted until an admin transfers those resources via
-        ``POST /api/v1/users/{id}/transfer/``.
+        Creation accepts a username, email, role, and an initial password. Deletion
+        is PROTECT-guarded: a user who still owns networks or network types cannot be
+        deleted until an admin transfers those resources via
+        ``POST /api/v1/users/{id}/transfer/``. Operations that would leave zero active
+        administrators (demote, deactivate, or delete the last active admin) are
+        rejected with ``400``.
       parameters:
       - in: path
         name: id
@@ -1493,6 +1531,46 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/users/{id}/set_password/:
+    post:
+      operationId: v1_users_set_password_create
+      description: Set a validated password on the target user (may be the caller).
+      summary: Set (reset) a user's password (admin only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: ''
+        '400':
+          description: Password validation error
   /api/v1/users/{id}/transfer/:
     post:
       operationId: v1_users_transfer_create
@@ -2098,6 +2176,19 @@ components:
         * `user` - User
         * `power_user` - Power user
         * `admin` - Admin
+    SetPassword:
+      type: object
+      description: |-
+        Serializer for an admin setting/resetting a user's password.
+
+        Carries a single write-only ``password`` validated with Django's configured
+        password validators. It is never echoed back in any response.
+      properties:
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
     Team:
       type: object
       description: Serializer for Team. ``members`` is a list of user ids.
@@ -2156,6 +2247,45 @@ components:
       required:
       - email
       - id
+      - username
+    UserCreate:
+      type: object
+      description: |-
+        Serializer for admin-driven user creation.
+
+        Accepts a writable ``username``, ``email``, ``role``, and a write-only
+        ``password`` validated with Django's configured password validators. The
+        password is never echoed back — the response uses the read representation.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - id
+      - is_active
+      - password
       - username
     UserRegistration:
       type: object

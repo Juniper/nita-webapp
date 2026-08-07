@@ -94,7 +94,9 @@ from .serializers import (
     CampusNetworkSerializer,
     CampusTypeSerializer,
     LifecycleRunSerializer,
+    SetPasswordSerializer,
     TeamSerializer,
+    UserCreateSerializer,
     UserRegistrationSerializer,
     UserSerializer,
     WorkbookSerializer,
@@ -217,6 +219,7 @@ def me_view(request):
             },
         },
         400: OpenApiResponse(description="Validation error (duplicate/weak input)"),
+        403: OpenApiResponse(description="Self-registration is disabled"),
     },
     auth=[],
     summary="Register a new account (defaults to role=user)",
@@ -224,7 +227,19 @@ def me_view(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_view(request):
-    """Self-service registration. New accounts always get ``role=user``."""
+    """Self-service registration. New accounts always get ``role=user``.
+
+    Gated by the ``SELF_REGISTRATION_ENABLED`` setting
+    (env ``NITA_SELF_REGISTRATION_ENABLED``, default enabled). When disabled,
+    returns 403 and directs the requester to an administrator.
+    """
+    from django.conf import settings
+
+    if not getattr(settings, "SELF_REGISTRATION_ENABLED", True):
+        return Response(
+            {"detail": "Self-registration is disabled; contact an administrator."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     serializer = UserRegistrationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     user = serializer.save()
@@ -1260,22 +1275,102 @@ class TeamViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(
+    mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Admin-only user management (list, retrieve, role/status update, delete).
+    """Admin-only user management (create, list, retrieve, role/status update, delete).
 
-    Deletion is PROTECT-guarded: a user who still owns networks or network types
-    cannot be deleted until an admin transfers those resources via
-    ``POST /api/v1/users/{id}/transfer/``.
+    Creation accepts a username, email, role, and an initial password. Deletion
+    is PROTECT-guarded: a user who still owns networks or network types cannot be
+    deleted until an admin transfers those resources via
+    ``POST /api/v1/users/{id}/transfer/``. Operations that would leave zero active
+    administrators (demote, deactivate, or delete the last active admin) are
+    rejected with ``400``.
     """
 
     queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+        return UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a user, returning the read representation (no password echoed)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    @staticmethod
+    def _would_remove_last_active_admin(
+        target, *, new_role=None, new_is_active=None, deleting=False
+    ):
+        """Return True if the change would leave zero active administrators.
+
+        An active administrator is a user with ``role=admin`` AND
+        ``is_active=True``. The guard only fires when ``target`` is currently the
+        sole active admin and the operation would drop them from that set.
+        """
+        if not (target.role == User.ROLE_ADMIN and target.is_active):
+            return False
+        active_admins = User.objects.filter(
+            role=User.ROLE_ADMIN, is_active=True
+        ).count()
+        if active_admins > 1:
+            return False
+        if deleting:
+            return True
+        if new_role is not None and new_role != User.ROLE_ADMIN:
+            return True
+        if new_is_active is not None and not new_is_active:
+            return True
+        return False
+
+    def update(self, request, *args, **kwargs):
+        """Update a user, blocking changes that would remove the last active admin."""
+        target = self.get_object()
+        new_role = request.data.get("role")
+        new_is_active = request.data.get("is_active")
+        if new_is_active is not None and isinstance(new_is_active, str):
+            new_is_active = new_is_active.lower() not in ("false", "0", "")
+        if self._would_remove_last_active_admin(
+            target, new_role=new_role, new_is_active=new_is_active
+        ):
+            return Response(
+                {"detail": "Cannot remove the last administrator."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=SetPasswordSerializer,
+        responses={
+            200: {"type": "object", "properties": {"status": {"type": "string"}}},
+            400: OpenApiResponse(description="Password validation error"),
+        },
+        summary="Set (reset) a user's password (admin only)",
+    )
+    @action(detail=True, methods=["post"], url_path="set_password")
+    def set_password(self, request, pk=None):
+        """Set a validated password on the target user (may be the caller)."""
+        target = self.get_object()
+        serializer = SetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target.set_password(serializer.validated_data["password"])
+        target.save(update_fields=["password"])
+        return Response({"status": "password set"}, status=status.HTTP_200_OK)
 
     @extend_schema(
         responses={
@@ -1309,6 +1404,11 @@ class UserViewSet(
         if target == request.user:
             return Response(
                 {"detail": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if self._would_remove_last_active_admin(target, deleting=True):
+            return Response(
+                {"detail": "Cannot remove the last administrator."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         owned_networks = list(

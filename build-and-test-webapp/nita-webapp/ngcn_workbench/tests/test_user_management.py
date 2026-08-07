@@ -555,3 +555,202 @@ def test_network_owner_team_null_when_unset(admin_user, campus_type):
     assert resp.status_code == 200
     assert resp.json()["owner_username"] is None
     assert resp.json()["team_name"] is None
+
+
+# ── Admin user creation ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_admin_creates_user_with_role(admin_user):
+    resp = _client(admin_user).post(
+        "/api/v1/users/",
+        {
+            "username": "carol",
+            "email": "carol@example.com",
+            "role": "power_user",
+            "password": "sTr0ngPassw0rd!",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["username"] == "carol"
+    assert data["role"] == "power_user"
+    assert data["is_active"] is True
+    assert "password" not in data
+    carol = User.objects.get(username="carol")
+    assert carol.role == User.ROLE_POWER_USER
+    assert carol.check_password("sTr0ngPassw0rd!")
+
+
+@pytest.mark.django_db
+def test_admin_creates_admin_user(admin_user):
+    resp = _client(admin_user).post(
+        "/api/v1/users/",
+        {"username": "carol", "role": "admin", "password": "sTr0ngPassw0rd!"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert User.objects.get(username="carol").role == User.ROLE_ADMIN
+
+
+@pytest.mark.django_db
+def test_admin_create_duplicate_username_rejected(admin_user, regular_user):
+    resp = _client(admin_user).post(
+        "/api/v1/users/",
+        {"username": "regular", "role": "user", "password": "sTr0ngPassw0rd!"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_create_weak_password_rejected(admin_user):
+    resp = _client(admin_user).post(
+        "/api/v1/users/",
+        {"username": "weakling", "role": "user", "password": "123"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_non_admin_cannot_create_user(power_user):
+    resp = _client(power_user).post(
+        "/api/v1/users/",
+        {"username": "carol", "role": "user", "password": "sTr0ngPassw0rd!"},
+        format="json",
+    )
+    assert resp.status_code == 403
+
+
+# ── Admin password reset ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_admin_resets_another_users_password(admin_user, regular_user):
+    resp = _client(admin_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": "N3wPassw0rd!x"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert "password" not in resp.json()
+    regular_user.refresh_from_db()
+    assert regular_user.check_password("N3wPassw0rd!x")
+
+
+@pytest.mark.django_db
+def test_admin_resets_own_password(admin_user):
+    resp = _client(admin_user).post(
+        f"/api/v1/users/{admin_user.id}/set_password/",
+        {"password": "N3wPassw0rd!x"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    admin_user.refresh_from_db()
+    assert admin_user.check_password("N3wPassw0rd!x")
+
+
+@pytest.mark.django_db
+def test_set_password_weak_rejected(admin_user, regular_user):
+    resp = _client(admin_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": "123"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_non_admin_cannot_set_password(power_user, regular_user):
+    resp = _client(power_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": "N3wPassw0rd!x"},
+        format="json",
+    )
+    assert resp.status_code == 403
+
+
+# ── Self-registration flag ───────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_registration_enabled_by_default(settings):
+    settings.SELF_REGISTRATION_ENABLED = True
+    resp = APIClient().post(
+        "/api/v1/auth/register/",
+        {"username": "opener", "password": "sTr0ngPassw0rd!"},
+        format="json",
+    )
+    assert resp.status_code == 201
+
+
+@pytest.mark.django_db
+def test_registration_disabled_returns_403(settings):
+    settings.SELF_REGISTRATION_ENABLED = False
+    resp = APIClient().post(
+        "/api/v1/auth/register/",
+        {"username": "blocked", "password": "sTr0ngPassw0rd!"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not User.objects.filter(username="blocked").exists()
+
+
+# ── Last-administrator protection ────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_cannot_demote_last_admin(admin_user):
+    resp = _client(admin_user).patch(
+        f"/api/v1/users/{admin_user.id}/", {"role": "power_user"}, format="json"
+    )
+    assert resp.status_code == 400
+    admin_user.refresh_from_db()
+    assert admin_user.role == User.ROLE_ADMIN
+
+
+@pytest.mark.django_db
+def test_cannot_deactivate_last_admin(admin_user):
+    resp = _client(admin_user).patch(
+        f"/api/v1/users/{admin_user.id}/", {"is_active": False}, format="json"
+    )
+    assert resp.status_code == 400
+    admin_user.refresh_from_db()
+    assert admin_user.is_active is True
+
+
+@pytest.mark.django_db
+def test_cannot_delete_last_admin(admin_user):
+    # The delete guard is exercised at the helper level: deleting the sole active
+    # admin would remove the last administrator. (Via the API the self-delete
+    # guard also blocks this — see test_admin_cannot_delete_self.)
+    from ngcn.api.views import UserViewSet
+
+    assert (
+        UserViewSet._would_remove_last_active_admin(admin_user, deleting=True) is True
+    )
+    other = User.objects.create_user(
+        username="other-admin", password="secret", role=User.ROLE_ADMIN
+    )
+    assert (
+        UserViewSet._would_remove_last_active_admin(admin_user, deleting=True) is False
+    )
+    assert (
+        UserViewSet._would_remove_last_active_admin(other, deleting=True) is False
+    )
+
+
+@pytest.mark.django_db
+def test_demote_admin_allowed_when_another_admin_exists(admin_user):
+    other = User.objects.create_user(
+        username="other-admin", password="secret", role=User.ROLE_ADMIN
+    )
+    resp = _client(admin_user).patch(
+        f"/api/v1/users/{other.id}/", {"role": "power_user"}, format="json"
+    )
+    assert resp.status_code == 200
+    other.refresh_from_db()
+    assert other.role == User.ROLE_POWER_USER
+

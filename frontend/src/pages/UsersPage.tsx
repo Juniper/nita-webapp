@@ -4,6 +4,8 @@ import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import { TransferUserDialog } from '../components/TransferUserDialog'
+import { CreateUserDialog } from '../components/CreateUserDialog'
+import { SetPasswordDialog } from '../components/SetPasswordDialog'
 
 interface ManagedUser {
   id: number
@@ -41,6 +43,8 @@ export function UsersPage() {
   const [transfer, setTransfer] = useState<
     { id: number; username: string; networks: string[]; types: string[] } | null
   >(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(null)
 
   async function fetchUsers() {
     setLoading(true)
@@ -149,6 +153,12 @@ export function UsersPage() {
           >
             Refresh
           </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+          >
+            New user
+          </button>
         </div>
       </div>
 
@@ -210,6 +220,13 @@ export function UsersPage() {
                     </td>
                     <td className="py-2.5 text-right whitespace-nowrap">
                       <span className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => setResetTarget({ id: u.id, username: u.username })}
+                          disabled={busyId === u.id}
+                          className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50"
+                        >
+                          Reset password
+                        </button>
                         {!isSelf && (
                           <button
                             onClick={() => patchUser(u.id, { is_active: !u.is_active })}
@@ -269,6 +286,25 @@ export function UsersPage() {
             setTransfer(null)
             await doDelete(id)
           }}
+        />
+      )}
+
+      {showCreate && (
+        <CreateUserDialog
+          onCancel={() => setShowCreate(false)}
+          onCreated={created => {
+            setUsers(prev => [...prev, created])
+            setShowCreate(false)
+          }}
+        />
+      )}
+
+      {resetTarget && (
+        <SetPasswordDialog
+          userId={resetTarget.id}
+          username={resetTarget.username}
+          onCancel={() => setResetTarget(null)}
+          onDone={() => setResetTarget(null)}
         />
       )}
     </AppLayout>
