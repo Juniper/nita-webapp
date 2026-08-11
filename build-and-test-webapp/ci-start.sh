@@ -16,13 +16,11 @@ DB_ROOT_USER="${DB_ROOT_USER:-root}"
 DB_ROOT_PASS="${DB_ROOT_PASS:-root}"
 WEBAPP_USER="${WEBAPP_USER:-vagrant}"
 WEBAPP_PASS="${WEBAPP_PASS:-vagrant123}"
+export DB_HOST DB_ROOT_USER DB_ROOT_PASS
 
 # ── Wait for MariaDB ──────────────────────────────────────────────────────────
 echo "Waiting for MariaDB at ${DB_HOST}..."
-until mysqladmin ping -h"${DB_HOST}" -u"${DB_ROOT_USER}" -p"${DB_ROOT_PASS}" --silent 2>/dev/null; do
-    echo "  db not ready, retrying in 2s..."
-    sleep 2
-done
+python build-and-test-webapp/wait_for_db.py
 echo "MariaDB is up."
 
 # ── Django setup ──────────────────────────────────────────────────────────────
