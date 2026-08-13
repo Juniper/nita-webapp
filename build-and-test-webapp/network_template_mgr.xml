@@ -48,8 +48,12 @@
       <command>#!/bin/bash
 
 # Copy jenkins-cli.jar
-if [ ! -f "/var/jenkins_home/war/WEB-INF/jenkins-cli.jar" ]; then
-    curl http://jenkins:8080/jnlpJars/jenkins-cli.jar -o /var/jenkins_home/war/WEB-INF/jenkins-cli.jar
+    CLI_JAR="/var/jenkins_home/war/WEB-INF/jenkins-cli.jar"
+    CLI_URL="http://jenkins:8080/jenkins/jnlpJars/jenkins-cli.jar"
+    if ! jar tf "$CLI_JAR" &gt;/dev/null 2&gt;&amp;1; then
+      rm -f "$CLI_JAR"
+      curl --fail --silent --show-error "$CLI_URL" -o "$CLI_JAR"
+      jar tf "$CLI_JAR" &gt;/dev/null
 fi
 
 PATH=$PATH:/var/jenkins_scripts/
@@ -291,8 +295,8 @@ with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
             out_file = tempfile.NamedTemporaryFile(delete=False)
             out_file.write(output.encode())
             out_file.close()
-            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
-            print(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
+            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
+            print(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
             os.unlink(out_file.name)
     except Exception as e:
         print(&quot;Exception while installing the Jenkins Jobs...&quot;)
@@ -331,7 +335,7 @@ with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
         input = yaml.safe_load(stream)
 
         for action_item in input[&quot;action&quot;]:
-            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080 delete-job &quot; + action_item[&quot;jenkins_url&quot;])
+            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins delete-job &quot; + action_item[&quot;jenkins_url&quot;])
     except:
         print (&quot;Exception while uninstalling the Jenkins Jobs...&quot;)
 &apos;
