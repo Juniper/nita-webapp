@@ -72,3 +72,91 @@ blocking resources.
 - GIVEN a user with `role=admin`
 - WHEN `DELETE /api/v1/users/{own_id}/` is called
 - THEN a 400 response is returned
+
+### Requirement: Create User (Admin Only)
+The system SHALL provide `POST /api/v1/users/` accessible only to `role=admin`
+for creating a new user account. The request body SHALL accept `username`,
+`email`, `role`, and `password`. The `password` SHALL be validated with the
+configured Django password validators and stored write-only — it SHALL NOT
+appear in any response body or log output. The response SHALL return the created
+user's `id`, `username`, `email`, `role`, and `is_active`.
+
+#### Scenario: Admin creates a power_user
+- GIVEN a user with `role=admin`
+- WHEN `POST /api/v1/users/` is called with
+  `{"username": "carol", "email": "carol@example.com", "role": "power_user", "password": "<valid>"}`
+- THEN a 201 response is returned with the new user's id, username, email,
+  role=power_user, and is_active=true
+- AND the response body does not contain the password
+
+#### Scenario: Weak password is rejected
+- GIVEN a user with `role=admin`
+- WHEN `POST /api/v1/users/` is called with a password failing the validators
+- THEN a 400 response is returned describing the password error
+
+#### Scenario: Duplicate username is rejected
+- GIVEN an existing user `carol`
+- WHEN `POST /api/v1/users/` is called with `username=carol`
+- THEN a 400 response is returned
+
+#### Scenario: Non-admin cannot create users
+- GIVEN a user with `role=user` or `role=power_user`
+- WHEN `POST /api/v1/users/` is called
+- THEN a 403 response is returned
+
+### Requirement: Set User Password (Admin Only)
+The system SHALL provide `POST /api/v1/users/{id}/set_password/` accessible only
+to `role=admin`. The request body SHALL accept a write-only `password` validated
+with the configured Django password validators. The endpoint SHALL set the
+target user's password and MAY target the caller's own account. The password
+SHALL NOT appear in any response body or log output.
+
+#### Scenario: Admin resets another user's password
+- GIVEN a user with `role=admin` and a target user
+- WHEN `POST /api/v1/users/{target_id}/set_password/` is called with a valid `password`
+- THEN a 200 response is returned and the target user can authenticate with the new password
+- AND the response body does not contain the password
+
+#### Scenario: Admin resets their own password
+- GIVEN a user with `role=admin`
+- WHEN `POST /api/v1/users/{own_id}/set_password/` is called with a valid `password`
+- THEN a 200 response is returned and the password is updated
+
+#### Scenario: Weak password is rejected
+- GIVEN a user with `role=admin`
+- WHEN `POST /api/v1/users/{id}/set_password/` is called with a password failing the validators
+- THEN a 400 response is returned
+
+#### Scenario: Non-admin cannot set passwords
+- GIVEN a user with `role=user` or `role=power_user`
+- WHEN `POST /api/v1/users/{id}/set_password/` is called
+- THEN a 403 response is returned
+
+### Requirement: Protect the Last Administrator
+The system SHALL reject any operation that would leave zero active
+administrators (an active administrator is a user with `role=admin` AND
+`is_active=true`). This applies to changing the last active admin's role away
+from `admin`, deactivating the last active admin, and deleting the last active
+admin, and it applies regardless of whether the target is the caller or another
+user. Rejected operations SHALL return a 400 response with a message naming the
+reason.
+
+#### Scenario: Cannot demote the last active admin
+- GIVEN exactly one active admin exists
+- WHEN `PATCH /api/v1/users/{that_admin_id}/` is called with `{"role": "power_user"}`
+- THEN a 400 response is returned and the user remains an admin
+
+#### Scenario: Cannot deactivate the last active admin
+- GIVEN exactly one active admin exists
+- WHEN `PATCH /api/v1/users/{that_admin_id}/` is called with `{"is_active": false}`
+- THEN a 400 response is returned and the user remains active
+
+#### Scenario: Cannot delete the last active admin
+- GIVEN exactly one active admin exists
+- WHEN `DELETE /api/v1/users/{that_admin_id}/` is called
+- THEN a 400 response is returned and the user is not deleted
+
+#### Scenario: Operation allowed when another active admin exists
+- GIVEN two active admins exist
+- WHEN one of them is demoted, deactivated, or deleted
+- THEN the operation succeeds
