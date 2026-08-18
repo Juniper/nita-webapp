@@ -737,9 +737,7 @@ def test_cannot_delete_last_admin(admin_user):
     assert (
         UserViewSet._would_remove_last_active_admin(admin_user, deleting=True) is False
     )
-    assert (
-        UserViewSet._would_remove_last_active_admin(other, deleting=True) is False
-    )
+    assert UserViewSet._would_remove_last_active_admin(other, deleting=True) is False
 
 
 @pytest.mark.django_db
@@ -754,3 +752,160 @@ def test_demote_admin_allowed_when_another_admin_exists(admin_user):
     other.refresh_from_db()
     assert other.role == User.ROLE_POWER_USER
 
+
+# ── network-sharing-access: power_user reach + /teams/mine/ + assign constraint ─
+
+
+def _mock_network_delete_jenkins(monkeypatch):
+    """Patch the Jenkins helpers used by CampusNetworkViewSet.destroy."""
+    import ngcn.jenkins_jobs as jenkins_jobs
+    import ngcn.utils as ngcn_utils
+
+    monkeypatch.setattr(jenkins_jobs, "invoke_job", lambda *a, **kw: 1)
+    monkeypatch.setattr(
+        ngcn_utils.ServerProperties, "getWorkspaceLocation", staticmethod(lambda: "")
+    )
+
+
+@pytest.mark.django_db
+def test_power_user_sees_all_networks(power_user, regular_user, campus_type):
+    bob = User.objects.create_user(username="bob", password="secret")
+    _make_network("Net-A", regular_user, campus_type)
+    _make_network("Net-C", bob, campus_type)
+    resp = _client(power_user).get("/api/v1/networks/")
+    assert resp.status_code == 200
+    names = {n["name"] for n in resp.json()["results"]}
+    assert {"Net-A", "Net-C"} <= names
+
+
+@pytest.mark.django_db
+def test_power_user_retrieves_any_network(power_user, campus_type):
+    bob = User.objects.create_user(username="bob", password="secret")
+    net = _make_network("Net-C", bob, campus_type)
+    resp = _client(power_user).get(f"/api/v1/networks/{net.id}/")
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_power_user_can_update_any_network(power_user, campus_type):
+    bob = User.objects.create_user(username="bob", password="secret")
+    net = _make_network("Net-C", bob, campus_type)
+    resp = _client(power_user).patch(
+        f"/api/v1/networks/{net.id}/", {"description": "by power"}, format="json"
+    )
+    assert resp.status_code == 200
+    net.refresh_from_db()
+    assert net.description == "by power"
+
+
+@pytest.mark.django_db
+def test_power_user_can_delete_any_network(power_user, campus_type, monkeypatch):
+    bob = User.objects.create_user(username="bob", password="secret")
+    net = _make_network("Net-C", bob, campus_type)
+    _mock_network_delete_jenkins(monkeypatch)
+    resp = _client(power_user).delete(f"/api/v1/networks/{net.id}/")
+    assert resp.status_code == 202
+    assert not CampusNetwork.objects.filter(pk=net.id).exists()
+
+
+@pytest.mark.django_db
+def test_teams_mine_returns_id_and_name(regular_user):
+    creator = User.objects.create_user(
+        username="creator", password="secret", role=User.ROLE_POWER_USER
+    )
+    t1 = Team.objects.create(name="Team-X", created_by=creator)
+    t2 = Team.objects.create(name="Team-Y", created_by=creator)
+    t1.members.add(regular_user)
+    t2.members.add(regular_user)
+    resp = _client(regular_user).get("/api/v1/teams/mine/")
+    assert resp.status_code == 200
+    assert resp.json() == [
+        {"id": t1.id, "name": "Team-X"},
+        {"id": t2.id, "name": "Team-Y"},
+    ]
+
+
+@pytest.mark.django_db
+def test_teams_mine_empty_when_no_membership(regular_user):
+    resp = _client(regular_user).get("/api/v1/teams/mine/")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.django_db
+def test_teams_mine_excludes_non_member_teams(regular_user):
+    creator = User.objects.create_user(
+        username="creator", password="secret", role=User.ROLE_POWER_USER
+    )
+    mine = Team.objects.create(name="Team-X", created_by=creator)
+    mine.members.add(regular_user)
+    Team.objects.create(name="Team-Z", created_by=creator)
+    resp = _client(regular_user).get("/api/v1/teams/mine/")
+    names = {t["name"] for t in resp.json()}
+    assert names == {"Team-X"}
+
+
+@pytest.mark.django_db
+def test_teams_mine_does_not_relax_full_list(regular_user):
+    resp = _client(regular_user).get("/api/v1/teams/")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_owner_assigns_network_to_member_team(regular_user, campus_type):
+    creator = User.objects.create_user(
+        username="creator", password="secret", role=User.ROLE_POWER_USER
+    )
+    team = Team.objects.create(name="Team-X", created_by=creator)
+    team.members.add(regular_user)
+    net = _make_network("Net-A", regular_user, campus_type)
+    resp = _client(regular_user).patch(
+        f"/api/v1/networks/{net.id}/", {"team": team.id}, format="json"
+    )
+    assert resp.status_code == 200
+    net.refresh_from_db()
+    assert net.team_id == team.id
+
+
+@pytest.mark.django_db
+def test_owner_cannot_assign_to_nonmember_team(regular_user, campus_type):
+    creator = User.objects.create_user(
+        username="creator", password="secret", role=User.ROLE_POWER_USER
+    )
+    team = Team.objects.create(name="Team-Y", created_by=creator)
+    net = _make_network("Net-A", regular_user, campus_type)
+    resp = _client(regular_user).patch(
+        f"/api/v1/networks/{net.id}/", {"team": team.id}, format="json"
+    )
+    assert resp.status_code == 400
+    net.refresh_from_db()
+    assert net.team_id is None
+
+
+@pytest.mark.django_db
+def test_power_user_assigns_any_network_to_any_team(power_user, campus_type):
+    bob = User.objects.create_user(username="bob", password="secret")
+    team = Team.objects.create(name="Team-Z", created_by=power_user)
+    net = _make_network("Net-C", bob, campus_type)
+    resp = _client(power_user).patch(
+        f"/api/v1/networks/{net.id}/", {"team": team.id}, format="json"
+    )
+    assert resp.status_code == 200
+    net.refresh_from_db()
+    assert net.team_id == team.id
+
+
+@pytest.mark.django_db
+def test_owner_can_unassign_team(regular_user, campus_type):
+    creator = User.objects.create_user(
+        username="creator", password="secret", role=User.ROLE_POWER_USER
+    )
+    team = Team.objects.create(name="Team-X", created_by=creator)
+    team.members.add(regular_user)
+    net = _make_network("Net-A", regular_user, campus_type, team=team)
+    resp = _client(regular_user).patch(
+        f"/api/v1/networks/{net.id}/", {"team": None}, format="json"
+    )
+    assert resp.status_code == 200
+    net.refresh_from_db()
+    assert net.team_id is None

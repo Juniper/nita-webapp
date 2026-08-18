@@ -194,6 +194,24 @@ class CampusNetworkSerializer(serializers.ModelSerializer):
     def get_team_name(self, obj):
         return obj.team.name if obj.team_id else None
 
+    def validate_team(self, value):
+        """A non-privileged owner may only share into a team they belong to.
+
+        ``power_user`` and ``admin`` may assign any network to any team;
+        unassigning (``team=None``) is always allowed.
+        """
+        if value is None:
+            return value
+        user = getattr(self.context.get("request"), "user", None)
+        role = getattr(user, "role", None)
+        if role in (User.ROLE_POWER_USER, User.ROLE_ADMIN):
+            return value
+        if user is None or not value.members.filter(pk=user.pk).exists():
+            raise serializers.ValidationError(
+                "You can only assign a network to a team you are a member of."
+            )
+        return value
+
     class Meta:
         model = CampusNetwork
         fields = "__all__"

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { LifecycleConsolePanel, useJenkinsStream } from '../components/LifecycleConsole'
+import { useApiResource } from '../hooks/useApiResource'
+import { LifecycleConsolePanel } from '../components/LifecycleConsole'
+import { useJenkinsStream } from '../components/lifecycle-stream'
 import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
 
 interface NetworkType {
@@ -16,9 +18,15 @@ interface PaginatedResponse {
 }
 
 export function NetworkTypesPage() {
-  const [networkTypes, setNetworkTypes] = useState<NetworkType[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data,
+    loading,
+    error,
+    reload: reloadNetworkTypes,
+    setData: setNetworkTypesData,
+    setError,
+  } = useApiResource<PaginatedResponse>('/api/v1/network-types/')
+  const networkTypes = data?.results ?? []
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -28,23 +36,6 @@ export function NetworkTypesPage() {
   const { lines, state: streamState, start: startStream, reset: resetStream } = useJenkinsStream()
   const [consoleTitle, setConsoleTitle] = useState('Console')
   const [showHistory, setShowHistory] = useState(false)
-
-  async function fetchNetworkTypes() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiFetch('/api/v1/network-types/')
-      if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
-      const data: PaginatedResponse = await res.json()
-      setNetworkTypes(data.results)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchNetworkTypes() }, [])
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -63,7 +54,7 @@ export function NetworkTypesPage() {
         throw new Error(`Upload failed (${res.status}): ${text}`)
       }
       const data = await res.json()
-      await fetchNetworkTypes()
+      reloadNetworkTypes()
       if (data.job_name && data.build_no != null) {
         setConsoleTitle(`Loading ${data.name ?? file.name}`)
         startStream(data.job_name, data.build_no)
@@ -87,7 +78,9 @@ export function NetworkTypesPage() {
     try {
       const res = await apiFetch(`/api/v1/network-types/${id}/`, { method: 'DELETE' })
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`)
-      setNetworkTypes(prev => prev.filter(nt => nt.id !== id))
+      setNetworkTypesData(prev =>
+        prev ? { ...prev, results: prev.results.filter(nt => nt.id !== id) } : prev,
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Delete failed')
     } finally {

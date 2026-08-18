@@ -1,33 +1,8 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { apiFetch, clearCsrfCache } from '../api/client'
-
-export interface User {
-  id: number
-  username: string
-  is_superuser: boolean
-  role?: string
-  teams?: number[]
-}
-
-interface AuthContextValue {
-  user: User | null
-  loading: boolean
-  setUser: (u: User | null) => void
-  logout: () => Promise<void>
-}
-
-export const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  loading: true,
-  setUser: () => {},
-  logout: async () => {},
-})
+import { AuthContext } from './auth-context'
+import type { User } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -58,18 +33,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth(): AuthContextValue {
-  return useContext(AuthContext)
-}
-
-export function useIsAdmin(): boolean {
-  const { user } = useAuth()
-  return Boolean(user?.is_superuser || user?.role === 'admin')
-}
-
-export function useIsPowerUser(): boolean {
-  const { user } = useAuth()
-  return Boolean(user?.is_superuser || user?.role === 'admin' || user?.role === 'power_user')
 }

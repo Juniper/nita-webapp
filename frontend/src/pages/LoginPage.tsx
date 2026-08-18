@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
-import { useAuth } from '../context/AuthContext'
-import type { User } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
+import type { User } from '../context/auth-context'
 
 export function LoginPage() {
   const { setUser } = useAuth()

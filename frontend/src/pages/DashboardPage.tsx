@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { AppLayout } from '../components/AppLayout'
 
 export function DashboardPage() {
@@ -17,4 +17,3 @@ export function DashboardPage() {
     </AppLayout>
   )
 }
-

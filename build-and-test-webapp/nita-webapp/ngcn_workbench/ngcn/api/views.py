@@ -440,7 +440,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = CampusNetwork.objects.all()
         user = self.request.user
-        if getattr(user, "role", None) != User.ROLE_ADMIN:
+        if getattr(user, "role", None) not in (User.ROLE_ADMIN, User.ROLE_POWER_USER):
             qs = qs.filter(Q(owner=user) | Q(team__members=user)).distinct()
         campus_type_id = self.request.query_params.get("campus_type_id")
         if campus_type_id:
@@ -1208,6 +1208,8 @@ class TeamViewSet(viewsets.ModelViewSet):
     serializer_class = TeamSerializer
 
     def get_permissions(self):
+        if self.action == "mine":
+            return [IsAuthenticated()]
         if self.action in ("list", "create"):
             return [IsAuthenticated(), IsPowerUserOrAdmin()]
         return [IsAuthenticated(), IsPowerUserOrAdmin(), IsOwnerOrAdmin()]
@@ -1225,6 +1227,31 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @extend_schema(
+        responses={
+            200: {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "name": {"type": "string"},
+                    },
+                },
+            }
+        },
+    )
+    @action(detail=False, methods=["get"], url_path="mine")
+    def mine(self, request):
+        """Teams the requesting user is a member of (``id`` + ``name``).
+
+        Available to any authenticated user (including ``role=user``) so an owner
+        can pick a team to share a network with. Scoped strictly to the caller's
+        own memberships; the full team list stays ``power_user``/``admin`` only.
+        """
+        teams = request.user.teams.order_by("name").values("id", "name")
+        return Response(list(teams), status=status.HTTP_200_OK)
 
     @extend_schema(
         request={

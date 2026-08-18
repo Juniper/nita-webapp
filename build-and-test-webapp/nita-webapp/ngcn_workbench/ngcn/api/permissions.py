@@ -73,12 +73,13 @@ class IsOwnerOrAdmin(BasePermission):
 class IsOwnerOrTeamMemberOrAdmin(BasePermission):
     """Object-level for networks.
 
-    Read (safe methods): owner, a member of the object's team, or admin.
-    Write: owner or admin only (team members are read-only).
+    Full access (read + write): ``power_user`` and ``admin``.
+    Read (safe methods): owner, a member of the object's team.
+    Write: owner only (team members are read-only).
     """
 
     def has_object_permission(self, request, view, obj):
-        if _role(request.user) == User.ROLE_ADMIN:
+        if _role(request.user) in (User.ROLE_POWER_USER, User.ROLE_ADMIN):
             return True
         is_owner = getattr(obj, "owner", None) == request.user
         if request.method in SAFE_METHODS:

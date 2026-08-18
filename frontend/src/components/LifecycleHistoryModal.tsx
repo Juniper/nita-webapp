@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../api/client'
-import { useJenkinsStream, stateLabel } from './LifecycleConsole'
+import { useJenkinsStream, stateLabel } from './lifecycle-stream'
 
 export interface LifecycleRun {
   id: string

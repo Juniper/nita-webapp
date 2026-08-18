@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { useIsPowerUser } from '../context/AuthContext'
+import { useApiResource } from '../hooks/useApiResource'
+import { useIsPowerUser } from '../context/useAuth'
 
 interface Team {
   id: number
@@ -18,10 +19,19 @@ interface Paginated<T> {
 
 export function TeamsPage() {
   const isPowerUser = useIsPowerUser()
-  const [teams, setTeams] = useState<Team[]>([])
-  const [directory, setDirectory] = useState<{ id: number; username: string }[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: teamsData,
+    loading,
+    error,
+    reload: reloadTeams,
+    setData: setTeamsData,
+    setError,
+  } = useApiResource<Paginated<Team>>('/api/v1/teams/', { enabled: isPowerUser })
+  const teams = teamsData?.results ?? []
+  const { data: directoryData } = useApiResource<
+    { id: number; username: string }[]
+  >('/api/v1/users/directory/', { enabled: isPowerUser })
+  const directory = useMemo(() => directoryData ?? [], [directoryData])
   const [busyId, setBusyId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
@@ -31,39 +41,9 @@ export function TeamsPage() {
 
   const [memberSelect, setMemberSelect] = useState<Record<number, number | ''>>({})
 
-  async function fetchTeams() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiFetch('/api/v1/teams/')
-      if (!res.ok) throw new Error(`Failed to load teams: ${res.status}`)
-      const data: Paginated<Team> = await res.json()
-      setTeams(data.results)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
+  function setTeams(updater: (prev: Team[]) => Team[]) {
+    setTeamsData(prev => (prev ? { ...prev, results: updater(prev.results) } : prev))
   }
-
-  // id+username roster used for the member picker and member-name display.
-  async function fetchDirectory() {
-    try {
-      const res = await apiFetch('/api/v1/users/directory/')
-      if (!res.ok) return
-      const data: { id: number; username: string }[] = await res.json()
-      setDirectory(data)
-    } catch {
-      // ignore — fall back to raw ids
-    }
-  }
-
-  useEffect(() => {
-    if (isPowerUser) {
-      fetchTeams()
-      fetchDirectory()
-    }
-  }, [isPowerUser])
 
   const userNames = useMemo(
     () => Object.fromEntries(directory.map(u => [u.id, u.username])) as Record<number, string>,
@@ -91,7 +71,7 @@ export function TeamsPage() {
       }
       setNewName('')
       setNewDesc('')
-      await fetchTeams()
+      reloadTeams()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Create failed')
     } finally {
@@ -168,7 +148,7 @@ export function TeamsPage() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Teams</h2>
         <button
-          onClick={fetchTeams}
+          onClick={reloadTeams}
           className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
         >
           Refresh

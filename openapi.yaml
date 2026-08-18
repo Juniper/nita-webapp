@@ -1355,6 +1355,34 @@ paths:
       responses:
         '204':
           description: Member removed. No content.
+  /api/v1/teams/mine/:
+    get:
+      operationId: v1_teams_mine_retrieve
+      description: |-
+        Teams the requesting user is a member of (``id`` + ``name``).
+
+        Available to any authenticated user (including ``role=user``) so an owner
+        can pick a team to share a network with. Scoped strictly to the caller's
+        own memberships; the full team list stays ``power_user``/``admin`` only.
+      tags:
+      - v1
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                maxItems: 1000
+          description: ''
   /api/v1/users/:
     get:
       operationId: v1_users_list

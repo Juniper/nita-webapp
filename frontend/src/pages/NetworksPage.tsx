@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { LifecycleConsolePanel, useJenkinsStream } from '../components/LifecycleConsole'
+import { useApiResource } from '../hooks/useApiResource'
+import { LifecycleConsolePanel } from '../components/LifecycleConsole'
+import { useJenkinsStream } from '../components/lifecycle-stream'
 import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
 
 interface NetworkType {
@@ -38,9 +40,15 @@ const emptyForm = {
 }
 
 export function NetworksPage() {
-  const [networks, setNetworks] = useState<Network[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data,
+    loading,
+    error,
+    reload: reloadNetworks,
+    setData: setNetworksData,
+    setError,
+  } = useApiResource<PaginatedNetworks>('/api/v1/networks/')
+  const networks = data?.results ?? []
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [networkTypes, setNetworkTypes] = useState<NetworkType[]>([])
@@ -55,23 +63,6 @@ export function NetworksPage() {
   const { lines, state: streamState, start: startStream, reset: resetStream } = useJenkinsStream()
   const [consoleTitle, setConsoleTitle] = useState('Console')
   const [showHistory, setShowHistory] = useState(false)
-
-  async function fetchNetworks() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiFetch('/api/v1/networks/')
-      if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
-      const data: PaginatedNetworks = await res.json()
-      setNetworks(data.results)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchNetworks() }, [])
 
   async function openAddForm() {
     setShowAddForm(true)
@@ -116,7 +107,7 @@ export function NetworksPage() {
       }
       const data = await res.json()
       setShowAddForm(false)
-      await fetchNetworks()
+      reloadNetworks()
       if (data.job_name && data.build_no != null) {
         setConsoleTitle(`Creating ${data.name ?? form.name}`)
         startStream(data.job_name, data.build_no)
@@ -136,7 +127,9 @@ export function NetworksPage() {
       const res = await apiFetch(`/api/v1/networks/${id}/`, { method: 'DELETE' })
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`)
       const deleted = networks.find(n => n.id === id)
-      setNetworks(prev => prev.filter(n => n.id !== id))
+      setNetworksData(prev =>
+        prev ? { ...prev, results: prev.results.filter(n => n.id !== id) } : prev,
+      )
       if (res.status === 202) {
         const data = await res.json()
         if (data.job_name && data.build_no != null) {

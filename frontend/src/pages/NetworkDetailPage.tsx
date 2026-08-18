@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
-import { useJenkinsStream, stateLabel } from '../components/LifecycleConsole'
+import { useJenkinsStream, stateLabel } from '../components/lifecycle-stream'
 import { apiFetch, clearCsrfCache } from '../api/client'
 
 type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
@@ -70,7 +70,7 @@ export function NetworkDetailPage() {
   const [networkError, setNetworkError] = useState<string | null>(null)
   const [teamOptions, setTeamOptions] = useState<{ id: number; name: string }[]>([])
   const [teamSaving, setTeamSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<DetailTab>(parseTabParam(searchParams.get('tab')))
+  const activeTab = parseTabParam(searchParams.get('tab'))
   const [loaded, setLoaded] = useState({ workbook: false, actions: false, history: false })
 
   // Hosts tab
@@ -175,6 +175,7 @@ export function NetworkDetailPage() {
   // Tab data loading
   useEffect(() => {
     if (activeTab === 'workbook' && !loaded.workbook) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lazy tab load: the loading flag is toggled once when the tab first opens (guarded by !loaded), not a render loop
       setWorkbookLoading(true)
       setWorkbookError(null)
       apiFetch(`/api/v1/networks/${id}/workbook/`)
@@ -226,13 +227,9 @@ export function NetworkDetailPage() {
 
   // Refresh history each time the History tab is opened.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- history is intentionally refreshed whenever the History tab opens (incl. deep links); one-shot per open, not a loop
     if (activeTab === 'history') fetchHistory()
   }, [activeTab, fetchHistory])
-
-  // Keep selected tab in sync with URL query string (supports deep links from Networks page).
-  useEffect(() => {
-    setActiveTab(parseTabParam(searchParams.get('tab')))
-  }, [searchParams])
 
   const handleTabChange = (tab: DetailTab) => {
     const next = new URLSearchParams(searchParams)

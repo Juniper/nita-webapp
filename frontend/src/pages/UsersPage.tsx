@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { useAuth, useIsAdmin } from '../context/AuthContext'
+import { useApiResource } from '../hooks/useApiResource'
+import { useAuth, useIsAdmin } from '../context/useAuth'
 import { TransferUserDialog } from '../components/TransferUserDialog'
 import { CreateUserDialog } from '../components/CreateUserDialog'
 import { SetPasswordDialog } from '../components/SetPasswordDialog'
@@ -34,9 +35,18 @@ const ROLE_BADGE: Record<ManagedUser['role'], string> = {
 export function UsersPage() {
   const { user: currentUser } = useAuth()
   const isAdmin = useIsAdmin()
-  const [users, setUsers] = useState<ManagedUser[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data,
+    loading,
+    error,
+    reload: reloadUsers,
+    setData: setUsersData,
+    setError,
+  } = useApiResource<PaginatedResponse>('/api/v1/users/', { enabled: isAdmin })
+  const users = useMemo(() => data?.results ?? [], [data])
+  function setUsers(updater: (prev: ManagedUser[]) => ManagedUser[]) {
+    setUsersData(prev => (prev ? { ...prev, results: updater(prev.results) } : prev))
+  }
   const [busyId, setBusyId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
@@ -45,25 +55,6 @@ export function UsersPage() {
   >(null)
   const [showCreate, setShowCreate] = useState(false)
   const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(null)
-
-  async function fetchUsers() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiFetch('/api/v1/users/')
-      if (!res.ok) throw new Error(`Failed to load users: ${res.status}`)
-      const data: PaginatedResponse = await res.json()
-      setUsers(data.results)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (isAdmin) fetchUsers()
-  }, [isAdmin])
 
   async function patchUser(id: number, body: Partial<Pick<ManagedUser, 'role' | 'is_active'>>) {
     setBusyId(id)
@@ -148,7 +139,7 @@ export function UsersPage() {
             className="px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
           />
           <button
-            onClick={fetchUsers}
+            onClick={reloadUsers}
             className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
           >
             Refresh

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth, useIsAdmin, useIsPowerUser } from '../context/AuthContext'
+import { useAuth, useIsAdmin, useIsPowerUser } from '../context/useAuth'
 import { apiFetch } from '../api/client'
 
 interface AppLayoutProps {

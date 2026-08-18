@@ -56,7 +56,8 @@ The system SHALL restrict `PATCH`, `PUT`, and `DELETE` on
 #### Scenario: Power user can delete any network
 - GIVEN Bob owns `"Net-C"`
 - WHEN a `power_user` calls `DELETE /api/v1/networks/{net_c_id}/`
-- THEN a 204 response is returned and the network is deleted
+- THEN the delete is accepted (a 202 response triggering the Jenkins delete job,
+  not a 403 or 404) and the network row is removed once the job is queued
 
 #### Scenario: Regular team member cannot modify a shared network
 - GIVEN Alice (role=user) is a member of a team that has access to Bob's `"Net-C"`
