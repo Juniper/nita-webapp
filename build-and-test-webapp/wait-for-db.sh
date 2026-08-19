@@ -45,10 +45,7 @@ echo "        Connecting to DB"
 echo ""
 echo "##############################################"
 
-while ! mysqladmin ping -hdb -u"root" -p"root" --silent; do
-   echo "Waiting for db..."
-   sleep 2
-done
+python build-and-test-webapp/wait_for_db.py
 
 echo ""
 echo "##############################################"
