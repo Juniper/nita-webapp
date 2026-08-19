@@ -1563,7 +1563,7 @@ paths:
     post:
       operationId: v1_users_set_password_create
       description: Set a validated password on the target user (may be the caller).
-      summary: Set (reset) a user's password (admin only)
+      summary: Set (reset) a user's password (admin any user; power user any non-admin)
       parameters:
       - in: path
         name: id

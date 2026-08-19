@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth, useIsAdmin, useIsPowerUser } from '../context/useAuth'
+import { useAuth, useIsPowerUser } from '../context/useAuth'
 import { apiFetch } from '../api/client'
 
 interface AppLayoutProps {
@@ -29,7 +29,6 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 function Sidebar() {
-  const isAdmin = useIsAdmin()
   const isPowerUser = useIsPowerUser()
   return (
     <nav className="w-56 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col py-4">
@@ -43,7 +42,7 @@ function Sidebar() {
           Teams
         </NavLink>
       )}
-      {isAdmin && (
+      {isPowerUser && (
         <NavLink to="/users" className={navClass}>
           User Management
         </NavLink>

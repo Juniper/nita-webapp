@@ -23,8 +23,12 @@ export function LoginPage() {
         body: JSON.stringify({ username, password }),
       })
       if (res.ok) {
-        const data = (await res.json()) as User
-        setUser(data)
+        // The login response omits role/teams; hydrate from /auth/me/ so
+        // role-gated UI (nav, Teams/Users screens) is correct without a reload.
+        let user = (await res.json()) as User
+        const meRes = await apiFetch('/api/v1/auth/me/')
+        if (meRes.ok) user = (await meRes.json()) as User
+        setUser(user)
         navigate('/')
       } else {
         const body = await res.json().catch(() => ({}))

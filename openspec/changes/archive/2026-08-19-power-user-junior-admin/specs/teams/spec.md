@@ -1,30 +1,4 @@
-# Teams Specification
-
-## Purpose
-Custom Team model with power-user-managed membership for collaborative network
-sharing.
-
-## Requirements
-
-### Requirement: Team Creation (Power User and Admin)
-The system SHALL allow users with `role=power_user` or `role=admin` to create
-teams via `POST /api/v1/teams/`. A team SHALL have a globally unique `name` and
-an optional `description`.
-
-#### Scenario: Power user creates a team
-- GIVEN a user with `role=power_user`
-- WHEN `POST /api/v1/teams/` is called with `{"name": "Project-X"}`
-- THEN a 201 response is returned with the team `id` and `name`
-
-#### Scenario: Regular user cannot create a team
-- GIVEN a user with `role=user`
-- WHEN `POST /api/v1/teams/` is called
-- THEN a 403 response is returned
-
-#### Scenario: Duplicate team name rejected
-- GIVEN a team named `"Project-X"` already exists
-- WHEN `POST /api/v1/teams/` is called with `{"name": "Project-X"}`
-- THEN a 400 response is returned
+## MODIFIED Requirements
 
 ### Requirement: Team Membership Management (Power User and Admin)
 The system SHALL allow `power_user` and `admin` to add and remove members from
@@ -79,32 +53,3 @@ be cleared.
 - WHEN a `power_user` calls `DELETE /api/v1/teams/{id}/`
 - THEN the team is deleted, both networks have `team=NULL`, and a 204 response is
   returned
-
-### Requirement: My Teams (Any Authenticated User)
-The system SHALL provide `GET /api/v1/teams/mine/` accessible to any
-authenticated user, including `role=user`, returning the `id` and `name` of every
-team the requesting user is a **member** of. The endpoint SHALL be scoped to the
-caller's own memberships and SHALL NOT expose teams the user does not belong to.
-This endpoint is independent of the full `GET /api/v1/teams/` list, which remains
-restricted to `power_user` and `admin`.
-
-#### Scenario: Regular user lists their teams
-- GIVEN a user with `role=user` who is a member of `"Team-X"` and `"Team-Y"`
-- WHEN `GET /api/v1/teams/mine/` is called
-- THEN a 200 response is returned containing `{id, name}` for `"Team-X"` and
-  `"Team-Y"` only
-
-#### Scenario: User in no team gets an empty list
-- GIVEN a user with `role=user` who is a member of no team
-- WHEN `GET /api/v1/teams/mine/` is called
-- THEN a 200 response is returned with an empty list
-
-#### Scenario: Teams the user does not belong to are never exposed
-- GIVEN teams `"Team-X"` (user is a member) and `"Team-Z"` (user is NOT a member)
-- WHEN `GET /api/v1/teams/mine/` is called
-- THEN the response contains `"Team-X"` and does NOT contain `"Team-Z"`
-
-#### Scenario: The full team list stays restricted
-- GIVEN a user with `role=user`
-- WHEN `GET /api/v1/teams/` is called
-- THEN a 403 response is returned (the `mine` endpoint does not relax this)

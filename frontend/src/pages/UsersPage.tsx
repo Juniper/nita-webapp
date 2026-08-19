@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
 import { useApiResource } from '../hooks/useApiResource'
-import { useAuth, useIsAdmin } from '../context/useAuth'
+import { useAuth, useIsAdmin, useIsPowerUser } from '../context/useAuth'
 import { TransferUserDialog } from '../components/TransferUserDialog'
 import { CreateUserDialog } from '../components/CreateUserDialog'
 import { SetPasswordDialog } from '../components/SetPasswordDialog'
@@ -35,6 +35,7 @@ const ROLE_BADGE: Record<ManagedUser['role'], string> = {
 export function UsersPage() {
   const { user: currentUser } = useAuth()
   const isAdmin = useIsAdmin()
+  const isPowerUser = useIsPowerUser()
   const {
     data,
     loading,
@@ -42,7 +43,7 @@ export function UsersPage() {
     reload: reloadUsers,
     setData: setUsersData,
     setError,
-  } = useApiResource<PaginatedResponse>('/api/v1/users/', { enabled: isAdmin })
+  } = useApiResource<PaginatedResponse>('/api/v1/users/', { enabled: isPowerUser })
   const users = useMemo(() => data?.results ?? [], [data])
   function setUsers(updater: (prev: ManagedUser[]) => ManagedUser[]) {
     setUsersData(prev => (prev ? { ...prev, results: updater(prev.results) } : prev))
@@ -124,7 +125,10 @@ export function UsersPage() {
     )
   }, [users, search])
 
-  if (!isAdmin) return <Navigate to="/" replace />
+  // Power users cannot grant the admin role; hide it from the role picker.
+  const roleOptions = isAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter(r => r !== 'admin')
+
+  if (!isPowerUser) return <Navigate to="/" replace />
 
   return (
     <AppLayout>
@@ -144,12 +148,14 @@ export function UsersPage() {
           >
             Refresh
           </button>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
-          >
-            New user
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+            >
+              New user
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,7 +204,7 @@ export function UsersPage() {
                           onChange={e => patchUser(u.id, { role: e.target.value as ManagedUser['role'] })}
                           className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200 disabled:opacity-40"
                         >
-                          {ROLE_OPTIONS.map(r => (
+                          {roleOptions.map(r => (
                             <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                           ))}
                         </select>
@@ -227,7 +233,7 @@ export function UsersPage() {
                             {u.is_active ? 'Deactivate' : 'Activate'}
                           </button>
                         )}
-                        {!isSelf && confirmDeleteId === u.id ? (
+                        {isAdmin && (!isSelf && confirmDeleteId === u.id ? (
                           <>
                             <button
                               onClick={() => handleDelete(u.id)}
@@ -253,7 +259,7 @@ export function UsersPage() {
                               Delete
                             </button>
                           )
-                        )}
+                        ))}
                       </span>
                     </td>
                   </tr>

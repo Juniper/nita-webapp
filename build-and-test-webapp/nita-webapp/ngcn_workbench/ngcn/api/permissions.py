@@ -90,3 +90,23 @@ class IsOwnerOrTeamMemberOrAdmin(BasePermission):
                 team is not None and team.members.filter(pk=request.user.pk).exists()
             )
         return is_owner
+
+
+class IsAdminOrManagesNonAdminUser(BasePermission):
+    """Object-level for user records.
+
+    Admin manages any user. A ``power_user`` (a "junior admin") manages any
+    **non-admin** user — never an ``admin`` account. Role-value ceilings (a power
+    user may not grant the ``admin`` role) are enforced in the view.
+    """
+
+    def has_permission(self, request, view):
+        return _role(request.user) in (User.ROLE_POWER_USER, User.ROLE_ADMIN)
+
+    def has_object_permission(self, request, view, obj):
+        role = _role(request.user)
+        if role == User.ROLE_ADMIN:
+            return True
+        if role == User.ROLE_POWER_USER:
+            return getattr(obj, "role", None) != User.ROLE_ADMIN
+        return False

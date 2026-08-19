@@ -145,7 +145,7 @@ def test_regular_user_cannot_list_teams(regular_user):
 
 
 @pytest.mark.django_db
-def test_power_user_lists_only_own_teams(power_user):
+def test_power_user_lists_all_teams(power_user):
     other = User.objects.create_user(
         username="power2", password="secret", role=User.ROLE_POWER_USER
     )
@@ -154,7 +154,7 @@ def test_power_user_lists_only_own_teams(power_user):
     resp = _client(power_user).get("/api/v1/teams/")
     assert resp.status_code == 200
     names = {t["name"] for t in resp.json()["results"]}
-    assert names == {"Mine"}
+    assert names == {"Mine", "Theirs"}
 
 
 @pytest.mark.django_db
@@ -185,17 +185,18 @@ def test_power_user_add_and_remove_member(power_user, regular_user):
 
 
 @pytest.mark.django_db
-def test_power_user_cannot_manage_others_team(power_user):
+def test_power_user_manages_any_team(power_user, regular_user):
     other = User.objects.create_user(
         username="power2", password="secret", role=User.ROLE_POWER_USER
     )
     team = Team.objects.create(name="Theirs", created_by=other)
     resp = _client(power_user).post(
         f"/api/v1/teams/{team.id}/members/",
-        {"user_id": power_user.id},
+        {"user_id": regular_user.id},
         format="json",
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert team.members.filter(pk=regular_user.pk).exists()
 
 
 @pytest.mark.django_db
@@ -663,9 +664,10 @@ def test_set_password_weak_rejected(admin_user, regular_user):
 
 
 @pytest.mark.django_db
-def test_non_admin_cannot_set_password(power_user, regular_user):
-    resp = _client(power_user).post(
-        f"/api/v1/users/{regular_user.id}/set_password/",
+def test_regular_user_cannot_set_password(regular_user):
+    other = User.objects.create_user(username="victim", password="secret")
+    resp = _client(regular_user).post(
+        f"/api/v1/users/{other.id}/set_password/",
         {"password": "N3wPassw0rd!x"},
         format="json",
     )
@@ -909,3 +911,160 @@ def test_owner_can_unassign_team(regular_user, campus_type):
     assert resp.status_code == 200
     net.refresh_from_db()
     assert net.team_id is None
+
+
+# ── power-user-member-management: scoped set_password + retrieve + audit ────────
+
+_PU_NEW_PW = "R0tat3dP@ssw0rd!"
+
+
+@pytest.mark.django_db
+def test_power_user_resets_own_team_member(power_user, regular_user):
+    team = Team.objects.create(name="PU-Team", created_by=power_user)
+    team.members.add(regular_user)
+    resp = _client(power_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": _PU_NEW_PW},
+        format="json",
+    )
+    assert resp.status_code == 200
+    regular_user.refresh_from_db()
+    assert regular_user.check_password(_PU_NEW_PW)
+
+
+@pytest.mark.django_db
+def test_power_user_resets_any_non_admin(power_user, regular_user):
+    # Junior-admin: no team membership required.
+    resp = _client(power_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": _PU_NEW_PW},
+        format="json",
+    )
+    assert resp.status_code == 200
+    regular_user.refresh_from_db()
+    assert regular_user.check_password(_PU_NEW_PW)
+
+
+@pytest.mark.django_db
+def test_power_user_cannot_reset_admin(power_user, admin_user):
+    resp = _client(power_user).post(
+        f"/api/v1/users/{admin_user.id}/set_password/",
+        {"password": _PU_NEW_PW},
+        format="json",
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_power_user_reset_audited(power_user, regular_user, caplog):
+    with caplog.at_level("INFO", logger="ngcn.api.views"):
+        resp = _client(power_user).post(
+            f"/api/v1/users/{regular_user.id}/set_password/",
+            {"password": _PU_NEW_PW},
+            format="json",
+        )
+    assert resp.status_code == 200
+    audit = [r for r in caplog.records if "reset password" in r.getMessage()]
+    assert audit, "expected an audit log entry for the power-user reset"
+    msg = audit[0].getMessage()
+    assert str(power_user.id) in msg and str(regular_user.id) in msg
+    assert _PU_NEW_PW not in msg
+
+
+@pytest.mark.django_db
+def test_power_user_lists_non_admin_users(power_user, regular_user, admin_user):
+    resp = _client(power_user).get("/api/v1/users/")
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    roles = {u["role"] for u in results}
+    usernames = {u["username"] for u in results}
+    assert "admin" not in roles  # admins are excluded from the power_user list
+    assert regular_user.username in usernames
+
+
+@pytest.mark.django_db
+def test_power_user_views_non_admin(power_user, regular_user):
+    resp = _client(power_user).get(f"/api/v1/users/{regular_user.id}/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == regular_user.id
+    assert set(("id", "username", "email", "role", "is_active")) <= set(body)
+
+
+@pytest.mark.django_db
+def test_power_user_cannot_view_admin(power_user, admin_user):
+    resp = _client(power_user).get(f"/api/v1/users/{admin_user.id}/")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_power_user_changes_role_and_active_on_non_admin(power_user, regular_user):
+    c = _client(power_user)
+    assert (
+        c.patch(
+            f"/api/v1/users/{regular_user.id}/", {"role": "power_user"}, format="json"
+        ).status_code
+        == 200
+    )
+    regular_user.refresh_from_db()
+    assert regular_user.role == User.ROLE_POWER_USER
+    assert (
+        c.patch(
+            f"/api/v1/users/{regular_user.id}/", {"is_active": False}, format="json"
+        ).status_code
+        == 200
+    )
+    regular_user.refresh_from_db()
+    assert regular_user.is_active is False
+
+
+@pytest.mark.django_db
+def test_power_user_cannot_grant_admin(power_user, regular_user):
+    resp = _client(power_user).patch(
+        f"/api/v1/users/{regular_user.id}/", {"role": "admin"}, format="json"
+    )
+    assert resp.status_code == 403
+    regular_user.refresh_from_db()
+    assert regular_user.role == User.ROLE_USER
+
+
+@pytest.mark.django_db
+def test_power_user_cannot_modify_admin(power_user, admin_user):
+    resp = _client(power_user).patch(
+        f"/api/v1/users/{admin_user.id}/", {"is_active": False}, format="json"
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_power_user_cannot_create_or_delete_users(power_user, regular_user):
+    c = _client(power_user)
+    assert (
+        c.post(
+            "/api/v1/users/",
+            {"username": "new", "password": _PU_NEW_PW, "role": "user"},
+            format="json",
+        ).status_code
+        == 403
+    )
+    assert c.delete(f"/api/v1/users/{regular_user.id}/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_admin_reset_still_works(admin_user, regular_user):
+    resp = _client(admin_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": _PU_NEW_PW},
+        format="json",
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_admin_reset_still_works(admin_user, regular_user):
+    resp = _client(admin_user).post(
+        f"/api/v1/users/{regular_user.id}/set_password/",
+        {"password": _PU_NEW_PW},
+        format="json",
+    )
+    assert resp.status_code == 200

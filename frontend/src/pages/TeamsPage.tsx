@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
 import { useApiResource } from '../hooks/useApiResource'
+import { SetPasswordDialog } from '../components/SetPasswordDialog'
 import { useIsPowerUser } from '../context/useAuth'
 
 interface Team {
@@ -40,6 +41,9 @@ export function TeamsPage() {
   const [creating, setCreating] = useState(false)
 
   const [memberSelect, setMemberSelect] = useState<Record<number, number | ''>>({})
+  const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(
+    null,
+  )
 
   function setTeams(updater: (prev: Team[]) => Team[]) {
     setTeamsData(prev => (prev ? { ...prev, results: updater(prev.results) } : prev))
@@ -239,6 +243,14 @@ export function TeamsPage() {
                     >
                       {nameFor(m)}
                       <button
+                        onClick={() => setResetTarget({ id: m, username: nameFor(m) })}
+                        disabled={busyId === t.id}
+                        title="Reset password"
+                        className="text-gray-400 hover:text-sky-400 disabled:opacity-50"
+                      >
+                        ↺
+                      </button>
+                      <button
                         onClick={() => removeMember(t.id, m)}
                         disabled={busyId === t.id}
                         title="Remove member"
@@ -280,6 +292,14 @@ export function TeamsPage() {
             </div>
           ))}
         </div>
+      )}
+      {resetTarget && (
+        <SetPasswordDialog
+          userId={resetTarget.id}
+          username={resetTarget.username}
+          onCancel={() => setResetTarget(null)}
+          onDone={() => setResetTarget(null)}
+        />
       )}
     </AppLayout>
   )

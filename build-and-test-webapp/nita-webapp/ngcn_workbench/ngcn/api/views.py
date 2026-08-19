@@ -82,6 +82,7 @@ from ngcn.workbook import (
 )
 
 from .permissions import (
+    IsAdminOrManagesNonAdminUser,
     IsAdminRole,
     IsOwnerOrAdmin,
     IsOwnerOrTeamMemberOrAdmin,
@@ -1210,19 +1211,10 @@ class TeamViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == "mine":
             return [IsAuthenticated()]
-        if self.action in ("list", "create"):
-            return [IsAuthenticated(), IsPowerUserOrAdmin()]
-        return [IsAuthenticated(), IsPowerUserOrAdmin(), IsOwnerOrAdmin()]
+        return [IsAuthenticated(), IsPowerUserOrAdmin()]
 
     def get_queryset(self):
-        user = self.request.user
-        if getattr(user, "role", None) == User.ROLE_ADMIN:
-            return Team.objects.all()
-        # For the list view a power_user sees only teams they created. Detail
-        # actions use the full set so a non-creator gets a 403 (object
-        # permission) rather than a 404.
-        if self.action == "list":
-            return Team.objects.filter(created_by=user)
+        # Power users and admins both see and manage every team.
         return Team.objects.all()
 
     def perform_create(self, serializer):
@@ -1323,6 +1315,27 @@ class UserViewSet(
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    def get_permissions(self):
+        """Admin manages every user. A power_user (junior admin) may view/list,
+        reset passwords, deactivate, and change roles (capped below admin) for
+        **non-admin** users. Create, delete, and transfer stay admin-only.
+        """
+        if self.action in ("list", "directory"):
+            return [IsAuthenticated(), IsPowerUserOrAdmin()]
+        if self.action in ("retrieve", "set_password", "update", "partial_update"):
+            return [IsAuthenticated(), IsAdminOrManagesNonAdminUser()]
+        return [IsAuthenticated(), IsAdminRole()]
+
+    def get_queryset(self):
+        """Power users see the non-admin user list; admins see everyone."""
+        qs = User.objects.all().order_by("id")
+        if (
+            self.action == "list"
+            and getattr(self.request.user, "role", None) == User.ROLE_POWER_USER
+        ):
+            qs = qs.exclude(role=User.ROLE_ADMIN)
+        return qs
+
     def get_serializer_class(self):
         if self.action == "create":
             return UserCreateSerializer
@@ -1372,6 +1385,15 @@ class UserViewSet(
         new_is_active = request.data.get("is_active")
         if new_is_active is not None and isinstance(new_is_active, str):
             new_is_active = new_is_active.lower() not in ("false", "0", "")
+        # A power_user (junior admin) may never grant the admin role.
+        if (
+            getattr(request.user, "role", None) == User.ROLE_POWER_USER
+            and new_role == User.ROLE_ADMIN
+        ):
+            return Response(
+                {"detail": "Power users cannot grant the admin role."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if self._would_remove_last_active_admin(
             target, new_role=new_role, new_is_active=new_is_active
         ):
@@ -1387,7 +1409,7 @@ class UserViewSet(
             200: {"type": "object", "properties": {"status": {"type": "string"}}},
             400: OpenApiResponse(description="Password validation error"),
         },
-        summary="Set (reset) a user's password (admin only)",
+        summary="Set (reset) a user's password (admin any user; power user any non-admin)",
     )
     @action(detail=True, methods=["post"], url_path="set_password")
     def set_password(self, request, pk=None):
@@ -1397,6 +1419,12 @@ class UserViewSet(
         serializer.is_valid(raise_exception=True)
         target.set_password(serializer.validated_data["password"])
         target.save(update_fields=["password"])
+        if getattr(request.user, "role", None) == User.ROLE_POWER_USER:
+            logger.info(
+                "Power user id=%s reset password for user id=%s",
+                request.user.id,
+                target.id,
+            )
         return Response({"status": "password set"}, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -1418,7 +1446,6 @@ class UserViewSet(
         detail=False,
         methods=["get"],
         url_path="directory",
-        permission_classes=[IsAuthenticated, IsPowerUserOrAdmin],
     )
     def directory(self, request):
         """Return an id+username roster for power_user/admin (e.g. team member pickers)."""
