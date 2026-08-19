@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
 import { useApiResource } from '../hooks/useApiResource'
+import { useIsPowerUser } from '../context/useAuth'
 import { LifecycleConsolePanel } from '../components/LifecycleConsole'
 import { useJenkinsStream } from '../components/lifecycle-stream'
 import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
@@ -18,6 +19,7 @@ interface PaginatedResponse {
 }
 
 export function NetworkTypesPage() {
+  const isPowerUser = useIsPowerUser()
   const {
     data,
     loading,
@@ -77,6 +79,15 @@ export function NetworkTypesPage() {
     setConfirmDeleteId(null)
     try {
       const res = await apiFetch(`/api/v1/network-types/${id}/`, { method: 'DELETE' })
+      if (res.status === 409) {
+        const body = await res.json().catch(() => null)
+        const names: string[] = body?.networks ?? []
+        throw new Error(
+          `${body?.detail ?? 'Network type is still in use.'}${
+            names.length ? ` Networks: ${names.join(', ')}` : ''
+          }`,
+        )
+      }
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`)
       setNetworkTypesData(prev =>
         prev ? { ...prev, results: prev.results.filter(nt => nt.id !== id) } : prev,
@@ -149,7 +160,8 @@ export function NetworkTypesPage() {
                   <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">{nt.app_zip_name}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
                     <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-                      {confirmDeleteId === nt.id ? (
+                      {isPowerUser &&
+                        (confirmDeleteId === nt.id ? (
                         <>
                           <button
                             onClick={() => handleDelete(nt.id)}
@@ -173,7 +185,7 @@ export function NetworkTypesPage() {
                         >
                           Delete
                         </button>
-                      )}
+                      ))}
                     </span>
                   </td>
                 </tr>

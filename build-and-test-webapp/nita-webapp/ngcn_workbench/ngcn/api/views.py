@@ -84,7 +84,6 @@ from ngcn.workbook import (
 from .permissions import (
     IsAdminOrManagesNonAdminUser,
     IsAdminRole,
-    IsOwnerOrAdmin,
     IsOwnerOrTeamMemberOrAdmin,
     IsPowerUserOrAdmin,
 )
@@ -324,19 +323,57 @@ class CampusTypeViewSet(
 ):
     """Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
 
-    Read (list/retrieve) is open to any authenticated user. Create (upload) is
-    restricted to ``power_user``/``admin``; delete is restricted to the creating
-    user or an admin.
+    Read (list/retrieve) is open to any authenticated user. Upload and delete are
+    restricted to ``power_user``/``admin`` regardless of who created the type.
+    Deletion is refused with ``409`` while any network still references the type,
+    because ``CampusNetwork.campus_type`` cascades.
     """
 
     serializer_class = CampusTypeSerializer
 
     def get_permissions(self):
-        if self.action == "upload":
+        if self.action in ("upload", "destroy"):
             return [IsAuthenticated(), IsPowerUserOrAdmin()]
-        if self.action == "destroy":
-            return [IsAuthenticated(), IsPowerUserOrAdmin(), IsOwnerOrAdmin()]
         return [IsAuthenticated()]
+
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(description="Network type deleted. No content."),
+            409: OpenApiResponse(
+                description="Network type is still referenced by one or more networks."
+            ),
+        },
+        summary="Delete a network type (power user or admin; refused while in use)",
+    )
+    def destroy(self, request, *args, **kwargs):
+        """Delete a network type unless networks still reference it."""
+        instance = self.get_object()
+        blocking = list(
+            CampusNetwork.objects.filter(campus_type=instance).values_list(
+                "name", flat=True
+            )
+        )
+        if blocking:
+            return Response(
+                {
+                    "detail": (
+                        "Network type is still used by one or more networks. "
+                        "Delete them before deleting this type."
+                    ),
+                    "networks": blocking,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        type_id, type_name = instance.id, instance.name
+        response = super().destroy(request, *args, **kwargs)
+        if getattr(request.user, "role", None) == User.ROLE_POWER_USER:
+            logger.info(
+                "Power user id=%s deleted network type id=%s name=%s",
+                request.user.id,
+                type_id,
+                type_name,
+            )
+        return response
 
     def get_queryset(self):
         qs = CampusType.objects.all()

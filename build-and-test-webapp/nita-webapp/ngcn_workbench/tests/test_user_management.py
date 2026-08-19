@@ -15,7 +15,7 @@ from ngcn.api.permissions import (
     IsOwnerOrTeamMemberOrAdmin,
     IsPowerUserOrAdmin,
 )
-from ngcn.models import CampusNetwork, CampusType, Team
+from ngcn.models import Action, CampusNetwork, CampusType, Team
 from rest_framework.test import APIClient, APIRequestFactory
 
 User = get_user_model()
@@ -306,14 +306,14 @@ def test_regular_user_cannot_delete_network_type(regular_user, power_user, campu
 
 
 @pytest.mark.django_db
-def test_non_creator_power_user_cannot_delete_type(power_user, campus_type):
+def test_non_creator_power_user_can_delete_type(power_user, campus_type):
     other = User.objects.create_user(
         username="power2", password="secret", role=User.ROLE_POWER_USER
     )
     campus_type.created_by = other
     campus_type.save()
     resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
-    assert resp.status_code == 403
+    assert resp.status_code == 204
 
 
 @pytest.mark.django_db
@@ -1068,3 +1068,70 @@ def test_admin_reset_still_works(admin_user, regular_user):
         format="json",
     )
     assert resp.status_code == 200
+
+
+# ── network-type-deletion: role-based delete + in-use guard + audit ────────────
+
+
+@pytest.mark.django_db
+def test_power_user_deletes_orphaned_type(power_user, campus_type):
+    # Seeded/orphaned types have created_by=NULL and were previously admin-only.
+    campus_type.created_by = None
+    campus_type.save()
+    resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 204
+    assert not CampusType.objects.filter(pk=campus_type.id).exists()
+
+
+@pytest.mark.django_db
+def test_delete_type_blocked_while_networks_use_it(power_user, campus_type):
+    owner = User.objects.create_user(username="netowner", password="secret")
+    _make_network("user1-wan", owner, campus_type)
+    _make_network("power1-wan", power_user, campus_type)
+    resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 409
+    body = resp.json()
+    assert set(body["networks"]) == {"user1-wan", "power1-wan"}
+    assert CampusType.objects.filter(pk=campus_type.id).exists()
+    assert CampusNetwork.objects.filter(campus_type=campus_type).count() == 2
+
+
+@pytest.mark.django_db
+def test_admin_delete_type_also_blocked_while_in_use(admin_user, campus_type):
+    _make_network("net-a", admin_user, campus_type)
+    resp = _client(admin_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 409
+    assert CampusType.objects.filter(pk=campus_type.id).exists()
+
+
+@pytest.mark.django_db
+def test_delete_type_succeeds_after_networks_removed(power_user, campus_type):
+    net = _make_network("temp-net", power_user, campus_type)
+    assert (
+        _client(power_user)
+        .delete(f"/api/v1/network-types/{campus_type.id}/")
+        .status_code
+        == 409
+    )
+    net.delete()
+    resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 204
+
+
+@pytest.mark.django_db
+def test_deleting_type_removes_its_actions(power_user, campus_type, action):
+    assert Action.objects.filter(campus_type_id=campus_type).exists()
+    resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 204
+    assert not Action.objects.filter(campus_type_id=campus_type).exists()
+
+
+@pytest.mark.django_db
+def test_power_user_type_deletion_audited(power_user, campus_type, caplog):
+    with caplog.at_level("INFO", logger="ngcn.api.views"):
+        resp = _client(power_user).delete(f"/api/v1/network-types/{campus_type.id}/")
+    assert resp.status_code == 204
+    audit = [r for r in caplog.records if "deleted network type" in r.getMessage()]
+    assert audit, "expected an audit log entry for the power-user type deletion"
+    msg = audit[0].getMessage()
+    assert str(power_user.id) in msg and campus_type.name in msg

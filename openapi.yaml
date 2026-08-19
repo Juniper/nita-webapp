@@ -517,9 +517,10 @@ paths:
       description: |-
         Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
 
-        Read (list/retrieve) is open to any authenticated user. Create (upload) is
-        restricted to ``power_user``/``admin``; delete is restricted to the creating
-        user or an admin.
+        Read (list/retrieve) is open to any authenticated user. Upload and delete are
+        restricted to ``power_user``/``admin`` regardless of who created the type.
+        Deletion is refused with ``409`` while any network still references the type,
+        because ``CampusNetwork.campus_type`` cascades.
       parameters:
       - in: query
         name: name
@@ -549,9 +550,10 @@ paths:
       description: |-
         Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
 
-        Read (list/retrieve) is open to any authenticated user. Create (upload) is
-        restricted to ``power_user``/``admin``; delete is restricted to the creating
-        user or an admin.
+        Read (list/retrieve) is open to any authenticated user. Upload and delete are
+        restricted to ``power_user``/``admin`` regardless of who created the type.
+        Deletion is refused with ``409`` while any network still references the type,
+        because ``CampusNetwork.campus_type`` cascades.
       parameters:
       - in: path
         name: id
@@ -572,12 +574,8 @@ paths:
           description: ''
     delete:
       operationId: v1_network_types_destroy
-      description: |-
-        Network types. Create via POST /upload/ (zip); delete via DELETE /{id}/.
-
-        Read (list/retrieve) is open to any authenticated user. Create (upload) is
-        restricted to ``power_user``/``admin``; delete is restricted to the creating
-        user or an admin.
+      description: Delete a network type unless networks still reference it.
+      summary: Delete a network type (power user or admin; refused while in use)
       parameters:
       - in: path
         name: id
@@ -591,7 +589,9 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          description: No response body
+          description: Network type deleted. No content.
+        '409':
+          description: Network type is still referenced by one or more networks.
   /api/v1/network-types/upload/:
     post:
       operationId: v1_network_types_upload_create
