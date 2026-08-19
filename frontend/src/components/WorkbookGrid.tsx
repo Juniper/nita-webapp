@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { apiFetch } from '../api/client'
 
 export interface WorkbookSheet {
@@ -24,14 +24,19 @@ export function WorkbookGrid({ sheets, networkId, onSaved }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  // Re-initialise if sheets prop changes (e.g. after upload)
-  useEffect(() => {
+  // Re-initialise when the sheets prop changes (e.g. after upload) by resetting
+  // state during render rather than in an effect — the React-recommended
+  // "adjust state when a prop changes" pattern (avoids a synchronous setState in
+  // an effect body).
+  const [prevSheets, setPrevSheets] = useState(sheets)
+  if (sheets !== prevSheets) {
+    setPrevSheets(sheets)
     setEdits(initEdits(sheets))
     setDirty(initDirty(sheets))
     setActiveSheet(0)
     setSaveStatus('idle')
     setSaveError(null)
-  }, [sheets])
+  }
 
   const handleCellChange = useCallback(
     (sheetName: string, rowIdx: number, colIdx: number, value: string) => {

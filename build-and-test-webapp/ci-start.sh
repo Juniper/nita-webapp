@@ -35,18 +35,9 @@ python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py migrate
 echo "Loading initial fixture data..."
 python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py loaddata campus_detail_data
 
-echo "Ensuring superuser (${WEBAPP_USER}) exists..."
-python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py shell -c "
-from django.contrib.auth.models import User
-if User.objects.filter(username='${WEBAPP_USER}').exists():
-    u = User.objects.get(username='${WEBAPP_USER}')
-    u.set_password('${WEBAPP_PASS}')
-    u.save()
-    print('superuser password updated')
-else:
-    User.objects.create_superuser('${WEBAPP_USER}', '', '${WEBAPP_PASS}')
-    print('superuser created')
-"
+echo "Ensuring admin user (${WEBAPP_USER}) exists..."
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py create_admin \
+    --username "${WEBAPP_USER}" --password "${WEBAPP_PASS}"
 
 echo "Collecting static files..."
 python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py collectstatic --noinput

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
-import { useAuth } from '../context/AuthContext'
-import type { User } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
+import type { User } from '../context/auth-context'
 
 export function LoginPage() {
   const { setUser } = useAuth()
@@ -23,8 +23,12 @@ export function LoginPage() {
         body: JSON.stringify({ username, password }),
       })
       if (res.ok) {
-        const data = (await res.json()) as User
-        setUser(data)
+        // The login response omits role/teams; hydrate from /auth/me/ so
+        // role-gated UI (nav, Teams/Users screens) is correct without a reload.
+        let user = (await res.json()) as User
+        const meRes = await apiFetch('/api/v1/auth/me/')
+        if (meRes.ok) user = (await meRes.json()) as User
+        setUser(user)
         navigate('/')
       } else {
         const body = await res.json().catch(() => ({}))

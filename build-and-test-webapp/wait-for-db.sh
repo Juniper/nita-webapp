@@ -71,23 +71,14 @@ python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py loaddata campu
 echo ""
 echo "##############################################"
 echo ""
-echo "        Django Superuser: "
+echo "        Django Admin User: "
 echo "        ${WEBAPP_USER}/${WEBAPP_PASS}"
 echo ""
 echo "##############################################"
 
-echo "Checking default superuser on Django application..."
-if python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py shell -c \
-    "from django.contrib.auth.models import User; \
-    print(User.objects.filter(username='${WEBAPP_USER}').exists())" \
-    | grep -qi true; then
-    echo "Superuser was already created"
-    python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py shell -c \
-"from django.contrib.auth.models import User; usr = User.objects.get(username='${WEBAPP_USER}'); usr.set_password('${WEBAPP_PASS}'); usr.save()"
-else
-    python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py shell -c \
-"from django.contrib.auth.models import User; User.objects.create_superuser('${WEBAPP_USER}', '', '${WEBAPP_PASS}')"
-fi
+echo "Ensuring the admin user exists (role=admin)..."
+python build-and-test-webapp/nita-webapp/ngcn_workbench/manage.py create_admin \
+    --username "${WEBAPP_USER}" --password "${WEBAPP_PASS}"
 
 echo ""
 echo "##############################################"

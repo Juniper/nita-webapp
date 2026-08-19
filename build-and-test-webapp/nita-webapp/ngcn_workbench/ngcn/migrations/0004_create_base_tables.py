@@ -22,10 +22,8 @@ This migration fixes that using ``SeparateDatabaseAndState``:
   and the migration simply records state.
 """
 
-from django.apps import apps as global_apps
 from django.db import migrations, models
 import django.db.models.deletion
-
 
 # Core models in foreign-key dependency order (referenced tables first).
 MODEL_ORDER = [
@@ -47,21 +45,36 @@ SENTINEL_TABLE = "ngcn_campustype"
 def create_base_tables(apps, schema_editor):
     # ``apps`` here is the historical state *before* this migration's
     # ``state_operations`` are applied, so the base models are not yet present
-    # in it. Use the real, current models from the global registry instead;
-    # the ``state_operations`` are written to match them exactly.
+    # in it. Rather than fall back to the live models (which later migrations
+    # extend with new fields such as ``owner``/``team``/``created_by`` that must
+    # NOT be created here), render the models from this migration's own
+    # ``state_operations`` so exactly the historical schema is created. Fields
+    # added by later migrations are created by those migrations.
     connection = schema_editor.connection
     if SENTINEL_TABLE in connection.introspection.table_names():
         return
+    from django.db.migrations.state import ProjectState
+
+    state = ProjectState()
+    for operation in Migration.state_operations:
+        operation.state_forwards("ngcn", state)
+    state_apps = state.apps
     for model_name in MODEL_ORDER:
-        schema_editor.create_model(global_apps.get_model("ngcn", model_name))
+        schema_editor.create_model(state_apps.get_model("ngcn", model_name))
 
 
 def drop_base_tables(apps, schema_editor):
     connection = schema_editor.connection
     if SENTINEL_TABLE not in connection.introspection.table_names():
         return
+    from django.db.migrations.state import ProjectState
+
+    state = ProjectState()
+    for operation in Migration.state_operations:
+        operation.state_forwards("ngcn", state)
+    state_apps = state.apps
     for model_name in reversed(MODEL_ORDER):
-        schema_editor.delete_model(global_apps.get_model("ngcn", model_name))
+        schema_editor.delete_model(state_apps.get_model("ngcn", model_name))
 
 
 class Migration(migrations.Migration):

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
-import { useJenkinsStream, stateLabel } from '../components/LifecycleConsole'
+import { useJenkinsStream, stateLabel } from '../components/lifecycle-stream'
 import { apiFetch, clearCsrfCache } from '../api/client'
 
 type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
@@ -48,6 +48,9 @@ interface CampusNetwork {
   campus_type: number
   campus_type_name: string
   host_file: string | null
+  owner_username: string | null
+  team: number | null
+  team_name: string | null
 }
 
 function statusBadge(status: string): string {
@@ -65,7 +68,9 @@ export function NetworkDetailPage() {
 
   const [network, setNetwork] = useState<CampusNetwork | null>(null)
   const [networkError, setNetworkError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<DetailTab>(parseTabParam(searchParams.get('tab')))
+  const [teamOptions, setTeamOptions] = useState<{ id: number; name: string }[]>([])
+  const [teamSaving, setTeamSaving] = useState(false)
+  const activeTab = parseTabParam(searchParams.get('tab'))
   const [loaded, setLoaded] = useState({ workbook: false, actions: false, history: false })
 
   // Hosts tab
@@ -140,9 +145,37 @@ export function NetworkDetailPage() {
       .catch(() => setNetworkError('Failed to load network'))
   }, [id])
 
+  // Best-effort team list for the team picker (403 for regular users → empty).
+  useEffect(() => {
+    apiFetch('/api/v1/teams/')
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: { results: { id: number; name: string }[] } | null) => {
+        if (d) setTeamOptions(d.results)
+      })
+      .catch(() => {})
+  }, [])
+
+  async function assignTeam(teamId: number | null) {
+    setTeamSaving(true)
+    try {
+      const res = await apiFetch(`/api/v1/networks/${id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ team: teamId }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      const updated: CampusNetwork = await res.json()
+      setNetwork(prev => (prev ? { ...prev, team: updated.team, team_name: updated.team_name } : prev))
+    } catch {
+      setNetworkError('Failed to update team')
+    } finally {
+      setTeamSaving(false)
+    }
+  }
+
   // Tab data loading
   useEffect(() => {
     if (activeTab === 'workbook' && !loaded.workbook) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lazy tab load: the loading flag is toggled once when the tab first opens (guarded by !loaded), not a render loop
       setWorkbookLoading(true)
       setWorkbookError(null)
       apiFetch(`/api/v1/networks/${id}/workbook/`)
@@ -194,13 +227,9 @@ export function NetworkDetailPage() {
 
   // Refresh history each time the History tab is opened.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- history is intentionally refreshed whenever the History tab opens (incl. deep links); one-shot per open, not a loop
     if (activeTab === 'history') fetchHistory()
   }, [activeTab, fetchHistory])
-
-  // Keep selected tab in sync with URL query string (supports deep links from Networks page).
-  useEffect(() => {
-    setActiveTab(parseTabParam(searchParams.get('tab')))
-  }, [searchParams])
 
   const handleTabChange = (tab: DetailTab) => {
     const next = new URLSearchParams(searchParams)
@@ -338,6 +367,27 @@ export function NetworkDetailPage() {
               <h1 className="text-2xl font-bold text-white">{network.name}</h1>
               <span className={statusBadge(network.status)}>{network.status}</span>
               <span className="text-gray-400 text-sm">{network.campus_type_name}</span>
+              {network.owner_username && (
+                <span className="text-gray-500 text-sm">owner: {network.owner_username}</span>
+              )}
+              <span className="ml-auto flex items-center gap-2 text-sm">
+                <span className="text-gray-400">Team:</span>
+                {teamOptions.length > 0 ? (
+                  <select
+                    value={network.team ?? ''}
+                    disabled={teamSaving}
+                    onChange={e => assignTeam(e.target.value === '' ? null : Number(e.target.value))}
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 disabled:opacity-50"
+                  >
+                    <option value="">No team</option>
+                    {teamOptions.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-gray-300">{network.team_name ?? 'No team'}</span>
+                )}
+              </span>
             </div>
 
             {/* Tab bar */}

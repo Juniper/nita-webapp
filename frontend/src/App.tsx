@@ -6,11 +6,13 @@ import { DashboardPage } from './pages/DashboardPage'
 import { NetworkTypesPage } from './pages/NetworkTypesPage'
 import { NetworksPage } from './pages/NetworksPage'
 import { NetworkDetailPage } from './pages/NetworkDetailPage'
+import { UsersPage } from './pages/UsersPage'
+import { TeamsPage } from './pages/TeamsPage'
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename="/app">
+      <BrowserRouter basename="/">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -42,6 +44,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <NetworkDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <UsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teams"
+            element={
+              <ProtectedRoute>
+                <TeamsPage />
               </ProtectedRoute>
             }
           />

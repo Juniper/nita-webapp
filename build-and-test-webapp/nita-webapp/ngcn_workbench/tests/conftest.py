@@ -16,8 +16,14 @@ from ngcn.models import (
 
 @pytest.fixture
 def user(db):
+    """The default test user.
+
+    Created with ``role=admin`` so that existing API tests (which predate the
+    ownership/role model) retain full access. Role-specific behaviour is
+    exercised by dedicated fixtures/tests in ``test_user_management.py``.
+    """
     model = get_user_model()
-    return model.objects.create_user(username="tester", password="secret")
+    return model.objects.create_user(username="tester", password="secret", role="admin")
 
 
 @pytest.fixture

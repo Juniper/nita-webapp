@@ -32,10 +32,6 @@ Name: python-jenkins (Python bindings for the remote Jenkins API)
 URL: https://pypi.org/project/python-jenkins/
 License: BSD License (BSD)
 
-Name: django-tables2 (Table/data-grid framework for Django)
-URL: https://pypi.org/project/django-tables2/
-License: BSD License (Simplified BSD)
-
 Name: django-datatable-view (This package is used in conjunction with the jQuery plugin (http://http://datatables.net/), and supports state-saving detection with (http://datatables.net/plug-ins/api).
 URL: https://pypi.org/project/django-datatable-view/
 License: Apache Software License (Apache License (2.0))
@@ -47,10 +43,6 @@ License: BSD License, GNU General Public License (GPL), Python Software Foundati
 Name: openpyxl (A Python library to read/write Excel 2010 xlsx/xlsm files)
 URL: https://pypi.org/project/openpyxl/
 License: MIT License (MIT)
-
-Name: django-formset-js (Extend Django formsets with JavaScript)
-URL: https://pypi.org/project/django-formset-js/
-License: BSD License (BSD)
 
 Name: jenkinsapi (A Python API for accessing resources on a Jenkins continuous-integration server.)
 URL: https://pypi.org/project/jenkinsapi/

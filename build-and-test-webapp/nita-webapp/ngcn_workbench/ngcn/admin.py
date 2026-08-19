@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from ngcn.models import (
     Action,
@@ -9,9 +10,28 @@ from ngcn.models import (
     ActionHistory,
     CampusNetwork,
     CampusType,
+    Team,
+    User,
     Workbook,
     Worksheets,
 )
+
+
+@admin.register(User)
+class UserAdmin(DjangoUserAdmin):
+    """Admin for the custom User model, exposing the ``role`` field."""
+
+    list_display = ("username", "email", "role", "is_staff", "is_active")
+    list_filter = ("role", "is_staff", "is_superuser", "is_active")
+    fieldsets = DjangoUserAdmin.fieldsets + (("Role", {"fields": ("role",)}),)
+    add_fieldsets = DjangoUserAdmin.add_fieldsets + (("Role", {"fields": ("role",)}),)
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = ("name", "created_by")
+    filter_horizontal = ("members",)
+
 
 # Register your models here.
 admin.site.register(ActionCategory)

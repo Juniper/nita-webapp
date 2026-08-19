@@ -27,6 +27,25 @@ CSRF_TRUSTED_ORIGINS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
+# Custom user model with a role field (user / power_user / admin).
+AUTH_USER_MODEL = "ngcn.User"
+
+# ── Onboarding ─────────────────────────────────────────────────────────────────
+# There are two ways an account can be created:
+#   1. Self-service registration  — public POST /api/v1/auth/register/ (role=user)
+#   2. Admin-created accounts      — POST /api/v1/users/ (admin chooses the role)
+#
+# SELF_REGISTRATION_ENABLED toggles path (1). It defaults to True so BOTH paths
+# are active out of the box (backwards compatible). Set the environment variable
+# NITA_SELF_REGISTRATION_ENABLED=False to disable public sign-up and rely on
+# admin-created accounts only; the register endpoint then returns 403.
+#
+# Truthiness follows the same convention as DJANGO_DEBUG: only the exact string
+# "True" enables it — anything else ("False", "0", "", etc.) disables it.
+SELF_REGISTRATION_ENABLED = (
+    os.getenv("NITA_SELF_REGISTRATION_ENABLED", "True") == "True"
+)
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,8 +58,6 @@ INSTALLED_APPS = [
     #   ngcn
     "ngcn",
     #   Frameworks
-    "djangoformsetjs",
-    "django_tables2",
     "rest_framework",
     "rest_framework.authtoken",
     "drf_spectacular",
@@ -162,9 +179,14 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "NITA Webapp API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # HTTPS server (TLS terminated at the nginx proxy) so the token API key is
+    # not advertised as sent over cleartext.
+    "SERVERS": [{"url": "https://localhost", "description": "NITA Webapp (HTTPS)"}],
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
         "ngcn.api.schema_hooks.bound_array_lengths",
+        "ngcn.api.schema_hooks.add_global_security",
+        "ngcn.api.schema_hooks.drop_empty_operation_security",
     ],
 }
 

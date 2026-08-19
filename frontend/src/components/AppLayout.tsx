@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, useIsPowerUser } from '../context/useAuth'
 import { apiFetch } from '../api/client'
 
 interface AppLayoutProps {
@@ -19,26 +19,34 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/networks', label: 'Networks' },
 ]
 
+function navClass({ isActive }: { isActive: boolean }) {
+  return [
+    'px-4 py-2.5 text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-indigo-600 text-white'
+      : 'text-gray-400 hover:text-white hover:bg-gray-800',
+  ].join(' ')
+}
+
 function Sidebar() {
+  const isPowerUser = useIsPowerUser()
   return (
     <nav className="w-56 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col py-4">
       {NAV_ITEMS.map(({ to, label, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          className={({ isActive }) =>
-            [
-              'px-4 py-2.5 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800',
-            ].join(' ')
-          }
-        >
+        <NavLink key={to} to={to} end={end} className={navClass}>
           {label}
         </NavLink>
       ))}
+      {isPowerUser && (
+        <NavLink to="/teams" className={navClass}>
+          Teams
+        </NavLink>
+      )}
+      {isPowerUser && (
+        <NavLink to="/users" className={navClass}>
+          User Management
+        </NavLink>
+      )}
     </nav>
   )
 }

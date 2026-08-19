@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
-import { LifecycleConsolePanel, useJenkinsStream } from '../components/LifecycleConsole'
+import { useApiResource } from '../hooks/useApiResource'
+import { LifecycleConsolePanel } from '../components/LifecycleConsole'
+import { useJenkinsStream } from '../components/lifecycle-stream'
 import { LifecycleHistoryModal } from '../components/LifecycleHistoryModal'
 
 interface NetworkType {
@@ -18,6 +20,8 @@ interface Network {
   campus_type: number
   campus_type_name: string
   host_file: string
+  owner_username: string | null
+  team_name: string | null
 }
 
 interface PaginatedNetworks {
@@ -36,9 +40,15 @@ const emptyForm = {
 }
 
 export function NetworksPage() {
-  const [networks, setNetworks] = useState<Network[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data,
+    loading,
+    error,
+    reload: reloadNetworks,
+    setData: setNetworksData,
+    setError,
+  } = useApiResource<PaginatedNetworks>('/api/v1/networks/')
+  const networks = data?.results ?? []
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [networkTypes, setNetworkTypes] = useState<NetworkType[]>([])
@@ -53,23 +63,6 @@ export function NetworksPage() {
   const { lines, state: streamState, start: startStream, reset: resetStream } = useJenkinsStream()
   const [consoleTitle, setConsoleTitle] = useState('Console')
   const [showHistory, setShowHistory] = useState(false)
-
-  async function fetchNetworks() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiFetch('/api/v1/networks/')
-      if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
-      const data: PaginatedNetworks = await res.json()
-      setNetworks(data.results)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchNetworks() }, [])
 
   async function openAddForm() {
     setShowAddForm(true)
@@ -114,7 +107,7 @@ export function NetworksPage() {
       }
       const data = await res.json()
       setShowAddForm(false)
-      await fetchNetworks()
+      reloadNetworks()
       if (data.job_name && data.build_no != null) {
         setConsoleTitle(`Creating ${data.name ?? form.name}`)
         startStream(data.job_name, data.build_no)
@@ -134,7 +127,9 @@ export function NetworksPage() {
       const res = await apiFetch(`/api/v1/networks/${id}/`, { method: 'DELETE' })
       if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`)
       const deleted = networks.find(n => n.id === id)
-      setNetworks(prev => prev.filter(n => n.id !== id))
+      setNetworksData(prev =>
+        prev ? { ...prev, results: prev.results.filter(n => n.id !== id) } : prev,
+      )
       if (res.status === 202) {
         const data = await res.json()
         if (data.job_name && data.build_no != null) {
@@ -258,6 +253,8 @@ export function NetworksPage() {
                 <th className="pb-2 pr-4 font-medium">Name</th>
                 <th className="pb-2 pr-4 font-medium">Network Type</th>
                 <th className="pb-2 pr-4 font-medium">Description</th>
+                <th className="pb-2 pr-4 font-medium">Owner</th>
+                <th className="pb-2 pr-4 font-medium">Team</th>
                 <th className="pb-2 pr-4 font-medium">Status</th>
                 <th className="pb-2 font-medium"></th>
               </tr>
@@ -268,6 +265,12 @@ export function NetworksPage() {
                   <td className="py-2.5 pr-4 font-medium">{n.name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.campus_type_name}</td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.description || '—'}</td>
+                  <td className="py-2.5 pr-4 text-gray-400">{n.owner_username || '—'}</td>
+                  <td className="py-2.5 pr-4 text-gray-400">
+                    {n.team_name ? (
+                      <span className="px-1.5 py-0.5 text-xs bg-sky-900/60 border border-sky-700 rounded">{n.team_name}</span>
+                    ) : '—'}
+                  </td>
                   <td className="py-2.5 pr-4 text-gray-400">{n.status || '—'}</td>
                   <td className="py-2.5 text-right whitespace-nowrap">
                     <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
