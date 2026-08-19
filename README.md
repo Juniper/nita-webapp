@@ -20,9 +20,15 @@ The simplest way to install the nita-webapp is by installing nita, which can be 
 
 # User Interface
 
-NITA exposes two web applications, listening on two different ports for https:
-1. NITA webapp on port 443 (using NGINX)
-2. Jenkins on port 8443
+NITA exposes a single HTTPS endpoint on port 443 (terminated by NGINX):
+
+| Application | URL |
+|---|---|
+| NITA webapp (React SPA) | `https://<host>/` |
+| Jenkins | `https://<host>/jenkins/` |
+
+Jenkins runs behind the same proxy under the `/jenkins` path prefix
+(`--prefix=/jenkins`); it is no longer published on port 8443.
 
 ## Default User Credentials
 
@@ -61,6 +67,27 @@ Admins can also reset any user's password via
 User Management screen). The last active administrator is protected: an
 operation that would demote, deactivate, or delete the only remaining active
 admin is rejected.
+
+## Roles and Permissions
+
+Every account has one of three roles. `power_user` acts as a junior
+administrator: it has admin-equivalent reach over operational resources, but the
+administrator tier itself stays protected.
+
+| Capability | `user` | `power_user` | `admin` |
+|---|---|---|---|
+| See networks | own + team | all | all |
+| Edit / delete a network | own only | any | any |
+| Share a network with a team | teams they belong to | any team | any team |
+| Teams (list, create, delete, membership) | no (`GET /api/v1/teams/mine/` only) | all teams | all teams |
+| Upload / delete a network type | no | yes | yes |
+| List and view users | no | non-admins | all |
+| Reset password, activate/deactivate, change role | no | non-admins, role capped at `power_user` | all |
+| Create / delete accounts, grant `admin` | no | no | yes |
+
+A `power_user` can never view, modify, or delete an `admin` account, and can
+never grant the `admin` role. Password resets and network-type deletions
+performed by a `power_user` are written to the application log.
 
 ## NITA Command Line Interface
 
@@ -138,6 +165,36 @@ No containers tagged as "latest" are provided by the package.
     `maxItems` bounds on all array schemas.
   * CI workflows locked to `permissions: read-all` with per-job grant overrides.
 * CI upgraded to Python 3.12 across all workflow files.
+* **BREAKING** — The legacy server-rendered UI has been removed and the React
+  SPA is now served from the root (`/`). Pages such as `/campustype/`,
+  `/campusnetwork/` and `/campus_network/<id>/...` no longer exist. The
+  `django_tables2` dependency was dropped.
+* **BREAKING** — Jenkins is now served through the webapp proxy at
+  `https://<host>/jenkins/` instead of on port 8443.
+* **BREAKING** — Deleting a network type is refused with `409 Conflict` while
+  networks still reference it. Previously the delete cascaded and silently
+  removed those networks; the referencing networks must now be deleted first.
+* Fixed action-history entries that could stay stuck at `Running`: the status
+  updater now uses the canonical prefixed Jenkins URL.
+* Added a three-tier role system (`user`, `power_user`, `admin`) on a custom
+  user model, with self-service registration and an admin user-management API.
+* Added Teams: power users and admins create teams and manage membership, and a
+  network can be shared with a team. Networks gained an `owner` and an optional
+  `team`, and list/detail visibility is scoped accordingly.
+* Added SPA **User Management** and **Teams** screens, including a guided
+  ownership-transfer dialog when deleting a user is blocked by owned resources.
+* Added admin onboarding: admin-created accounts with an initial password, admin
+  password reset, the `NITA_SELF_REGISTRATION_ENABLED` flag, and protection for
+  the last active administrator.
+* Power users now act as junior administrators — they manage all teams and all
+  non-admin users (view, reset password, activate/deactivate, and change role up
+  to `power_user`). They cannot view or modify `admin` accounts or grant the
+  `admin` role; creating and deleting accounts remains admin-only.
+* Power users have full reach over every network, and may delete any network
+  type. A regular owner may share a network only with a team they belong to.
+  Added `GET /api/v1/teams/mine/` so any user can discover their own teams.
+* Frontend: introduced a shared `useApiResource` data-fetching hook and enabled
+  ESLint enforcement in CI.
 
 ## 25.10 New Features and Bug Fixes
 
