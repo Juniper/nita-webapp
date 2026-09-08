@@ -34,16 +34,16 @@
 
 ## 4. Frontend — tests
 
-- [ ] 4.1 In-progress rows sort above attention rows, which sort above the rest
-- [ ] 4.2 Within each group, entries are newest-first
-- [ ] 4.3 At most ten rows are rendered
-- [ ] 4.4 An in-progress run is not displaced by newer completed runs
-- [ ] 4.5 An unrecognised status string renders in the neutral group rather than
+- [x] 4.1 In-progress rows sort above attention rows, which sort above the rest
+- [x] 4.2 Within each group, entries are newest-first
+- [x] 4.3 At most ten rows are rendered
+- [x] 4.4 An in-progress run is not displaced by newer completed runs
+- [x] 4.5 An unrecognised status string renders in the neutral group rather than
   being hidden
-- [ ] 4.6 Each row links to `/networks/{id}?tab=history` for its own network
-- [ ] 4.7 An empty `triggered_by_username` renders as `—`
-- [ ] 4.8 The empty state renders when the response contains no entries
-- [ ] 4.9 Polling runs while a `Running` row is displayed and stops when none is
+- [x] 4.6 Each row links to `/networks/{id}?tab=history` for its own network
+- [x] 4.7 An empty `triggered_by_username` renders as `—`
+- [x] 4.8 The empty state renders when the response contains no entries
+- [x] 4.9 Polling runs while a `Running` row is displayed and stops when none is
 
 ## 5. Spec cleanup
 
@@ -70,35 +70,20 @@ presentation helpers. This keeps the ordering rules, which are the substance of
 this change, independently exercisable, and it is what makes section 4 cheap to
 complete once a test runner exists.
 
-**Section 4 is not ticked** because no committed automated tests exist (see
-Blockers). However, the ordering requirements were verified directly against the
-real module using Node's type stripping, covering the spec scenarios:
-
-```
-ok - in-progress sorts above attention, above the rest
-ok - newest first within a group
-ok - Unstable is treated as needing attention
-ok - at most ten rows
-ok - in-progress run is not displaced by newer completed runs
-ok - unrecognised status is shown in the neutral group
-ok - status matching is case-insensitive
-ok - relative time formatting
-8 checks passed
-```
-
-That scratch script was **not** committed — it is not wired into any runner and
-would rot. It maps 1:1 onto tasks 4.1–4.5 and 4.7, which can be transcribed into
-real tests once a harness lands. Tasks 4.6, 4.8 and 4.9 are component-level
-(routing, empty state, polling lifecycle) and were **not** verified
-automatically.
+**Section 4 is covered by real tests.** The `frontend-test-harness` change added
+the runner; the ordering rules are pinned by `src/pages/dashboardFeed.test.ts`
+(13 tests) and the component behaviour — deep links, empty state, error state,
+ten-row cap and polling lifecycle — by `src/pages/DashboardPage.test.tsx`
+(10 tests). The ad-hoc script used to verify the ordering before a runner existed
+has been superseded and was never committed.
 
 ## Blockers
 
-**No frontend test infrastructure (blocks section 4).** Same gap recorded under
-`refresh-inflight-action-status`: `frontend/package.json` declares no `test`
-script and no vitest/testing-library dependency, and there are no test files under
-`frontend/src`. Standing up a harness is a project-infrastructure decision and was
-not taken unilaterally as part of this change.
-
 **Section 6** requires a running deployment with Jenkins and has not been
 performed.
+
+**Resolved — frontend test infrastructure.** Added by the `frontend-test-harness`
+change. Section 4 is covered by `src/pages/dashboardFeed.test.ts` (13 tests,
+pinning the grouping and ordering rules) and `src/pages/DashboardPage.test.tsx`
+(10 tests, covering deep links, empty state, error state, the ten-row cap and the
+polling lifecycle).

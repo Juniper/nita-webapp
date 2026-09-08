@@ -20,11 +20,11 @@
 
 ## 3. Frontend — tests
 
-- [ ] 3.1 A list containing a `Running` entry issues a refetch after the interval
-- [ ] 3.2 A list with no `Running` entry issues no refetch
-- [ ] 3.3 Polling stops once the last `Running` entry reaches a terminal status
-- [ ] 3.4 Polling stops when the History tab is left and when the page unmounts
-- [ ] 3.5 Rows remain rendered across a polled refresh (no loading flash)
+- [x] 3.1 A list containing a `Running` entry issues a refetch after the interval
+- [x] 3.2 A list with no `Running` entry issues no refetch
+- [x] 3.3 Polling stops once the last `Running` entry reaches a terminal status
+- [x] 3.4 Polling stops when the History tab is left and when the page unmounts
+- [x] 3.5 Rows remain rendered across a polled refresh (no loading flash)
 
 ## 4. Verify
 
@@ -36,27 +36,17 @@
 
 ## Blockers
 
-Section 3 and the manual checks in section 4 are not complete. Neither is blocked
-by the implementation.
+Only the manual checks in section 4 remain. They require a running deployment
+with Jenkins and have not been performed.
 
-**No frontend test infrastructure (blocks section 3).** The project has no test
-runner: `frontend/package.json` declares no `test` script and no
-vitest/jest/testing-library dependency, and there are no test files anywhere under
-`frontend/src`. The five tasks in section 3 assumed a runner existed.
-
-Standing up one (vitest + @testing-library/react + jsdom, a config file, a `test`
-script and CI wiring) is a project-infrastructure decision outside the scope of
-this change. Test files were deliberately **not** written: unrunnable specs
-against an absent framework would imply coverage that does not exist.
-
-Suggested resolution — one of:
-1. Land the frontend test harness as its own change, then complete section 3.
-2. Keep section 3 open and rely on the manual checks in section 4 for now.
-
-**Manual verification (section 4)** requires a running deployment with Jenkins and
-has not been performed.
-
-**Resolved:** the Node toolchain gap that previously blocked task 2.5. The build
-requires Node 22 (per `Dockerfile`, `node:22-slim`); Node 22.23.2 is now installed
-at `~/.local/opt/node-v22.23.2-linux-x64`. `npm ci`, `npm run lint` and
+**Resolved — Node toolchain.** The build requires Node 22 (per `Dockerfile`,
+`node:22-slim`); Node 22.23.2 is installed at
+`~/.local/opt/node-v22.23.2-linux-x64`. `npm ci`, `npm run lint` and
 `npm run build` all pass.
+
+**Resolved — frontend test infrastructure.** Added by the `frontend-test-harness`
+change. Section 3 is covered by `src/pages/NetworkDetailPage.history.test.tsx`,
+which renders the History tab with `apiFetch` mocked and fake timers, asserting
+that polling starts only when a `Running` row is present and stops on terminal
+status, tab change and unmount. The two polling tests were confirmed to fail when
+the `usePollWhile` predicate is replaced with `false`.
