@@ -104,16 +104,25 @@ The system SHALL provide a `LoginPage` component that renders a username/passwor
 - THEN an error message is displayed on the page
 - AND the user remains on `/login`
 
-### Requirement: Dashboard Shell Placeholder
-The system SHALL provide a `DashboardPage` component that renders when the user is authenticated. It SHALL display the logged-in username and a logout button. Clicking logout calls `AuthContext.logout()` and redirects to `/login`.
+### Requirement: Dashboard Renders for Authenticated Users
+The system SHALL provide a `DashboardPage` component that renders at `/` when the
+user is authenticated, wrapped in `AppLayout`. Its content SHALL be the recent
+activity feed specified by the `spa-dashboard` capability. Unauthenticated access
+to `/` SHALL continue to redirect to `/login`.
 
-#### Scenario: Dashboard shows username
+#### Scenario: Authenticated root access renders the dashboard
 - GIVEN the user is authenticated
-- WHEN `DashboardPage` is rendered
-- THEN the page displays the user's username
+- WHEN the user navigates to `/`
+- THEN `DashboardPage` is rendered inside `AppLayout` showing the recent activity
+  feed
 
-#### Scenario: Logout button redirects to login
+#### Scenario: Unauthenticated root access redirects to login
+- GIVEN the user is not authenticated
+- WHEN the user navigates to `/`
+- THEN the user is redirected to `/login`
+
+#### Scenario: Logout from the dashboard
 - GIVEN the user is on the dashboard
-- WHEN the logout button is clicked
+- WHEN the logout button in the header is clicked
 - THEN the user is redirected to `/login`
 - AND subsequent navigation to `/` redirects back to `/login`
