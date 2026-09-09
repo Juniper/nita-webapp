@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth, useIsPowerUser } from '../context/useAuth'
 import { apiFetch } from '../api/client'
+import { Logo } from './Logo'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -69,7 +70,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen flex flex-col bg-gray-950 text-white">
       {/* Top header */}
       <header className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-700 shrink-0">
-        <span className="text-base font-semibold tracking-tight">NITA Webapp</span>
+        <div className="flex items-center gap-2.5">
+          <Logo className="h-6 w-auto text-white" />
+          <span className="text-base font-semibold tracking-tight">NITA Webapp</span>
+        </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">
             Signed in as{' '}

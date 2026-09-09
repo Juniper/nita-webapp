@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import { useAuth } from '../context/useAuth'
+import { Logo } from '../components/Logo'
 import type { User } from '../context/auth-context'
 
 export function LoginPage() {
@@ -44,6 +45,7 @@ export function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="w-full max-w-sm p-8 bg-gray-800 rounded-2xl shadow-xl">
+        <Logo className="h-12 w-auto mx-auto mb-4 text-white" />
         <h1 className="mb-6 text-2xl font-semibold text-white text-center">
           NITA Webapp
         </h1>
