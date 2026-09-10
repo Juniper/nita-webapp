@@ -3,9 +3,14 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { WorkbookGrid, type WorkbookSheet } from '../components/WorkbookGrid'
 import { useJenkinsStream, stateLabel } from '../components/lifecycle-stream'
+import { usePollWhile } from '../hooks/usePollWhile'
 import { apiFetch, clearCsrfCache } from '../api/client'
 
 type DetailTab = 'hosts' | 'workbook' | 'actions' | 'history'
+
+// The backend status updater polls Jenkins every 30s, so refreshing faster than
+// this would re-read data that cannot have changed yet.
+const HISTORY_POLL_INTERVAL_MS = 15_000
 
 function parseTabParam(value: string | null): DetailTab {
   if (value === 'workbook' || value === 'actions' || value === 'history') return value
@@ -25,6 +30,7 @@ interface ActionHistory {
   network_name: string
   timestamp: string
   status: string
+  triggered_by_username: string
   action_id: number
   category_id: number
   campus_network_id: number
@@ -105,6 +111,7 @@ export function NetworkDetailPage() {
   const [historyError, setHistoryError] = useState<string | null>(null)
   // Robot Framework result summaries for TEST-category runs, keyed by history id.
   const [robotSummaries, setRobotSummaries] = useState<Record<number, RobotSummary>>({})
+  const historyAbortRef = useRef<AbortController | null>(null)
 
   // History console viewer (live SSE stream of the run's Jenkins console)
   const [consoleView, setConsoleView] = useState<ActionHistory | null>(null)
@@ -196,22 +203,27 @@ export function NetworkDetailPage() {
   }, [activeTab, loaded, id, network])
 
   // Fetch the action-history list plus TEST Robot summaries. Re-run on every
-  // switch to the History tab so the contents stay current.
+  // switch to the History tab, and on the poll interval while a run is in
+  // progress, so the contents stay current.
   const fetchHistory = useCallback(() => {
+    historyAbortRef.current?.abort()
+    const controller = new AbortController()
+    historyAbortRef.current = controller
+    const { signal } = controller
     setHistoryError(null)
     setHistoryLoading(true)
-    apiFetch(`/api/v1/action-history/?campus_network_id=${id}`)
+    apiFetch(`/api/v1/action-history/?campus_network_id=${id}`, { signal })
       .then(r => r.json())
       .then(d => {
         const rows: ActionHistory[] = d.results ?? d
         setHistory(rows)
         setLoaded(l => ({ ...l, history: true }))
-        // Refresh Robot Framework summaries for TEST-category runs.
-        setRobotSummaries({})
+        // Summaries are merged rather than reset: a polled refresh must not
+        // blank out results that are already on screen.
         rows
           .filter(h => h.category_name === 'TEST')
           .forEach(h => {
-            apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`)
+            apiFetch(`/api/v1/action-history/${h.id}/robot-summary/`, { signal })
               .then(res => (res.ok ? res.json() : null))
               .then((summary: RobotSummary | null) => {
                 if (summary && summary.available) {
@@ -221,15 +233,32 @@ export function NetworkDetailPage() {
               .catch(() => { /* summary is optional */ })
           })
       })
-      .catch(() => setHistoryError('Failed to load history'))
-      .finally(() => setHistoryLoading(false))
+      .catch(() => {
+        if (!signal.aborted) setHistoryError('Failed to load history')
+      })
+      .finally(() => {
+        if (!signal.aborted) setHistoryLoading(false)
+      })
   }, [id])
 
-  // Refresh history each time the History tab is opened.
+  // Refresh history each time the History tab is opened, and cancel any pending
+  // request when the tab is left or the page unmounts.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- history is intentionally refreshed whenever the History tab opens (incl. deep links); one-shot per open, not a loop
     if (activeTab === 'history') fetchHistory()
+    return () => historyAbortRef.current?.abort()
   }, [activeTab, fetchHistory])
+
+  // A run leaves "Running" only when the backend status updater catches up, so
+  // poll while one is in flight instead of waiting for the user to refresh.
+  const hasRunInProgress = (history ?? []).some(
+    h => (h.status || '').toUpperCase() === 'RUNNING',
+  )
+  usePollWhile(
+    activeTab === 'history' && hasRunInProgress,
+    fetchHistory,
+    HISTORY_POLL_INTERVAL_MS,
+  )
 
   const handleTabChange = (tab: DetailTab) => {
     const next = new URLSearchParams(searchParams)
@@ -604,6 +633,7 @@ export function NetworkDetailPage() {
                         <th className="pb-2 pr-4">Action</th>
                         <th className="pb-2 pr-4">Category</th>
                         <th className="pb-2 pr-4">Status</th>
+                        <th className="pb-2 pr-4">Triggered by</th>
                         <th className="pb-2 pr-4">Date</th>
                         <th className="pb-2"></th>
                       </tr>
@@ -629,6 +659,7 @@ export function NetworkDetailPage() {
                           </td>
                           <td className="py-2 pr-4 text-gray-400">{h.category_name}</td>
                           <td className="py-2 pr-4"><span className={statusBadge(h.status)}>{h.status}</span></td>
+                          <td className="py-2 pr-4 text-gray-400">{h.triggered_by_username || '—'}</td>
                           <td className="py-2 pr-4 text-gray-400">{new Date(h.timestamp).toLocaleString()}</td>
                           <td className="py-2 text-right">
                             <span className="inline-flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">

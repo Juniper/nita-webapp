@@ -53,8 +53,15 @@ paths:
       description: |-
         Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
+        Results are scoped to the networks the requesting user may see: admins and
+        power users see every entry, while other users see only entries whose
+        network they own or share through a team. Because ``get_object`` resolves
+        from this queryset, the detail routes (including ``/console/``, ``/stream/``
+        and ``/robot-summary/``) return 404 for out-of-scope entries.
+
         Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
-        parameters (combinable) to filter history by network and/or category.
+        parameters (combinable) to filter history by network and/or category. The
+        filters narrow the scoped queryset and cannot widen it.
         The ``/console/`` action proxies the Jenkins console log for a given entry.
       parameters:
       - in: query
@@ -90,8 +97,15 @@ paths:
       description: |-
         Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
+        Results are scoped to the networks the requesting user may see: admins and
+        power users see every entry, while other users see only entries whose
+        network they own or share through a team. Because ``get_object`` resolves
+        from this queryset, the detail routes (including ``/console/``, ``/stream/``
+        and ``/robot-summary/``) return 404 for out-of-scope entries.
+
         Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
-        parameters (combinable) to filter history by network and/or category.
+        parameters (combinable) to filter history by network and/or category. The
+        filters narrow the scoped queryset and cannot widen it.
         The ``/console/`` action proxies the Jenkins console log for a given entry.
       parameters:
       - in: path
@@ -111,6 +125,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ActionHistory'
           description: ''
+        '404':
+          description: No such entry, or it belongs to a network the requesting user
+            is not permitted to see.
   /api/v1/action-history/{id}/console/:
     get:
       operationId: v1_action_history_console_retrieve
@@ -136,6 +153,9 @@ paths:
                   console:
                     type: string
           description: ''
+        '404':
+          description: No such entry, or it belongs to a network the requesting user
+            is not permitted to see.
   /api/v1/action-history/{id}/robot-summary/:
     get:
       operationId: v1_action_history_robot_summary_retrieve
@@ -175,6 +195,9 @@ paths:
                   pass_percentage:
                     type: number
           description: ''
+        '404':
+          description: No such entry, or it belongs to a network the requesting user
+            is not permitted to see.
   /api/v1/action-history/{id}/stream/:
     get:
       operationId: v1_action_history_stream_retrieve
@@ -199,6 +222,9 @@ paths:
           description: 'SSE stream of Jenkins console output. Events: data (log line),
             done (build finished), error (Jenkins unreachable), timeout (30-min cap
             reached).'
+        '404':
+          description: No such entry, or it belongs to a network the requesting user
+            is not permitted to see.
   /api/v1/actions/:
     get:
       operationId: v1_actions_list
@@ -1721,7 +1747,8 @@ components:
         string fields so consumers can display context without extra look-ups.
         ``jenkins_job_name`` exposes the Jenkins job for the run
         (``{action.jenkins_url}-{network_name}``) so clients can build a link to the
-        build result.
+        build result. ``triggered_by_username`` is a durable snapshot of who started
+        the run, empty for entries recorded before the field existed.
       properties:
         id:
           type: integer
@@ -1733,6 +1760,9 @@ components:
           type: string
           readOnly: true
         network_name:
+          type: string
+          readOnly: true
+        triggered_by_username:
           type: string
           readOnly: true
         jenkins_job_name:
@@ -1769,6 +1799,7 @@ components:
       - network_name
       - status
       - timestamp
+      - triggered_by_username
     ActionProperty:
       type: object
       description: Serializer for ActionProperty (shell command + workspace configuration).

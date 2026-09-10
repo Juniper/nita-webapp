@@ -167,6 +167,14 @@ class ActionHistory(models.Model):
     campus_network_id = models.ForeignKey(
         CampusNetwork, on_delete=models.CASCADE, verbose_name="Campus Network Id"
     )
+    # Durable snapshot rather than a FK, so attribution survives renaming or
+    # deletion of the user (same reasoning as LifecycleRun.subject).
+    triggered_by_username = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Triggered By",
+    )
 
     def __str__(self):
         return self.action_id.action_name

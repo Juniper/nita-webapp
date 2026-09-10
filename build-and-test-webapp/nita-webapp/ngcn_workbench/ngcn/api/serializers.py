@@ -225,7 +225,8 @@ class ActionHistorySerializer(serializers.ModelSerializer):
     string fields so consumers can display context without extra look-ups.
     ``jenkins_job_name`` exposes the Jenkins job for the run
     (``{action.jenkins_url}-{network_name}``) so clients can build a link to the
-    build result.
+    build result. ``triggered_by_username`` is a durable snapshot of who started
+    the run, empty for entries recorded before the field existed.
     """
 
     action_name = serializers.CharField(source="action_id.action_name", read_only=True)
@@ -235,6 +236,7 @@ class ActionHistorySerializer(serializers.ModelSerializer):
     network_name = serializers.CharField(
         source="campus_network_id.name", read_only=True
     )
+    triggered_by_username = serializers.CharField(read_only=True)
     jenkins_job_name = serializers.SerializerMethodField()
 
     @extend_schema_field(OpenApiTypes.STR)

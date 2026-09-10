@@ -850,6 +850,7 @@ class CampusNetworkViewSet(viewsets.ModelViewSet):
                 jenkins_job_build_no=current_build_number,
                 category_id=action_obj.action_category,
                 campus_network_id=campus_network,
+                triggered_by_username=request.user.username,
             )
             history.save()
 
@@ -925,13 +926,31 @@ class ActionViewSet(viewsets.ReadOnlyModelViewSet):
                 description="Filter by action category ID.",
             ),
         ]
-    )
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: ActionHistorySerializer,
+            404: OpenApiResponse(
+                description=(
+                    "No such entry, or it belongs to a network the requesting "
+                    "user is not permitted to see."
+                )
+            ),
+        }
+    ),
 )
 class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only list and retrieve for ActionHistory objects, ordered newest-first.
 
+    Results are scoped to the networks the requesting user may see: admins and
+    power users see every entry, while other users see only entries whose
+    network they own or share through a team. Because ``get_object`` resolves
+    from this queryset, the detail routes (including ``/console/``, ``/stream/``
+    and ``/robot-summary/``) return 404 for out-of-scope entries.
+
     Supports ``?campus_network_id=<id>`` and ``?action_category_id=<id>`` query
-    parameters (combinable) to filter history by network and/or category.
+    parameters (combinable) to filter history by network and/or category. The
+    filters narrow the scoped queryset and cannot widen it.
     The ``/console/`` action proxies the Jenkins console log for a given entry.
     """
 
@@ -946,6 +965,14 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+        # Mirrors CampusNetworkViewSet.get_queryset: history is visible exactly
+        # when its network is.
+        if getattr(user, "role", None) not in (User.ROLE_ADMIN, User.ROLE_POWER_USER):
+            qs = qs.filter(
+                Q(campus_network_id__owner=user)
+                | Q(campus_network_id__team__members=user)
+            ).distinct()
         campus_network_id = self.request.query_params.get("campus_network_id")
         if campus_network_id:
             qs = qs.filter(campus_network_id=campus_network_id)
@@ -956,7 +983,13 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         responses={
-            "200": {"type": "object", "properties": {"console": {"type": "string"}}}
+            "200": {"type": "object", "properties": {"console": {"type": "string"}}},
+            "404": OpenApiResponse(
+                description=(
+                    "No such entry, or it belongs to a network the requesting "
+                    "user is not permitted to see."
+                )
+            ),
         },
     )
     @action(detail=True, methods=["get"], url_path="console")
@@ -989,7 +1022,13 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
                     "Events: data (log line), done (build finished), "
                     "error (Jenkins unreachable), timeout (30-min cap reached)."
                 ),
-            )
+            ),
+            404: OpenApiResponse(
+                description=(
+                    "No such entry, or it belongs to a network the requesting "
+                    "user is not permitted to see."
+                )
+            ),
         },
     )
     @action(detail=True, methods=["get"], url_path="stream")
@@ -1014,7 +1053,13 @@ class ActionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
                     "skipped": {"type": "integer"},
                     "pass_percentage": {"type": "number"},
                 },
-            }
+            },
+            404: OpenApiResponse(
+                description=(
+                    "No such entry, or it belongs to a network the requesting "
+                    "user is not permitted to see."
+                )
+            ),
         },
     )
     @action(detail=True, methods=["get"], url_path="robot-summary")
