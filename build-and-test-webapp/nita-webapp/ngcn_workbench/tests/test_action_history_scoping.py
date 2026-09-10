@@ -166,9 +166,7 @@ def test_team_membership_does_not_duplicate_rows(
     team = Team.objects.create(name="Team-X", created_by=bob)
     team.members.add(alice)
     for name in ("carol", "dave", "erin"):
-        team.members.add(
-            User.objects.create_user(username=name, password="secret")
-        )
+        team.members.add(User.objects.create_user(username=name, password="secret"))
     shared = _make_network("Shared-Net", bob, campus_type, team=team)
     _make_history(action, shared, action_category)
 
@@ -192,7 +190,8 @@ def test_history_networks_are_subset_of_visible_networks(
 
     client = _client(alice)
     history_names = {
-        h["network_name"] for h in client.get("/api/v1/action-history/").json()["results"]
+        h["network_name"]
+        for h in client.get("/api/v1/action-history/").json()["results"]
     }
     network_names = {
         n["name"] for n in client.get("/api/v1/networks/").json()["results"]
