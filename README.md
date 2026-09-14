@@ -1,7 +1,7 @@
 [branch]: https://github.com/Juniper/nita/tree/23.12
 [readme]: https://github.com/Juniper/nita/blob/23.12/README.md
 
-# NITA Web Application 26.5
+# NITA Web Application 26.9
 
 Welcome to NITA, an open source platform for automating the building and testing of complex networks.
 
@@ -147,24 +147,8 @@ It allows NITA projects to declare exactly which version of NITA they are compat
 Projects must explicitly use the versions of the containers provided by this package in order to avoid docker attempting to download from the registry.
 No containers tagged as "latest" are provided by the package.
 
-## 26.5 New Features and Bug Fixes
+## 26.9
 
-* Upgraded to Django 5.2.1 and Django REST Framework 3.15.2 on Python 3.12.
-* Upgraded python-jenkins to 1.8.3, removing the `six` dependency and resolving
-  a Python 3.12 startup crash caused by the removed `pkgutil.ImpImporter`.
-* Fixed Jenkins CSRF crumb handling — the crumb fetch and `createItem` POST now
-  share the same session cookie, resolving HTTP 403 errors on job creation.
-* Fixed a `logger.debug` format-string bug in `networktypeparser.py` and a
-  missing `filename` key in the `validateZipFile` exception handler.
-* Resolved a pip dependency conflict between `python-jenkins` and `setuptools`.
-* Container security hardening:
-  * Container now runs as a non-root `appuser` (principle of least privilege).
-  * `HEALTHCHECK` instruction added to the Dockerfile.
-  * Removed `--no-check-certificate` from `wget` — TLS verification is now enforced.
-  * OpenAPI spec updated: global security policy, HTTPS-only servers entry, and
-    `maxItems` bounds on all array schemas.
-  * CI workflows locked to `permissions: read-all` with per-job grant overrides.
-* CI upgraded to Python 3.12 across all workflow files.
 * **BREAKING** — The legacy server-rendered UI has been removed and the React
   SPA is now served from the root (`/`). Pages such as `/campustype/`,
   `/campusnetwork/` and `/campus_network/<id>/...` no longer exist. The
@@ -195,6 +179,26 @@ No containers tagged as "latest" are provided by the package.
   Added `GET /api/v1/teams/mine/` so any user can discover their own teams.
 * Frontend: introduced a shared `useApiResource` data-fetching hook and enabled
   ESLint enforcement in CI.
+
+
+## 26.5 New Features and Bug Fixes
+
+* Upgraded to Django 5.2.1 and Django REST Framework 3.15.2 on Python 3.12.
+* Upgraded python-jenkins to 1.8.3, removing the `six` dependency and resolving
+  a Python 3.12 startup crash caused by the removed `pkgutil.ImpImporter`.
+* Fixed Jenkins CSRF crumb handling — the crumb fetch and `createItem` POST now
+  share the same session cookie, resolving HTTP 403 errors on job creation.
+* Fixed a `logger.debug` format-string bug in `networktypeparser.py` and a
+  missing `filename` key in the `validateZipFile` exception handler.
+* Resolved a pip dependency conflict between `python-jenkins` and `setuptools`.
+* Container security hardening:
+  * Container now runs as a non-root `appuser` (principle of least privilege).
+  * `HEALTHCHECK` instruction added to the Dockerfile.
+  * Removed `--no-check-certificate` from `wget` — TLS verification is now enforced.
+  * OpenAPI spec updated: global security policy, HTTPS-only servers entry, and
+    `maxItems` bounds on all array schemas.
+  * CI workflows locked to `permissions: read-all` with per-job grant overrides.
+* CI upgraded to Python 3.12 across all workflow files.
 
 ## 25.10 New Features and Bug Fixes
 
