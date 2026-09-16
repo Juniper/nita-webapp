@@ -180,27 +180,6 @@ No containers tagged as "latest" are provided by the package.
 * Frontend: introduced a shared `useApiResource` data-fetching hook and enabled
   ESLint enforcement in CI.
 
-
-## 26.5 New Features and Bug Fixes
-
-* Upgraded to Django 5.2.1 and Django REST Framework 3.15.2 on Python 3.12.
-* Upgraded python-jenkins to 1.8.3, removing the `six` dependency and resolving
-  a Python 3.12 startup crash caused by the removed `pkgutil.ImpImporter`.
-* Fixed Jenkins CSRF crumb handling — the crumb fetch and `createItem` POST now
-  share the same session cookie, resolving HTTP 403 errors on job creation.
-* Fixed a `logger.debug` format-string bug in `networktypeparser.py` and a
-  missing `filename` key in the `validateZipFile` exception handler.
-* Resolved a pip dependency conflict between `python-jenkins` and `setuptools`.
-* Container security hardening:
-  * Container now runs as a non-root `appuser` (principle of least privilege).
-  * `HEALTHCHECK` instruction added to the Dockerfile.
-  * Removed `--no-check-certificate` from `wget` — TLS verification is now enforced.
-  * OpenAPI spec updated: global security policy, HTTPS-only servers entry, and
-    `maxItems` bounds on all array schemas.
-  * CI workflows locked to `permissions: read-all` with per-job grant overrides.
-* CI upgraded to Python 3.12 across all workflow files.
-
-
 ## 26.5 New Features and Bug Fixes
 
 * Upgraded to Django 5.2.1 and Django REST Framework 3.15.2 on Python 3.12.
