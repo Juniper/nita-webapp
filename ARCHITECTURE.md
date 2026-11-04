@@ -135,3 +135,49 @@ holds the current requirements; a proposed change lives in
 moved to `openspec/changes/archive/<date>-<name>/` once its deltas have been
 merged back into the main specs. When changing behaviour, update the relevant
 capability spec in the same change.
+
+## How the SSO works
+
+It's **header-based identity propagation**, not a shared login or OIDC. The webapp is the only identity provider; Jenkins has no user database and simply trusts two HTTP headers that only the proxy and the webapp pod can set. The trust boundary is the network, not a secret.
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant N as nginx proxy
+  participant W as Webapp (Django)
+  participant J as Jenkins
+  B->>N: GET /jenkins/job/x/ (sessionid cookie)
+  N->>W: auth_request GET /api/v1/auth/forward/ (cookie only, no body)
+  W-->>N: 200 + X-Auth-User: alice, X-Auth-Groups: user|team-3
+  N->>J: GET /jenkins/job/x/ + X-Forwarded-User: alice, X-Forwarded-Groups: user|team-3 (client's Authorization stripped)
+  J-->>B: page, with alice's permissions
+  Note over W,J: Webapp→Jenkins API calls set the same headers directly (user for action triggers, service identity for management jobs)
+```
+
+### The three layers
+
+**1. Webapp — the identity source**
+- `views.py:235` `forward_auth_view`: session-only (`LabSessionAuthentication`, no tokens), returns `200` with `X-Auth-User`, `X-Auth-Role`, `X-Auth-Groups`; otherwise `401/403`. Never touches the DB.
+- `jenkins_config.py:41-58`: `jenkins_groups_for(user)` = `[role, team-<id>, …]`; `jenkins_identity_headers()` builds `X-Forwarded-User/Groups`; `_make_jenkins_server()` is a python-jenkins client with those headers and **no password**. `JENKINS_PASS` is unused.
+- `jenkins_jobs.py:89` `invoke_job(..., initiated_by=user)`: action triggers act *as the user* (so Jenkins records `Started by user alice` and applies her job permissions); `initiated_by=None` runs as the `JENKINS_USER` service identity — used for `network_template_mgr` / `network_type_validator`, console/Robot relays, status polling, and the bootstrap scripts (`ping_jenkins.py`, `configure_jenkins.py`, `add_jenkins_job.py`).
+
+**2. nginx — the gate and the courier** (`nginx.conf:46-65`)
+- `auth_request /_auth/jenkins` (an `internal` location) on everything under `/jenkins/`; denial → `302 /login?next=<uri>`; `LoginPage` follows `next` only if it's a same-origin relative path.
+- `auth_request_set` copies `X-Auth-User/Groups` into `X-Forwarded-User/Groups`, which **overrides anything the client sent**, and `Authorization` is blanked — so header spoofing from the browser is impossible.
+
+**3. Jenkins — the consumer** (`basic-security.groovy:32-54`, seeded as `.override` so existing homes converge on every start)
+- `ReverseProxySecurityRealm` in header mode (`reverse-proxy-auth-plugin`): username from `X-Forwarded-User`, groups from `X-Forwarded-Groups` (`|`-delimited); no header → anonymous. Password Basic auth → 401 (only API tokens would work).
+- `ProjectMatrixAuthorizationStrategy` mirroring the webapp roles: `admin` → Administer; `power_user` → Read/Build/Cancel on all; `authenticated` → Overall/Read only; anonymous → nothing.
+- Per-network grants come from the webapp: `network_template_mgr` (`network_template_mgr.xml:302`) writes an `AuthorizationMatrixProperty` into each generated job — owner **and** `team-<id>` get Read/Build/Cancel — on create, and `operation=acl` re-applies it when the team changes or ownership is transferred (`sync_network_acl`). Management jobs carry no per-job grants, so regular users can't reach them. Network *deletion* isn't a Jenkins permission at all — it's a webapp operation gated by `IsOwnerOrTeamMemberOrAdmin` (owner/power/admin only).
+- CSRF stays on (`DefaultCrumbIssuer(true)`); the webapp fetches crumbs per request.
+
+**Network enforcement** (`jenkins-network-policy.yaml`): Jenkins 8080 accepts ingress only from the proxy, webapp and Jenkins pods; the old `hostPort 8443` is gone. This is what makes trusting the headers safe — nothing else can reach Jenkins to assert an identity.
+
+### Where it's specified
+- `gate-jenkins-behind-webapp-session` — forward-auth contract (`auth`), proxy gate + header propagation (`jenkins-reverse-proxy`), attribution & per-network ACL mirror (`jenkins-trigger-security`), login `next`, sidebar shortcut.
+- `let-team-members-operate-shared-networks` — team members operate but can't delete/re-share (and the `get_object()` fix for sub-actions).
+- `revoke-anonymous-build-and-enable-csrf` — realm, project matrix, CSRF, `.override` seeding.
+- `close-jenkins-direct-exposure` — 8443 removal + NetworkPolicy.
+
+### Setup status
+Fully deployed on this host and verified live (identity, groups, spoof resistance, attribution, per-network isolation, team edit/trigger vs. delete). All four changes pass `openspec validate --strict`. The code is **uncommitted** on the `jenkins-auth` branches in `nita`, `nita-webapp`, `nita-jenkins` (plus one new untracked change dir and `NetworksPage.test.tsx`), and the images are node-local only (`nita-webapp:jenkins-auth-team2`, `nita-jenkins:jenkins-auth-acl`), not on GHCR. Two caveats: the webapp generated a pending migration (`0008_…`) at startup that should be committed, and the host-installed `/usr/local/bin/nita-cmd_*` symlinks still point at the old scripts (needs root to refresh).
