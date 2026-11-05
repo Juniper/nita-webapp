@@ -89,7 +89,8 @@ def _mock_jenkins(monkeypatch):
         lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/build"}},
     )
     monkeypatch.setattr(
-        "ngcn.jenkins_config._make_jenkins_server", lambda acting_user=None: _FakeServer()
+        "ngcn.jenkins_config._make_jenkins_server",
+        lambda acting_user=None: _FakeServer(),
     )
     monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", _FakeJenkinsClient)
     monkeypatch.setattr(

@@ -120,7 +120,10 @@ def _sync_networks_acl(networks):
         try:
             jenkins_jobs.sync_network_acl(network)
         except Exception as exc:
-            logger.error("Jenkins ACL sync failed for network %s: %s", network.name, exc)
+            logger.error(
+                "Jenkins ACL sync failed for network %s: %s", network.name, exc
+            )
+
 
 # ── Session auth views ─────────────────────────────────────────────────────────
 

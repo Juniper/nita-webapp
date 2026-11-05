@@ -41,7 +41,9 @@ def jenkins_team_group(team_id):
 def jenkins_groups_for(user):
     """Jenkins groups mirroring the webapp model: the role plus one group per team."""
     groups = [getattr(user, "role", "") or ""]
-    groups += [jenkins_team_group(tid) for tid in user.teams.values_list("id", flat=True)]
+    groups += [
+        jenkins_team_group(tid) for tid in user.teams.values_list("id", flat=True)
+    ]
     return [g for g in groups if g]
 
 

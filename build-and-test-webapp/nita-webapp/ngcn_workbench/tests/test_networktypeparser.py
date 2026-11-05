@@ -224,7 +224,9 @@ def test_update_network_type_details_on_db_creates_actions(
 
 
 @pytest.mark.django_db
-def test_parse_project_file_invokes_validator_as_service_identity(tmp_path, monkeypatch):
+def test_parse_project_file_invokes_validator_as_service_identity(
+    tmp_path, monkeypatch
+):
     import ngcn.jenkins_jobs as jenkins_jobs
     import ngcn.networktypeparser as networktypeparser
     import ngcn.utils as ngcn_utils
@@ -262,7 +264,9 @@ def test_parse_project_file_invokes_validator_as_service_identity(tmp_path, monk
             pass
 
     monkeypatch.setattr(
-        networktypeparser, "_make_jenkins_server", lambda acting_user=None: FakeJenkins()
+        networktypeparser,
+        "_make_jenkins_server",
+        lambda acting_user=None: FakeJenkins(),
     )
     initiators = []
     monkeypatch.setattr(

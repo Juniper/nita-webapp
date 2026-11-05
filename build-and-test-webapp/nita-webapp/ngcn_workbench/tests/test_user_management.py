@@ -294,21 +294,34 @@ def test_team_member_can_edit_but_not_delete_or_reshare(
     # Storage is not under test here; only authorization is.
     from ngcn.api import views as api_views
 
-    monkeypatch.setattr(api_views.GridDataManager, "get_sheets_by_campus_network", lambda self, pk: [])
-    monkeypatch.setattr(api_views.GridDataManager, "create_or_update_db", lambda self, pk, data: None)
-    monkeypatch.setattr(api_views.GridDataManager, "delete_workbook", lambda self, pk: None)
+    monkeypatch.setattr(
+        api_views.GridDataManager, "get_sheets_by_campus_network", lambda self, pk: []
+    )
+    monkeypatch.setattr(
+        api_views.GridDataManager, "create_or_update_db", lambda self, pk, data: None
+    )
+    monkeypatch.setattr(
+        api_views.GridDataManager, "delete_workbook", lambda self, pk: None
+    )
     client = _client(regular_user)
 
     # Editing values is allowed.
     resp = client.patch(
-        f"/api/v1/networks/{net.id}/", {"description": "edited", "host_file": "h2"}, format="json"
+        f"/api/v1/networks/{net.id}/",
+        {"description": "edited", "host_file": "h2"},
+        format="json",
     )
     assert resp.status_code == 200
     net.refresh_from_db()
     assert (net.description, net.host_file) == ("edited", "h2")
-    resp = client.post(f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json")
+    resp = client.post(
+        f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json"
+    )
     assert resp.status_code == 200
-    assert client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code in (200, 204)
+    assert client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code in (
+        200,
+        204,
+    )
 
     # Sending the current team unchanged is still an edit.
     resp = client.patch(f"/api/v1/networks/{net.id}/", {"team": team.id}, format="json")
@@ -327,7 +340,9 @@ def test_team_member_can_edit_but_not_delete_or_reshare(
 
 
 @pytest.mark.django_db
-def test_team_member_can_trigger_shared_network(regular_user, campus_type, action, monkeypatch):
+def test_team_member_can_trigger_shared_network(
+    regular_user, campus_type, action, monkeypatch
+):
     import jenkinsapi.jenkins as jenkinsapi_jenkins
     import jenkinsapi.utils.crumb_requester as jenkinsapi_crumb
     from ngcn.api import views as api_views
@@ -352,11 +367,15 @@ def test_team_member_can_trigger_shared_network(regular_user, campus_type, actio
 
     monkeypatch.setattr(api_views, "create_workbook_from_db", lambda pk: "test.xlsx")
     monkeypatch.setattr(
-        api_views, "create_new_inv", lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/b"}}
+        api_views,
+        "create_new_inv",
+        lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/b"}},
     )
     monkeypatch.setattr(
         "ngcn.jenkins_config._make_jenkins_server",
-        lambda acting_user=None: SimpleNamespace(get_job_info=lambda n: {"nextBuildNumber": 5}),
+        lambda acting_user=None: SimpleNamespace(
+            get_job_info=lambda n: {"nextBuildNumber": 5}
+        ),
     )
     monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", FakeClient)
     monkeypatch.setattr(
@@ -381,11 +400,23 @@ def test_non_member_cannot_write_shared_network(regular_user, campus_type):
     team = Team.objects.create(name="T", created_by=bob)
     net = _make_network("Shared-Net", bob, campus_type, team=team)
     client = _client(regular_user)
-    assert client.patch(f"/api/v1/networks/{net.id}/", {"description": "x"}, format="json").status_code == 404
+    assert (
+        client.patch(
+            f"/api/v1/networks/{net.id}/", {"description": "x"}, format="json"
+        ).status_code
+        == 404
+    )
     assert client.delete(f"/api/v1/networks/{net.id}/").status_code == 404
     assert client.get(f"/api/v1/networks/{net.id}/workbook/").status_code == 404
-    assert client.post(f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json").status_code == 404
-    assert client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code == 404
+    assert (
+        client.post(
+            f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json"
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code == 404
+    )
 
 
 @pytest.mark.django_db

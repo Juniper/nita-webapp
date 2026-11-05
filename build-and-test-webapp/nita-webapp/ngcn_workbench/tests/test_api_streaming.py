@@ -119,7 +119,9 @@ def test_progressive_text_request_asserts_service_identity(monkeypatch):
     from ngcn import jenkins_config
     from ngcn.jenkins_jobs import progressive_text_events
 
-    monkeypatch.setattr(jenkins_config, "JENKINS_SERVER_URL", "http://jenkins:8080/jenkins")
+    monkeypatch.setattr(
+        jenkins_config, "JENKINS_SERVER_URL", "http://jenkins:8080/jenkins"
+    )
     monkeypatch.setattr(jenkins_config, "JENKINS_SERVER_USER", "service-user")
     monkeypatch.setattr("ngcn.jenkins_jobs.time.sleep", lambda _seconds: None)
 

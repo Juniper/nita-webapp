@@ -82,7 +82,9 @@ def add_job(job_name, file_name):
             )
             try:
                 with opener.open(update_req, timeout=30) as resp:
-                    print(f"Job '{job_name}' already exists; definition updated: HTTP {resp.status}")
+                    print(
+                        f"Job '{job_name}' already exists; definition updated: HTTP {resp.status}"
+                    )
             except Exception as update_err:
                 print(f"Error while updating job '{job_name}': {update_err}")
         else:
