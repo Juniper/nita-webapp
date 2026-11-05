@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import { useAuth } from '../context/useAuth'
 import { Logo } from '../components/Logo'
@@ -9,6 +9,7 @@ import type { User } from '../context/auth-context'
 export function LoginPage() {
   const { setUser } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +31,14 @@ export function LoginPage() {
         const meRes = await apiFetch('/api/v1/auth/me/')
         if (meRes.ok) user = (await meRes.json()) as User
         setUser(user)
-        navigate('/')
+        const next = new URLSearchParams(location.search).get('next')
+        const destination =
+          next?.startsWith('/') &&
+          !next.startsWith('//') &&
+          !next.includes('\\')
+            ? next
+            : '/'
+        navigate(destination)
       } else {
         const body = await res.json().catch(() => ({}))
         setError((body as { detail?: string }).detail ?? 'Login failed.')

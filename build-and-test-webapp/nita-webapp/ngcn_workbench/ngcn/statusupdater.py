@@ -1,18 +1,13 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import jenkins
 import logging
 import threading
 import time
 import traceback
 
 from ngcn.models import ActionHistory
-from ngcn.jenkins_config import (
-    JENKINS_SERVER_PASS,
-    JENKINS_SERVER_URL,
-    JENKINS_SERVER_USER,
-)
+from ngcn.jenkins_config import _make_jenkins_server
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +29,7 @@ class StatusUpdater:
 
     def getBuildStatus(self, build_name, build_no):
         if self.SERVER is None:
-            StatusUpdater.SERVER = jenkins.Jenkins(
-                JENKINS_SERVER_URL,
-                username=JENKINS_SERVER_USER,
-                password=JENKINS_SERVER_PASS,
-            )
+            StatusUpdater.SERVER = _make_jenkins_server()
         buildStatus = None
         RESULT = "result"
         try:

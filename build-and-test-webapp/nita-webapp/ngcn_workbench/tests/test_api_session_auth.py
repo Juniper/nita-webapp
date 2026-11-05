@@ -9,6 +9,7 @@ GET  /api/v1/auth/me/
 """
 
 import pytest
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
@@ -106,3 +107,57 @@ def test_me_unauthenticated_returns_403(api_client):
     """Unauthenticated me request is rejected."""
     response = api_client.get("/api/v1/auth/me/")
     assert response.status_code in (401, 403)
+
+
+# ── GET /api/v1/auth/forward/ ──────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_forward_auth_session_returns_identity_headers(user):
+    client = APIClient()
+    client.force_login(user)
+
+    response = client.get("/api/v1/auth/forward/")
+
+    assert response.status_code == 200
+    assert response.content == b""
+    assert response["X-Auth-User"] == "tester"
+    assert response["X-Auth-Role"] == "admin"
+    assert response["X-Auth-Groups"] == "admin"
+
+
+@pytest.mark.django_db
+def test_forward_auth_groups_include_teams(user):
+    from ngcn.models import Team
+
+    team = Team.objects.create(name="netops", created_by=user)
+    team.members.add(user)
+    client = APIClient()
+    client.force_login(user)
+
+    response = client.get("/api/v1/auth/forward/")
+
+    assert response["X-Auth-Groups"] == f"admin|team-{team.id}"
+
+
+@pytest.mark.django_db
+def test_forward_auth_rejects_missing_session():
+    response = APIClient().get("/api/v1/auth/forward/")
+
+    assert response.status_code in (401, 403)
+    assert "X-Auth-User" not in response
+    assert "X-Auth-Role" not in response
+
+
+@pytest.mark.django_db
+def test_forward_auth_rejects_valid_token_without_session(user):
+    token = Token.objects.create(user=user)
+
+    response = APIClient().get(
+        "/api/v1/auth/forward/",
+        HTTP_AUTHORIZATION=f"Token {token.key}",
+    )
+
+    assert response.status_code in (401, 403)
+    assert "X-Auth-User" not in response
+    assert "X-Auth-Role" not in response

@@ -1,7 +1,6 @@
 # Copyright (c) Hewlett Packard Enterprise, 2026. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
 import http.cookiejar
 import json
 import os
@@ -16,14 +15,11 @@ JENKINS_SERVER_URL = (
     "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
 )
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
-JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 
-def _auth_header() -> str:
-    credentials = base64.b64encode(
-        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
-    ).decode()
-    return f"Basic {credentials}"
+def _identity_headers() -> dict:
+    # Jenkins' reverse-proxy realm trusts this header from the webapp container.
+    return {"X-Forwarded-User": JENKINS_SERVER_USER}
 
 
 def add_job(job_name, file_name):
@@ -44,7 +40,7 @@ def add_job(job_name, file_name):
     try:
         crumb_req = urllib.request.Request(
             f"{JENKINS_SERVER_URL}/crumbIssuer/api/json",
-            headers={"Authorization": _auth_header()},
+            headers=_identity_headers(),
         )
         with opener.open(crumb_req, timeout=10) as resp:
             body = json.loads(resp.read())
@@ -65,7 +61,7 @@ def add_job(job_name, file_name):
     print("Jenkins server: " + JENKINS_SERVER_URL)
     url = f"{JENKINS_SERVER_URL}/createItem?name={urllib.parse.quote(job_name)}"
     headers = {
-        "Authorization": _auth_header(),
+        **_identity_headers(),
         "Content-Type": "text/xml; charset=utf-8",
     }
     headers.update(crumb_headers)
@@ -77,7 +73,20 @@ def add_job(job_name, file_name):
             print(f"Job '{job_name}' created: HTTP {resp.status}")
     except urllib.error.HTTPError as e:
         if e.code == 400:
-            print(f"Job '{job_name}' already exists (HTTP 400), skipping.")
+            # Already exists: push the shipped definition so upgrades take effect.
+            update_req = urllib.request.Request(
+                f"{JENKINS_SERVER_URL}/job/{urllib.parse.quote(job_name)}/config.xml",
+                data=xml.encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
+            try:
+                with opener.open(update_req, timeout=30) as resp:
+                    print(
+                        f"Job '{job_name}' already exists; definition updated: HTTP {resp.status}"
+                    )
+            except Exception as update_err:
+                print(f"Error while updating job '{job_name}': {update_err}")
         else:
             body_text = ""
             try:

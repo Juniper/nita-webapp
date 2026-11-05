@@ -7,6 +7,8 @@ Covers: self-registration, roles + me endpoint, teams, network ownership
 scoping, network-type curation, permission classes, and the admin user API.
 """
 
+from types import SimpleNamespace
+
 import pytest
 from django.contrib.auth import get_user_model
 from ngcn.api.permissions import (
@@ -272,15 +274,149 @@ def test_admin_sees_all_networks(admin_user, regular_user, campus_type):
 
 
 @pytest.mark.django_db
-def test_team_member_cannot_modify_shared_network(regular_user, campus_type):
+def test_team_member_can_edit_but_not_delete_or_reshare(
+    regular_user, campus_type, monkeypatch
+):
+    import ngcn.jenkins_jobs as jenkins_jobs
+
+    bob = User.objects.create_user(username="bob", password="secret")
+    team = Team.objects.create(name="T", created_by=bob)
+    team.members.add(regular_user)
+    other_team = Team.objects.create(name="T2", created_by=bob)
+    other_team.members.add(regular_user)
+    net = _make_network("Shared-Net", bob, campus_type, team=team)
+    calls = []
+    monkeypatch.setattr(
+        jenkins_jobs,
+        "invoke_job",
+        lambda *a, **kw: calls.append(kw.get("build_params", {})) or 1,
+    )
+    # Storage is not under test here; only authorization is.
+    from ngcn.api import views as api_views
+
+    monkeypatch.setattr(
+        api_views.GridDataManager, "get_sheets_by_campus_network", lambda self, pk: []
+    )
+    monkeypatch.setattr(
+        api_views.GridDataManager, "create_or_update_db", lambda self, pk, data: None
+    )
+    monkeypatch.setattr(
+        api_views.GridDataManager, "delete_workbook", lambda self, pk: None
+    )
+    client = _client(regular_user)
+
+    # Editing values is allowed.
+    resp = client.patch(
+        f"/api/v1/networks/{net.id}/",
+        {"description": "edited", "host_file": "h2"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    net.refresh_from_db()
+    assert (net.description, net.host_file) == ("edited", "h2")
+    resp = client.post(
+        f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json"
+    )
+    assert resp.status_code == 200
+    assert client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code in (
+        200,
+        204,
+    )
+
+    # Sending the current team unchanged is still an edit.
+    resp = client.patch(f"/api/v1/networks/{net.id}/", {"team": team.id}, format="json")
+    assert resp.status_code == 200
+
+    # Re-sharing / un-sharing and deleting are owner-level decisions.
+    for payload in ({"team": other_team.id}, {"team": None}):
+        resp = client.patch(f"/api/v1/networks/{net.id}/", payload, format="json")
+        assert resp.status_code == 403, payload
+    net.refresh_from_db()
+    assert net.team_id == team.id
+    resp = client.delete(f"/api/v1/networks/{net.id}/")
+    assert resp.status_code == 403
+    assert CampusNetwork.objects.filter(pk=net.pk).exists()
+    assert calls == []  # no delete job was queued
+
+
+@pytest.mark.django_db
+def test_team_member_can_trigger_shared_network(
+    regular_user, campus_type, action, monkeypatch
+):
+    import jenkinsapi.jenkins as jenkinsapi_jenkins
+    import jenkinsapi.utils.crumb_requester as jenkinsapi_crumb
+    from ngcn.api import views as api_views
+    from ngcn.models import ActionHistory, Workbook
+
     bob = User.objects.create_user(username="bob", password="secret")
     team = Team.objects.create(name="T", created_by=bob)
     team.members.add(regular_user)
     net = _make_network("Shared-Net", bob, campus_type, team=team)
-    resp = _client(regular_user).patch(
-        f"/api/v1/networks/{net.id}/", {"description": "hacked"}, format="json"
+    Workbook.objects.create(name="wb", campus_network_id=net)
+
+    class FakeJob:
+        def invoke(self, **kwargs):
+            pass
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            FakeClient.requester = kw.get("requester")
+
+        def get_job(self, name):
+            return FakeJob()
+
+    monkeypatch.setattr(api_views, "create_workbook_from_db", lambda pk: "test.xlsx")
+    monkeypatch.setattr(
+        api_views,
+        "create_new_inv",
+        lambda name: {"group_vars/all.yaml": {"build_dir": "/tmp/b"}},
     )
-    assert resp.status_code == 403
+    monkeypatch.setattr(
+        "ngcn.jenkins_config._make_jenkins_server",
+        lambda acting_user=None: SimpleNamespace(
+            get_job_info=lambda n: {"nextBuildNumber": 5}
+        ),
+    )
+    monkeypatch.setattr(jenkinsapi_jenkins, "Jenkins", FakeClient)
+    monkeypatch.setattr(
+        jenkinsapi_crumb,
+        "CrumbRequester",
+        lambda *a, **kw: SimpleNamespace(session=SimpleNamespace(headers={})),
+    )
+
+    resp = _client(regular_user).post(f"/api/v1/networks/{net.id}/trigger/{action.id}/")
+
+    assert resp.status_code == 202
+    history = ActionHistory.objects.get(id=resp.json()["action_history_id"])
+    assert history.triggered_by_username == regular_user.username
+    headers = FakeClient.requester.session.headers
+    assert headers["X-Forwarded-User"] == regular_user.username
+    assert f"team-{team.id}" in headers["X-Forwarded-Groups"].split("|")
+
+
+@pytest.mark.django_db
+def test_non_member_cannot_write_shared_network(regular_user, campus_type):
+    bob = User.objects.create_user(username="bob", password="secret")
+    team = Team.objects.create(name="T", created_by=bob)
+    net = _make_network("Shared-Net", bob, campus_type, team=team)
+    client = _client(regular_user)
+    assert (
+        client.patch(
+            f"/api/v1/networks/{net.id}/", {"description": "x"}, format="json"
+        ).status_code
+        == 404
+    )
+    assert client.delete(f"/api/v1/networks/{net.id}/").status_code == 404
+    assert client.get(f"/api/v1/networks/{net.id}/workbook/").status_code == 404
+    assert (
+        client.post(
+            f"/api/v1/networks/{net.id}/workbook/save/", {"data": []}, format="json"
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(f"/api/v1/networks/{net.id}/workbook/clear/").status_code == 404
+    )
 
 
 @pytest.mark.django_db
@@ -447,16 +583,18 @@ def test_permission_classes_unit(admin_user, power_user, regular_user, campus_ty
     team = Team.objects.create(name="T", created_by=regular_user)
     team.members.add(bob)
     shared = _make_network("S", regular_user, campus_type, team=team)
-    # Team member: read yes, write no.
+    # Team member: read and edit yes; delete no.
+    perm = IsOwnerOrTeamMemberOrAdmin()
+    assert perm.has_object_permission(req(bob, "get"), None, shared) is True
     assert (
-        IsOwnerOrTeamMemberOrAdmin().has_object_permission(
-            req(bob, "get"), None, shared
+        perm.has_object_permission(
+            req(bob, "patch"), SimpleNamespace(action="partial_update"), shared
         )
         is True
     )
     assert (
-        IsOwnerOrTeamMemberOrAdmin().has_object_permission(
-            req(bob, "patch"), None, shared
+        perm.has_object_permission(
+            req(bob, "delete"), SimpleNamespace(action="destroy"), shared
         )
         is False
     )

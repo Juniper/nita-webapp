@@ -2,17 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import configparser
-import jenkins
 import logging
 from time import sleep
 
 from django.conf import settings
 
-from ngcn.jenkins_config import (
-    JENKINS_SERVER_PASS,
-    JENKINS_SERVER_URL,
-    JENKINS_SERVER_USER,
-)
+from ngcn.jenkins_config import JENKINS_SERVER_URL, _make_jenkins_server
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +63,7 @@ def wait_and_get_build_status(action_url, build_number):
 
 
 def getBuildStatus(build_name, build_no):
-    SERVER = jenkins.Jenkins(
-        JENKINS_SERVER_URL, username=JENKINS_SERVER_USER, password=JENKINS_SERVER_PASS
-    )
+    SERVER = _make_jenkins_server()
     buildStatus = None
     RESULT = "result"
     try:

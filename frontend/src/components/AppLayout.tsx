@@ -48,6 +48,16 @@ function Sidebar() {
           User Management
         </NavLink>
       )}
+      {/* Served by the proxy outside the SPA, so a plain anchor rather than a NavLink. */}
+      <a
+        href="/jenkins/"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open Jenkins (signed in with your webapp session)"
+        className={navClass({ isActive: false })}
+      >
+        Jenkins ↗
+      </a>
     </nav>
   )
 }

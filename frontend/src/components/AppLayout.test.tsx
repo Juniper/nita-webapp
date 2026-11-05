@@ -61,3 +61,19 @@ describe('AppLayout brand mark', () => {
     expect(screen.getByText('page content')).toBeInTheDocument()
   })
 })
+
+describe('AppLayout sidebar Jenkins shortcut', () => {
+  it('links to the proxied Jenkins home in a new tab', () => {
+    renderLayout()
+    const link = screen.getByRole('link', { name: /Jenkins ↗/ })
+    expect(link).toHaveAttribute('href', '/jenkins/')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('is the last sidebar entry', () => {
+    const { container } = renderLayout()
+    const entries = container.querySelectorAll('nav > a')
+    expect(entries[entries.length - 1]).toHaveTextContent('Jenkins ↗')
+  })
+})

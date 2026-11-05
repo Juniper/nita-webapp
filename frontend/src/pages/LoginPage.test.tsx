@@ -1,20 +1,58 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { apiFetch } from '../api/client'
 import { LoginPage } from './LoginPage'
 
 vi.mock('../api/client', () => ({
-  apiFetch: vi.fn(() => Promise.resolve({ ok: false, status: 403 } as Response)),
+  apiFetch: vi.fn(),
   clearCsrfCache: () => {},
 }))
 
-function renderLogin() {
+const mockedApiFetch = vi.mocked(apiFetch)
+
+function renderLogin(initialEntry = '/login') {
   return render(
-    <MemoryRouter>
-      <LoginPage />
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/jenkins/*" element={<p>Jenkins page</p>} />
+        <Route path="/" element={<p>Home page</p>} />
+        <Route path="*" element={<p>Unknown page</p>} />
+      </Routes>
     </MemoryRouter>,
   )
 }
+
+function mockSuccessfulLogin() {
+  mockedApiFetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 1, username: 'tester', is_superuser: false }),
+    } as Response)
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 1,
+        username: 'tester',
+        is_superuser: false,
+        role: 'admin',
+        teams: [],
+      }),
+    } as Response)
+}
+
+async function submitLogin() {
+  fireEvent.change(screen.getByLabelText('Username'), {
+    target: { value: 'tester' },
+  })
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'secret' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+}
+
+beforeEach(() => mockedApiFetch.mockReset())
 
 describe('LoginPage brand mark', () => {
   it('renders the brand mark', () => {
@@ -48,5 +86,30 @@ describe('LoginPage brand mark', () => {
     const mark = container.querySelector('svg')!
     expect(mark.closest('a')).toBeNull()
     expect(mark.closest('button')).toBeNull()
+  })
+})
+
+describe('LoginPage next destination', () => {
+  it('returns to a safe relative path after login', async () => {
+    mockSuccessfulLogin()
+    renderLogin('/login?next=%2Fjenkins%2Fjob%2Ftest-robot-net1%2F')
+
+    await submitLogin()
+
+    expect(await screen.findByText('Jenkins page')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['/login?next=//evil.example/', 'protocol-relative path'],
+    ['/login?next=https%3A%2F%2Fevil.example%2F', 'absolute URL'],
+    ['/login?next=%5C%5Cevil.example', 'backslash path'],
+    ['/login', 'missing next'],
+  ])('falls back to home for %s (%s)', async (entry) => {
+    mockSuccessfulLogin()
+    renderLogin(entry)
+
+    await submitLogin()
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
   })
 })

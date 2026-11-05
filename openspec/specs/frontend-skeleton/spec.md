@@ -1,5 +1,10 @@
-## ADDED Requirements
+# frontend-skeleton Specification
 
+## Purpose
+Initial React SPA scaffold: Vite/TypeScript build tooling, client-side
+routing, auth context, CSRF-aware API client, login page, dashboard shell, and
+document identity.
+## Requirements
 ### Requirement: SPA Build Tooling
 The system SHALL provide a `frontend/` directory at the repo root containing a Vite + React 18 + TypeScript project buildable with `npm run build`. The project SHALL use `@vitejs/plugin-react` and emit static assets to `frontend/dist/`.
 
