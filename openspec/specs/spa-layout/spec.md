@@ -1,4 +1,9 @@
-## ADDED Requirements
+# spa-layout Specification
+
+## Purpose
+Persistent application chrome for authenticated pages: `AppLayout` header,
+sidebar navigation (including role-gated entries) and the SPA route allowlist.
+## Requirements
 
 ### Requirement: AppLayout provides persistent application chrome
 The SPA SHALL have an `AppLayout` component that renders a top header and left sidebar around its `children`. All authenticated pages SHALL use `AppLayout` as their outermost wrapper.

@@ -14,6 +14,19 @@ policies.
 
 Please refer to the [README][readme] for more details.
 
+The Jenkins UI now requires an authenticated webapp session and redirects
+unauthenticated visitors through login back to the requested Jenkins page. The
+webapp session is also your Jenkins identity: the proxy forwards the webapp
+username, role and team memberships to Jenkins, builds started from the webapp
+are recorded as *Started by user <username>*, and Jenkins access mirrors the
+webapp — admins administer Jenkins, power users see every job, regular users
+only see the jobs of networks they own or that are shared with their team
+(read/build/cancel in both cases). Team members can edit a shared network's
+values and run its actions, but only the owner, a power user or an admin can
+delete it or change which team it is shared with. There is no separate Jenkins
+login; the webapp asserts its service identity (`JENKINS_USER`) to Jenkins by
+header and no longer uses `JENKINS_PASS`.
+
 # Installing
 
 The simplest way to install the nita-webapp is by installing nita, which can be done by running the ``install.sh`` script located and in the parent [nita repo][branch] as described [here][readme].
@@ -32,12 +45,14 @@ Jenkins runs behind the same proxy under the `/jenkins` path prefix
 
 ## Default User Credentials
 
-The default user credentials for the NITA webapp and Jenkins are listed below:
+The default user credentials for the NITA webapp are listed below. Jenkins has
+no separate login: signing in to the webapp signs you in to Jenkins with the
+same username, and your webapp role (`user`, `power_user`, `admin`) plus your
+teams (`team-<id>`) are your Jenkins groups.
 
 | | Username | Password |
 |---|---|---|
 | Webapp| vagrant | vagrant123 |
-| Jenkins | admin | admin|
 
 ## User Onboarding
 
@@ -155,6 +170,15 @@ No containers tagged as "latest" are provided by the package.
   `django_tables2` dependency was dropped.
 * **BREAKING** — Jenkins is now served through the webapp proxy at
   `https://<host>/jenkins/` instead of on port 8443.
+* **BREAKING** — Jenkins no longer has its own user database. The proxy
+  forwards the webapp session identity (`X-Forwarded-User` / `X-Forwarded-Groups`)
+  and Jenkins trusts it (Reverse Proxy Auth realm); builds triggered from the
+  webapp are attributed to the real user. `JENKINS_PASS` is no longer used by
+  the webapp.
+* Team members can now operate networks shared with their team: edit hosts and
+  workbook values and trigger actions (in the webapp and in Jenkins). Deleting
+  a network or changing its team remains owner / power user / admin only, and
+  the Delete control is hidden from everyone else.
 * **BREAKING** — Deleting a network type is refused with `409 Conflict` while
   networks still reference it. Previously the delete cascaded and silently
   removed those networks; the referencing networks must now be deleted first.

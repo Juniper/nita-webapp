@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { apiFetch } from '../api/client'
+import { useAuth, useIsPowerUser } from '../context/useAuth'
 import { useApiResource } from '../hooks/useApiResource'
 import { LifecycleConsolePanel } from '../components/LifecycleConsole'
 import { useJenkinsStream } from '../components/lifecycle-stream'
@@ -49,6 +50,11 @@ export function NetworksPage() {
     setError,
   } = useApiResource<PaginatedNetworks>('/api/v1/networks/')
   const networks = data?.results ?? []
+  const { user } = useAuth()
+  const isPowerUser = useIsPowerUser()
+  // Team members may operate a shared network but not delete it; the backend
+  // enforces this, the UI just avoids offering a guaranteed 403.
+  const canDelete = (n: Network) => isPowerUser || (!!user && n.owner_username === user.username)
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [networkTypes, setNetworkTypes] = useState<NetworkType[]>([])
@@ -298,7 +304,7 @@ export function NetworksPage() {
                       >
                         History
                       </Link>
-                      {confirmDeleteId === n.id ? (
+                      {!canDelete(n) ? null : confirmDeleteId === n.id ? (
                         <>
                           <button
                             onClick={() => handleDelete(n.id)}
