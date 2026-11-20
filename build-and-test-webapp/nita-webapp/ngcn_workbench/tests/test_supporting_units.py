@@ -49,7 +49,9 @@ def test_parse_workbook_accepts_nested_group_vars_path(monkeypatch):
     monkeypatch.setattr(
         workbook_module,
         "Workbook",
-        SimpleNamespace(objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())),
+        SimpleNamespace(
+            objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())
+        ),
     )
     monkeypatch.setattr(workbook_module, "GridDataManager", FakeGridDataManager)
 
@@ -96,7 +98,9 @@ def test_parse_workbook_skips_header_only_sheet(monkeypatch):
     monkeypatch.setattr(
         workbook_module,
         "Workbook",
-        SimpleNamespace(objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())),
+        SimpleNamespace(
+            objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())
+        ),
     )
     monkeypatch.setattr(workbook_module, "GridDataManager", FakeGridDataManager)
 

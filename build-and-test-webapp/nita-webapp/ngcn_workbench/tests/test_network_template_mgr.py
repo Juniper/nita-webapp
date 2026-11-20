@@ -13,7 +13,9 @@ from zipfile import ZipFile
 class NetworkTemplateManagerTests(unittest.TestCase):
     def test_create_preserves_template_variables_and_replaces_inventory(self):
         job_file = Path(__file__).resolve().parents[3] / "network_template_mgr.xml"
-        command = ElementTree.parse(job_file).findtext("./builders/hudson.tasks.Shell/command")
+        command = ElementTree.parse(job_file).findtext(
+            "./builders/hudson.tasks.Shell/command"
+        )
         self.assertIsNotNone(command)
         start = command.index('echo "extracting to $dest_folder..."')
         end = command.index('#echo "overwriting project.yaml file..."', start)

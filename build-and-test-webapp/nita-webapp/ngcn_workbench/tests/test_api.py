@@ -426,7 +426,7 @@ def test_get_workbook_returns_sheet_data(api_client, campus_network, monkeypatch
 @pytest.mark.django_db
 def test_upload_workbook_success(api_client, campus_network, monkeypatch):
     raw_sheets = [{"name": "hosts", "columns": [], "hosts": []}]
-    monkeypatch.setattr(api_views, "parse_workbook", lambda f, pk: "ok")
+    monkeypatch.setattr(api_views, "parse_workbook", lambda f, pk: "success")
     monkeypatch.setattr(
         api_views.GridDataManager,
         "get_sheets_by_campus_network",
