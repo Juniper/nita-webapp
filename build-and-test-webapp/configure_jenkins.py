@@ -9,7 +9,6 @@ Sets the Jenkins URL so that jenkins-cli.jar can authenticate and create jobs.
 Without the Jenkins URL set, the CLI handshake returns 403 on fresh installs.
 """
 
-import base64
 import http.cookiejar
 import json
 import os
@@ -23,14 +22,11 @@ JENKINS_SERVER_URL = (
     "http://" + jenkins_host_name + ":" + str(jenkins_port) + "/jenkins"
 )
 JENKINS_SERVER_USER = os.getenv("JENKINS_USER", "admin")
-JENKINS_SERVER_PASS = os.getenv("JENKINS_PASS", "admin")
 
 
-def _auth_header() -> str:
-    credentials = base64.b64encode(
-        f"{JENKINS_SERVER_USER}:{JENKINS_SERVER_PASS}".encode()
-    ).decode()
-    return f"Basic {credentials}"
+def _identity_headers() -> dict:
+    # Jenkins' reverse-proxy realm trusts this header from the webapp container.
+    return {"X-Forwarded-User": JENKINS_SERVER_USER}
 
 
 def set_jenkins_url():
@@ -47,7 +43,7 @@ def set_jenkins_url():
     try:
         crumb_req = urllib.request.Request(
             f"{JENKINS_SERVER_URL}/crumbIssuer/api/json",
-            headers={"Authorization": _auth_header()},
+            headers=_identity_headers(),
         )
         with opener.open(crumb_req, timeout=10) as resp:
             body = json.loads(resp.read())
@@ -73,7 +69,7 @@ def set_jenkins_url():
 
     payload = urllib.parse.urlencode({"script": groovy}).encode()
     headers = {
-        "Authorization": _auth_header(),
+        **_identity_headers(),
         "Content-Type": "application/x-www-form-urlencoded",
     }
     headers.update(crumb_headers)

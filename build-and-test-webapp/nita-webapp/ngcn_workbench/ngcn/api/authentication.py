@@ -14,10 +14,10 @@ that the same relaxed-origin policy applied by the Django middleware stack is
 also applied to DRF session-based API requests.
 """
 
-from rest_framework.authentication import SessionAuthentication
-from rest_framework import exceptions
-
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from ngcn_workbench.csrf import LabCsrfMiddleware
+from rest_framework import exceptions
+from rest_framework.authentication import SessionAuthentication
 
 
 class _LabCSRFCheck(LabCsrfMiddleware):
@@ -47,3 +47,11 @@ class LabSessionAuthentication(SessionAuthentication):
         reason = check.process_view(request, None, (), {})
         if reason:
             raise exceptions.PermissionDenied("CSRF Failed: %s" % reason)
+
+
+class LabSessionAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = "ngcn.api.authentication.LabSessionAuthentication"
+    name = "sessionAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {"type": "apiKey", "in": "cookie", "name": "sessionid"}

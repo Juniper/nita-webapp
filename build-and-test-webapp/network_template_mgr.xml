@@ -32,6 +32,16 @@
           <description>Network description</description>
           <defaultValue>--default--</defaultValue>
         </hudson.model.TextParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>owner</name>
+          <description>Webapp username that owns the network (gets read/build/cancel on its jobs)</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>team_group</name>
+          <description>Jenkins group of the team the network is shared with (gets read), e.g. team-3; empty for none</description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
   </properties>
@@ -47,15 +57,6 @@
     <hudson.tasks.Shell>
       <command>#!/bin/bash
 
-# Copy jenkins-cli.jar
-    CLI_JAR="/var/jenkins_home/war/WEB-INF/jenkins-cli.jar"
-    CLI_URL="http://jenkins:8080/jenkins/jnlpJars/jenkins-cli.jar"
-    if ! jar tf "$CLI_JAR" &gt;/dev/null 2&gt;&amp;1; then
-      rm -f "$CLI_JAR"
-      curl --fail --silent --show-error "$CLI_URL" -o "$CLI_JAR"
-      jar tf "$CLI_JAR" &gt;/dev/null
-fi
-
 PATH=$PATH:/var/jenkins_scripts/
 export PATH
 
@@ -64,6 +65,7 @@ echo src=\&quot;${src}\&quot;
 echo network_name=\&quot;${network_name}\&quot;
 echo hosts=\&quot;${hosts}\&quot;
 echo network_desc=\&quot;${network_desc}\&quot;
+echo owner=\&quot;${owner}\&quot; team_group=\&quot;${team_group}\&quot;
 
 print_error() { echo &quot;$@&quot; ; exit 1; }
 
@@ -174,6 +176,7 @@ ANSIBLE_JOBS_CONFIG = &quot;&quot;&quot;
         &lt;noNeedReauthentication&gt;false&lt;/noNeedReauthentication&gt;
       &lt;/strategy&gt;
     &lt;/org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty&gt;
+    {{ acl }}
   &lt;/properties&gt;
   &lt;scm class=&quot;hudson.scm.NullSCM&quot;/&gt;
   &lt;canRoam&gt;true&lt;/canRoam&gt;
@@ -222,6 +225,7 @@ TEST_JOBS_CONFIG = &quot;&quot;&quot;
         &lt;noNeedReauthentication&gt;false&lt;/noNeedReauthentication&gt;
       &lt;/strategy&gt;
     &lt;/org.jenkinsci.plugins.authorizeproject.AuthorizeProjectProperty&gt;
+    {{ acl }}
   &lt;/properties&gt;
   &lt;scm class=&quot;hudson.scm.NullSCM&quot;/&gt;
   &lt;canRoam&gt;true&lt;/canRoam&gt;
@@ -269,9 +273,46 @@ TEST_JOBS_CONFIG = &quot;&quot;&quot;
 &quot;&quot;&quot;
 TEST_CATEGORY = &quot;TEST&quot;
 CURRENT_DIR = os.getcwd()
-JENKINS_SERVER_IP=&quot;jenkins&quot;
-JENKINS_SERVER_USER=os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
-JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
+JENKINS_SERVER_URL = &quot;http://jenkins:8080/jenkins&quot;
+JENKINS_SERVER_USER = os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
+
+import http.cookiejar, json, urllib.error, urllib.parse, urllib.request
+# Jenkins (reverse-proxy realm) trusts X-Forwarded-User from inside the cluster;
+# the crumb is bound to the session cookie, so reuse one opener for both calls.
+_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+_identity = {&quot;X-Forwarded-User&quot;: JENKINS_SERVER_USER}
+
+def jenkins_post(path, body=b&quot;&quot;, content_type=None, tolerate=()):
+    crumb = json.load(_opener.open(urllib.request.Request(JENKINS_SERVER_URL + &quot;/crumbIssuer/api/json&quot;, headers=_identity), timeout=30))
+    headers = dict(_identity)
+    headers[crumb[&quot;crumbRequestField&quot;]] = crumb[&quot;crumb&quot;]
+    if content_type:
+        headers[&quot;Content-Type&quot;] = content_type
+    try:
+        with _opener.open(urllib.request.Request(JENKINS_SERVER_URL + path, data=body, headers=headers, method=&quot;POST&quot;), timeout=60) as resp:
+            status = resp.status
+    except urllib.error.HTTPError as err:
+        status = err.code
+    if status in (200, 201, 302) or status in tolerate:
+        print(&quot;Jenkins POST&quot;, path, &quot;-&gt;&quot;, status)
+        return status
+    raise SystemExit(&quot;Jenkins POST %s failed: HTTP %s&quot; % (path, status))
+
+from xml.sax.saxutils import escape
+def acl_property_xml(owner, team_group):
+    # Mirrors the webapp: owner and team members read/build/cancel (deleting a
+    # network is a webapp operation, not a job permission); admins and power
+    # users inherit from the global matrix (InheritParentStrategy).
+    perms = []
+    if owner:
+        perms += [&quot;USER:hudson.model.Item.%s:%s&quot; % (p, escape(owner)) for p in (&quot;Read&quot;, &quot;Build&quot;, &quot;Cancel&quot;)]
+    if team_group:
+        perms += [&quot;GROUP:hudson.model.Item.%s:%s&quot; % (p, escape(team_group)) for p in (&quot;Read&quot;, &quot;Build&quot;, &quot;Cancel&quot;)]
+    return (&quot;&lt;hudson.security.AuthorizationMatrixProperty&gt;&quot;
+            &quot;&lt;inheritanceStrategy class=\&quot;org.jenkinsci.plugins.matrixauth.inheritance.InheritParentStrategy\&quot;/&gt;&quot;
+            + &quot;&quot;.join(&quot;&lt;permission&gt;%s&lt;/permission&gt;&quot; % p for p in perms)
+            + &quot;&lt;/hudson.security.AuthorizationMatrixProperty&gt;&quot;)
+ACL_XML = acl_property_xml(os.environ.get(&quot;owner&quot;, &quot;&quot;).strip(), os.environ.get(&quot;team_group&quot;, &quot;&quot;).strip())
 
 with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
     try:
@@ -285,6 +326,7 @@ with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
             else:
                 action_item[&quot;configuration&quot;][&quot;custom_workspace&quot;] = CURRENT_DIR
             template = ansible_jobs_template
+            action_item[&quot;acl&quot;] = ACL_XML
 
             if action_item[&quot;category&quot;].upper() == TEST_CATEGORY:
                 action_item[&quot;configuration&quot;][&quot;output_path&quot;] = CURRENT_DIR + &quot;/&quot; + str(action_item[&quot;configuration&quot;][&quot;output_path&quot;])
@@ -292,18 +334,17 @@ with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
 
             output = template.render(action_item)
             #print &quot;output&quot;, output
-            out_file = tempfile.NamedTemporaryFile(delete=False)
-            out_file.write(output.encode())
-            out_file.close()
-            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
-            print(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins create-job &quot; + action_item[&quot;jenkins_url&quot;] + &quot; &lt; &quot; + out_file.name)
-            os.unlink(out_file.name)
+            job_name = action_item[&quot;jenkins_url&quot;]
+            print(&quot;creating Jenkins job&quot;, job_name)
+            # 400 = job already exists (e.g. re-run of create); keep going.
+            jenkins_post(&quot;/createItem?name=&quot; + urllib.parse.quote(job_name), output.encode(), &quot;text/xml; charset=utf-8&quot;, tolerate=(400,))
     except Exception as e:
         print(&quot;Exception while installing the Jenkins Jobs...&quot;)
         print(e)
         print(traceback.print_exc())
         print(traceback.format_exc())
-&apos;
+        raise SystemExit(1)
+&apos; || print_error &quot;Installing the Jenkins jobs for ${network_name} failed&quot;
     else
         print_error &quot;Source Template Directory: ${src} does not exists or (network_name or project.yaml content recevied is null)&quot;
     fi
@@ -318,27 +359,95 @@ if [ &quot;${operation}&quot; = &quot;update&quot; ]; then
     fi
 fi
 
+if [ &quot;${operation}&quot; = &quot;acl&quot; ]; then
+    if [ &quot;${network_name}&quot; != &quot;${DEFAULT}&quot; -a -d &quot;$dest_folder&quot; ]; then
+        cd $dest_folder
+        echo &quot;updating jenkins job permissions...&quot;
+        python3 -c &apos;
+import http.cookiejar, json, os, urllib.error, urllib.parse, urllib.request
+import xml.etree.ElementTree as ET
+import yaml
+from xml.sax.saxutils import escape
+
+JENKINS_SERVER_URL = &quot;http://jenkins:8080/jenkins&quot;
+JENKINS_SERVER_USER = os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
+_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+_identity = {&quot;X-Forwarded-User&quot;: JENKINS_SERVER_USER}
+
+def acl_property_xml(owner, team_group):
+    perms = []
+    if owner:
+        perms += [&quot;USER:hudson.model.Item.%s:%s&quot; % (p, escape(owner)) for p in (&quot;Read&quot;, &quot;Build&quot;, &quot;Cancel&quot;)]
+    if team_group:
+        perms += [&quot;GROUP:hudson.model.Item.%s:%s&quot; % (p, escape(team_group)) for p in (&quot;Read&quot;, &quot;Build&quot;, &quot;Cancel&quot;)]
+    return (&quot;&lt;hudson.security.AuthorizationMatrixProperty&gt;&quot;
+            &quot;&lt;inheritanceStrategy class=\&quot;org.jenkinsci.plugins.matrixauth.inheritance.InheritParentStrategy\&quot;/&gt;&quot;
+            + &quot;&quot;.join(&quot;&lt;permission&gt;%s&lt;/permission&gt;&quot; % p for p in perms)
+            + &quot;&lt;/hudson.security.AuthorizationMatrixProperty&gt;&quot;)
+
+def set_job_acl(job_name, acl_xml):
+    job_url = JENKINS_SERVER_URL + &quot;/job/&quot; + urllib.parse.quote(job_name)
+    try:
+        config = _opener.open(urllib.request.Request(job_url + &quot;/config.xml&quot;, headers=_identity), timeout=30).read()
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            print(&quot;job&quot;, job_name, &quot;does not exist; skipping&quot;)
+            return
+        raise
+    root = ET.fromstring(config)
+    props = root.find(&quot;properties&quot;)
+    if props is None:
+        props = ET.SubElement(root, &quot;properties&quot;)
+    for old in props.findall(&quot;hudson.security.AuthorizationMatrixProperty&quot;):
+        props.remove(old)
+    props.append(ET.fromstring(acl_xml))
+    crumb = json.load(_opener.open(urllib.request.Request(JENKINS_SERVER_URL + &quot;/crumbIssuer/api/json&quot;, headers=_identity), timeout=30))
+    headers = dict(_identity, **{crumb[&quot;crumbRequestField&quot;]: crumb[&quot;crumb&quot;], &quot;Content-Type&quot;: &quot;text/xml; charset=utf-8&quot;})
+    with _opener.open(urllib.request.Request(job_url + &quot;/config.xml&quot;, data=ET.tostring(root), headers=headers, method=&quot;POST&quot;), timeout=60) as resp:
+        print(&quot;updated permissions of&quot;, job_name, &quot;-&gt;&quot;, resp.status)
+
+acl_xml = acl_property_xml(os.environ.get(&quot;owner&quot;, &quot;&quot;).strip(), os.environ.get(&quot;team_group&quot;, &quot;&quot;).strip())
+with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
+    for action_item in yaml.safe_load(stream)[&quot;action&quot;]:
+        set_job_acl(action_item[&quot;jenkins_url&quot;], acl_xml)
+&apos; || print_error &quot;Updating the Jenkins job permissions for ${network_name} failed&quot;
+    else
+        print_error &quot;ACL update: Campus Network Directory: $dest_folder does not exists&quot;
+    fi
+fi
+
 if [ &quot;${operation}&quot; = &quot;delete&quot; ]; then
     if [ &quot;${src}&quot; != &quot;${DEFAULT}&quot; -a &quot;${network_name}&quot; != &quot;${DEFAULT}&quot; -a -d &quot;$dest_folder&quot; ]; then
         cd $dest_folder
         echo &quot;uninstalling jenkins jobs...&quot;
         python3 -c &apos;
-import os
+import http.cookiejar, json, os, urllib.error, urllib.parse, urllib.request
 import yaml
 
-JENKINS_SERVER_IP=&quot;jenkins&quot;
-JENKINS_SERVER_USER=os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
-JENKINS_SERVER_PASS=os.getenv(&quot;JENKINS_PASS&quot;, &quot;admin&quot;)
+JENKINS_SERVER_URL = &quot;http://jenkins:8080/jenkins&quot;
+JENKINS_SERVER_USER = os.getenv(&quot;JENKINS_USER&quot;, &quot;admin&quot;)
+_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+_identity = {&quot;X-Forwarded-User&quot;: JENKINS_SERVER_USER}
+
+def jenkins_delete_job(job_name):
+    crumb = json.load(_opener.open(urllib.request.Request(JENKINS_SERVER_URL + &quot;/crumbIssuer/api/json&quot;, headers=_identity), timeout=30))
+    headers = dict(_identity)
+    headers[crumb[&quot;crumbRequestField&quot;]] = crumb[&quot;crumb&quot;]
+    try:
+        with _opener.open(urllib.request.Request(JENKINS_SERVER_URL + &quot;/job/&quot; + urllib.parse.quote(job_name) + &quot;/doDelete&quot;, data=b&quot;&quot;, headers=headers, method=&quot;POST&quot;), timeout=60) as resp:
+            status = resp.status
+    except urllib.error.HTTPError as err:
+        status = err.code
+    # 404 = already gone; anything else unexpected fails the build.
+    print(&quot;deleting Jenkins job&quot;, job_name, &quot;-&gt;&quot;, status)
+    if status not in (200, 302, 404):
+        raise SystemExit(&quot;deleting Jenkins job %s failed: HTTP %s&quot; % (job_name, status))
 
 with open(&quot;./project.yaml&quot;, &quot;r&quot;) as stream:
-    try:
-        input = yaml.safe_load(stream)
-
-        for action_item in input[&quot;action&quot;]:
-            os.system(&quot;java -jar /var/jenkins_home/war/WEB-INF/jenkins-cli.jar -s http://&quot; + JENKINS_SERVER_USER + &quot;:&quot; + JENKINS_SERVER_PASS + &quot;@&quot; + JENKINS_SERVER_IP + &quot;:8080/jenkins delete-job &quot; + action_item[&quot;jenkins_url&quot;])
-    except:
-        print (&quot;Exception while uninstalling the Jenkins Jobs...&quot;)
-&apos;
+    input = yaml.safe_load(stream)
+    for action_item in input[&quot;action&quot;]:
+        jenkins_delete_job(action_item[&quot;jenkins_url&quot;])
+&apos; || print_error &quot;Uninstalling the Jenkins jobs for ${network_name} failed&quot;
         cd ..
         echo &quot;removing $dest_folder...&quot;
         rm -rf $dest_folder;

@@ -13,7 +13,6 @@ import traceback
 from xml.dom.minidom import parseString
 from zipfile import ZipFile
 
-import jenkins
 import yaml
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -21,11 +20,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.utils.translation import gettext as _
 
-from ngcn.jenkins_config import (
-    JENKINS_SERVER_PASS,
-    JENKINS_SERVER_URL,
-    JENKINS_SERVER_USER,
-)
+from ngcn.jenkins_config import JENKINS_SERVER_URL, _make_jenkins_server
 from ngcn.models import Action, ActionCategory, ActionProperty, CampusType
 
 # from ngcn.models import JenkinsJobProperty
@@ -42,7 +37,7 @@ config.read_file(open(config_location + "server_details.ini"))
 
 
 class NetworkTypeParser:
-    def parseProjectFile(self, file_name):
+    def parseProjectFile(self, file_name, *, initiated_by):
         result = ""
         zip_validation = self.validateZipFile(file_name)
         # update the filename based on normalization in the validation step
@@ -67,12 +62,7 @@ class NetworkTypeParser:
                     )
 
                 job_name = "network_type_validator"
-                # Intentionally imported here rather than at module level.
-                server = jenkins.Jenkins(
-                    JENKINS_SERVER_URL,
-                    username=JENKINS_SERVER_USER,
-                    password=JENKINS_SERVER_PASS,
-                )
+                server = _make_jenkins_server()
                 logger.debug("Jenkins server: " + JENKINS_SERVER_URL)
                 tree = parseString(server.get_job_config(job_name))
                 logger.debug("Job xml: " + tree.toxml())
@@ -95,6 +85,9 @@ class NetworkTypeParser:
                                 "operation": "add",
                             },
                             files={"app.zip": app_zip_file},
+                            # Management job: runs as the service identity; the
+                            # uploading user is recorded by the webapp.
+                            initiated_by=None,
                         )
                 except Exception as exc:
                     logger.error("Jenkins unreachable during network type load")
@@ -106,7 +99,10 @@ class NetworkTypeParser:
                         },
                         status=503,
                     )
-                logger.debug("Invoked Jenkins Job to add zip file (non-blocking)")
+                logger.debug(
+                    "Invoked Jenkins Job to add zip file (non-blocking) for %s",
+                    initiated_by,
+                )
 
                 # Register the network type optimistically (consistent with the
                 # non-blocking network create flow). The console stream gives the

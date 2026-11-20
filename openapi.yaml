@@ -17,6 +17,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -39,6 +40,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -83,6 +85,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -117,6 +120,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -142,6 +146,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -174,6 +179,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -212,6 +218,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -253,6 +260,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -279,6 +287,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -305,6 +314,18 @@ paths:
                   csrfToken:
                     type: string
           description: ''
+  /api/v1/auth/forward/:
+    get:
+      operationId: v1_auth_forward_retrieve
+      description: Authorize the proxy using a webapp session and return caller headers.
+      summary: Authorize a reverse-proxy request using the webapp session
+      tags:
+      - v1
+      security:
+      - sessionAuth: []
+      responses:
+        '200':
+          description: Session authorized for proxy access
   /api/v1/auth/login/:
     post:
       operationId: v1_auth_login_create
@@ -352,6 +373,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -365,6 +387,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -473,6 +496,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -497,6 +521,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -526,6 +551,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -562,6 +588,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -590,6 +617,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -612,6 +640,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -634,6 +663,7 @@ paths:
                   type: string
                   format: binary
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -704,6 +734,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -737,6 +768,7 @@ paths:
               $ref: '#/components/schemas/CampusNetwork'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -779,6 +811,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -832,6 +865,7 @@ paths:
               $ref: '#/components/schemas/CampusNetwork'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -884,6 +918,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCampusNetwork'
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -912,6 +947,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -943,6 +979,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '202':
@@ -975,6 +1012,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1020,6 +1058,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1038,6 +1077,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1073,6 +1113,7 @@ paths:
                   type: array
                   maxItems: 1000
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1110,6 +1151,7 @@ paths:
                   type: string
                   format: binary
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1160,6 +1202,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1191,6 +1234,7 @@ paths:
               $ref: '#/components/schemas/Team'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1218,6 +1262,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1256,6 +1301,7 @@ paths:
               $ref: '#/components/schemas/Team'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1293,6 +1339,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTeam'
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1319,6 +1366,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1347,6 +1395,7 @@ paths:
               required:
               - user_id
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1377,6 +1426,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1393,6 +1443,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1431,6 +1482,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1457,6 +1509,7 @@ paths:
               $ref: '#/components/schemas/UserCreate'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1487,6 +1540,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1520,6 +1574,7 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1560,6 +1615,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedUser'
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1581,6 +1637,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1612,6 +1669,7 @@ paths:
               $ref: '#/components/schemas/SetPassword'
         required: true
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1653,6 +1711,7 @@ paths:
                 types_to:
                   type: integer
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1675,6 +1734,7 @@ paths:
       tags:
       - v1
       security:
+      - sessionAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2381,6 +2441,10 @@ components:
       - role
       - username
   securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
     tokenAuth:
       type: apiKey
       in: header
