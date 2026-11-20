@@ -78,8 +78,8 @@ if [ &quot;${operation}&quot; = &quot;create&quot; ]; then
     if [ -f &quot;${src}&quot; -a &quot;${src}&quot; != &quot;${DEFAULT}&quot; -a &quot;${network_name}&quot; != &quot;${DEFAULT}&quot; -a &quot;${project_yaml}&quot; != &quot;${DEFAULT}&quot; ]; then
         echo &quot;extracting to $dest_folder...&quot;
         ext_folder=&quot;${dest_folder%/*}&quot;
-        echo &quot;unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder; rm $dest_folder/host_vars/* $dest_folder/group_vars/*;&quot;
-        unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder; rm $dest_folder/host_vars/* $dest_folder/group_vars/*;
+        echo &quot;unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder;&quot;
+        unzip -qq ${src} -d $ext_folder; mv $source_folder $dest_folder;
         if [ -d $dest_folder/hosts ]; then rm $dest_folder/hosts; fi
         echo &quot;creating hosts file...&quot;
         echo &quot;${hosts}&quot; &gt; $dest_folder/hosts;

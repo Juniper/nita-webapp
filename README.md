@@ -104,6 +104,16 @@ A `power_user` can never view, modify, or delete an `admin` account, and can
 never grant the `admin` role. Password resets and network-type deletions
 performed by a `power_user` are written to the application log.
 
+## Network template variables
+
+Creating a network preserves the template's `group_vars` and `host_vars` files.
+Network action scripts may subsequently replace files with workbook data; do not
+include credentials in template archives.
+
+Existing Jenkins installations must update the `network_template_mgr` job from
+the updated job definition: webapp startup creates missing jobs but does not
+replace existing ones.
+
 ## NITA Command Line Interface
 
 A number of CLI scripts are installed with NITA which you can use to manage the Webapp:

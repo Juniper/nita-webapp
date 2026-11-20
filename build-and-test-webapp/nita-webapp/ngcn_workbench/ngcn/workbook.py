@@ -80,6 +80,17 @@ def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
     return yaml.load(stream, OrderedLoader)
 
 
+def _is_valid_host_path(value):
+    if not isinstance(value, str):
+        return False
+    path_parts = value.split("/")
+    return (
+        len(path_parts) >= 2
+        and path_parts[0] in {"group_vars", "host_vars"}
+        and all(part not in {"", ".", ".."} for part in path_parts)
+    )
+
+
 def parse_workbook(conf_file, campus_network_id):
     wb = load_workbook(conf_file)
     column_header = {}
@@ -87,12 +98,8 @@ def parse_workbook(conf_file, campus_network_id):
     for sheet in wb:
         for row in sheet.iter_rows(min_row=2):
             if row[0].value is not None:
-                var_dir = row[0].value.rpartition("/")[0].rpartition("/")[-1]
-                if var_dir == "group_vars" or var_dir == "host_vars":
-                    continue
-                else:
+                if not _is_valid_host_path(row[0].value):
                     return "invalid_host"
-                    break
 
     for sheet in wb:
         for row in sheet.iter_rows():
@@ -109,11 +116,15 @@ def parse_workbook(conf_file, campus_network_id):
                 conf_value.append(conf)
             else:
                 break
+        if not conf_value:
+            continue
         table = collections.OrderedDict()
         table["columns"] = build_column_data(conf_value[0].keys())
         table["name"] = sheet.title
         table[sheet.title] = conf_value  # create_table_view(model, request)
         tables.append(table)
+    if not tables:
+        return "empty_workbook"
     # campus_network_name = request.session['app_name']
     Workbook.objects.filter(campus_network_id=campus_network_id).delete()
     data_manager = GridDataManager()

@@ -8,14 +8,123 @@ workbook helpers that sit outside the API layer.
 """
 
 import json
+from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
-from ngcn import servicestartupmiddleware, statusupdater
+from openpyxl import Workbook as OpenpyxlWorkbook
+from ngcn import servicestartupmiddleware, statusupdater, workbook as workbook_module
 from ngcn.models import ActionHistory, ActionProperty, CampusType, Workbook, Worksheets
 from ngcn.templatetags.json_filters import jsonify
 from ngcn.workbook import GridDataManager, escape_ansi
+
+
+def _xlsx_with_rows(sheet_rows, empty_sheet=False):
+    workbook = OpenpyxlWorkbook()
+    sheet = workbook.active
+    sheet.title = "base"
+    for row in sheet_rows:
+        sheet.append(row)
+    if empty_sheet:
+        workbook.create_sheet("env").append(["host"])
+    content = BytesIO()
+    workbook.save(content)
+    content.seek(0)
+    content.name = "test.xlsx"
+    return content
+
+
+def test_parse_workbook_accepts_nested_group_vars_path(monkeypatch):
+    saved = {}
+
+    class FakeQuerySet:
+        def delete(self):
+            pass
+
+    class FakeGridDataManager:
+        def create_or_update_db(self, _network_id, tables, _filename):
+            saved["tables"] = tables
+
+    monkeypatch.setattr(
+        workbook_module,
+        "Workbook",
+        SimpleNamespace(
+            objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())
+        ),
+    )
+    monkeypatch.setattr(workbook_module, "GridDataManager", FakeGridDataManager)
+
+    result = workbook_module.parse_workbook(
+        _xlsx_with_rows(
+            [
+                ["host", "key", "value"],
+                ["group_vars/vqfx_role_candidate1/all.yaml", "asn", 64512],
+            ]
+        ),
+        1,
+    )
+
+    assert result == "success"
+    assert saved["tables"][0]["base"][0]["host"] == (
+        "group_vars/vqfx_role_candidate1/all.yaml"
+    )
+
+
+def test_parse_workbook_rejects_host_path_traversal():
+    result = workbook_module.parse_workbook(
+        _xlsx_with_rows(
+            [
+                ["host", "key", "value"],
+                ["group_vars/../host_vars/device.yaml", "asn", 64512],
+            ]
+        ),
+        1,
+    )
+
+    assert result == "invalid_host"
+
+
+def test_parse_workbook_skips_header_only_sheet(monkeypatch):
+    class FakeQuerySet:
+        def delete(self):
+            pass
+
+    class FakeGridDataManager:
+        def create_or_update_db(self, _network_id, tables, _filename):
+            saved["tables"] = tables
+
+    saved = {}
+    monkeypatch.setattr(
+        workbook_module,
+        "Workbook",
+        SimpleNamespace(
+            objects=SimpleNamespace(filter=lambda **_kwargs: FakeQuerySet())
+        ),
+    )
+    monkeypatch.setattr(workbook_module, "GridDataManager", FakeGridDataManager)
+
+    result = workbook_module.parse_workbook(
+        _xlsx_with_rows(
+            [
+                ["host", "key", "value"],
+                ["group_vars/all.yaml", "asn", 64512],
+            ],
+            empty_sheet=True,
+        ),
+        1,
+    )
+
+    assert result == "success"
+    assert [table["name"] for table in saved["tables"]] == ["base"]
+
+
+def test_parse_workbook_rejects_workbook_with_no_data_rows():
+    result = workbook_module.parse_workbook(
+        _xlsx_with_rows([["host", "key", "value"]]), 1
+    )
+
+    assert result == "empty_workbook"
 
 
 @pytest.mark.django_db
