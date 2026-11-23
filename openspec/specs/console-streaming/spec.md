@@ -1,3 +1,9 @@
+## Purpose
+
+Define console streaming behavior for action-history entries and their proxy.
+
+## Requirements
+
 ### Requirement: Stream Console Log via SSE
 The system SHALL expose a Server-Sent Events endpoint at
 `GET /api/v1/action-history/{id}/stream/` that streams the Jenkins build console
