@@ -10,6 +10,9 @@ need a coordinated migration so deployment methods continue to behave alike.
 - Replace the Compose Nginx proxy with pinned Traefik configuration, retaining
   HTTPS, certificates, webapp and Jenkins routing, session authentication,
   trusted identity propagation, request limits, and streams.
+- Transform the existing session forward-auth endpoint to return Jenkins
+  identity headers and login redirects directly for Traefik; do not retain
+  a separate Nginx compatibility mode.
 - Update Nginx-specific proxy requirements to describe Traefik behavior for
   both Compose and Kubernetes.
 - Add proxy-level Compose verification and document certificate migration and
@@ -24,6 +27,7 @@ need a coordinated migration so deployment methods continue to behave alike.
 ### Modified Capabilities
 
 - `api`: HTTPS termination by the Traefik proxy.
+- `auth`: Change the existing forward-auth response contract for Traefik.
 - `jenkins-reverse-proxy`: Traefik routing and forwarded headers for Jenkins.
 - `console-streaming`: Unbuffered action-history streams through Traefik.
 - `network-lifecycle-streaming`: Unbuffered lifecycle streams through Traefik.
@@ -33,8 +37,9 @@ need a coordinated migration so deployment methods continue to behave alike.
 Changes affect `docker-compose.yaml`, proxy configuration, tests,
 documentation and OpenSpec. Coordinate with NITA's
 `migrate-main-proxy-to-traefik` change and the existing
-`gate-jenkins-behind-webapp-session` and Jenkins security changes. No change to
-the webapp API, Jenkins authentication model or database is intended.
+`gate-jenkins-behind-webapp-session` and Jenkins security changes. The
+forward-auth endpoint changes incompatibly; the Jenkins authentication model
+and database remain unchanged.
 
 Before applying this change, create and archive a separate console-streaming
 specification cleanup that preserves existing behavior and scenarios while

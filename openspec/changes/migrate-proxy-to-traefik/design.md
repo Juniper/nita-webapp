@@ -20,17 +20,21 @@ through the operator's existing setup.
   pass-through of Jenkins' prefix, redirects through forwarded ports, 20 MiB
   request limit, and unbuffered SSE with at least 1850 seconds idle time. Verify
   the chosen Traefik release rather than assuming equivalent timeout behavior.
-- Preserve the webapp session gate: consult `/api/v1/auth/forward/`, fail closed
-  on errors, redirect denied browser requests to login with a safe return path,
-  and pass only authenticated user and group headers to Jenkins while removing
-  client-supplied Authorization. Verify the actual middleware combination
-  supports denial redirects and spoof resistance before replacing Nginx.
+- Transform `/api/v1/auth/forward/` into a single Traefik contract: valid
+  sessions return the `X-Forwarded-User` and `X-Forwarded-Groups` headers;
+  unauthenticated requests return a login redirect with a validated, safely
+  encoded original Jenkins path. Traefik's forward-auth middleware relays the
+  redirect and replaces client-supplied identity headers with those from the
+  authenticated response. Remove client-supplied Authorization before
+  forwarding to Jenkins, and fail closed when authentication fails. Do not
+  retain an Nginx-specific response mode.
 - Coordinate OpenSpec deltas and release sequencing with the in-progress
   `gate-jenkins-behind-webapp-session` change, which defines the authentication
   contract, and with NITA's Kubernetes change. Retain the old Compose proxy
-  configuration and certificate inputs until successful verification and
-  document an explicit rollback. Do not remove Nginx assets while an existing
-  supported deployment or upgrade still needs them.
+  configuration, prior webapp image and certificate inputs until successful
+  verification and document an explicit rollback. Because the auth contract
+  changes, restoring Nginx also requires restoring the prior webapp image.
+  Do not remove Nginx assets while an existing deployment or rollback needs them.
 
 ## Risks / Trade-offs
 
@@ -39,19 +43,20 @@ through the operator's existing setup.
 - The Compose file does not create Jenkins. Tests need a controlled Jenkins
   backend or an existing reachable service, and must not silently skip
   authentication and identity checks.
-- Authentication denial redirects are not necessarily provided by Traefik's
-  forward-auth middleware alone. A tested solution is required before cutover.
+- The new forward-auth contract is incompatible with the old Nginx proxy. Both
+  deployments must be upgraded as a coordinated pair; the NITA Kubernetes
+  migration must be ready before publishing the webapp image as `latest`.
 
 ## Migration Plan
 
 Check and reuse the operator's existing certificate and key, then start the
 replacement proxy with the existing service and port. Verify certificate
 identity, webapp and Jenkins access, session/identity behavior, and streaming.
-If verification fails, restore the previous Compose proxy configuration and
-verify HTTPS again. Coordinate version compatibility and rollback with NITA's
-Kubernetes migration; either deployment can be rolled back independently.
+If verification fails, restore both the previous Compose proxy configuration
+and its compatible webapp image, then verify HTTPS again. Coordinate version
+compatibility and rollback with NITA's Kubernetes migration.
 
 ## Open Questions
 
-- Which supported middleware combination reproduces session denial redirects
-  without weakening identity checks? Resolve and verify before deployment.
+- Confirm middleware ordering and the endpoint's redirect validation through
+  end-to-end testing before deployment.
