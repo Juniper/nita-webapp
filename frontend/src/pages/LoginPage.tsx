@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import { useAuth } from '../context/useAuth'
 import { Logo } from '../components/Logo'
+import { navigateToJenkins } from '../navigation'
 import type { User } from '../context/auth-context'
 
 export function LoginPage() {
@@ -38,7 +39,11 @@ export function LoginPage() {
           !next.includes('\\')
             ? next
             : '/'
-        navigate(destination)
+        if (destination === '/jenkins' || destination.startsWith('/jenkins/')) {
+          navigateToJenkins(destination)
+        } else {
+          navigate(destination)
+        }
       } else {
         const body = await res.json().catch(() => ({}))
         setError((body as { detail?: string }).detail ?? 'Login failed.')

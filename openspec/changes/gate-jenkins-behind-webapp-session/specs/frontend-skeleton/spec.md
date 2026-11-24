@@ -1,13 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Login Page
-The system SHALL provide a `LoginPage` component that renders a username/password form. On submission it calls `POST /api/v1/auth/login/` via the API client. On success it updates `AuthContext` and redirects to the `next` query parameter when that value is a same-origin relative path — it begins with a single `/`, does not begin with `//`, and contains no URL scheme — and to `/` otherwise. On failure it displays an error message.
-
-The login page SHALL display the brand mark above its heading. Because the login
-page renders without the application header, this is the only place the mark
-appears before authentication, and it is the first screen every user sees. The
-mark SHALL be decorative, as in the header: the heading beneath it provides the
-accessible name.
+The `LoginPage` SHALL submit its username/password form to
+`POST /api/v1/auth/login/` via the API client and update `AuthContext` on
+success. It SHALL follow a safe same-origin `next` path or fall back to `/`;
+on failure it SHALL display an error and remain on the login page. It SHALL
+show a decorative brand mark above its heading.
 
 #### Scenario: Login page shows the brand mark
 - WHEN an unauthenticated user opens `/login`
@@ -39,3 +37,4 @@ accessible name.
 - GIVEN the user opened `/login?next=//evil.example/` or `/login?next=https://evil.example/`
 - WHEN valid credentials are submitted
 - THEN the browser navigates to `/`
+- AND only paths beginning with a single `/`, without a URL scheme, are accepted

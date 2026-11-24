@@ -1,41 +1,35 @@
 ## MODIFIED Requirements
 
 ### Requirement: Internal Jenkins Communication Is Authenticated
-The Django application SHALL communicate with the internal Jenkins service using
-authenticated requests — a username and password (`JENKINS_SERVER_USER` /
-`JENKINS_SERVER_PASS`) — and SHALL supply a CSRF crumb for build requests via a
-`CrumbRequester`. This applies to **every** Django→Jenkins HTTP path without
-exception: action triggers, network create/delete jobs, network-type
-validation, build-status polling, lifecycle history, the Robot Framework
-summary relay, and the progressive console text used by the SSE stream. The
-Django application SHALL NOT depend on Jenkins granting any permission to the
-`anonymous` user. The
-internal base URL SHALL target the Jenkins service under its `/jenkins` context
-path (e.g. `http://jenkins:8080/jenkins`).
-
-All Django-initiated Jenkins API and job-operation requests SHALL originate
-from the Django application container to the internal Jenkins service. Browser
-access to the Jenkins UI SHALL use only the session-gated reverse proxy; the
-browser SHALL NOT connect to the internal Jenkins service directly or receive
-Jenkins credentials.
+The Django application SHALL assert the appropriate user or service identity
+on every internal Jenkins request without sending a password or relying on
+anonymous permissions. Build requests SHALL include a CSRF crumb. The internal
+service URL SHALL include `/jenkins`. Browser access to Jenkins SHALL use the
+session-gated proxy, not the internal service or Jenkins credentials.
 
 #### Scenario: Trigger uses authenticated Jenkins client with a crumb
-- GIVEN a valid NITA session and configured Jenkins credentials
+- GIVEN a valid NITA session
 - WHEN POST /api/v1/networks/{id}/trigger/{action_id}/ is called
-- THEN the Django backend authenticates to Jenkins with username/password
+- THEN the Django backend asserts the acting user's Jenkins identity
 - AND a CSRF crumb is obtained before the build is invoked
 - AND the Jenkins job is invoked successfully
 
 #### Scenario: Create/delete jobs use the authenticated Jenkins server
-- GIVEN configured Jenkins credentials
+- GIVEN a configured Jenkins service identity
 - WHEN a network create or delete runs the `network_template_mgr` job
 - THEN the job is submitted through the authenticated Jenkins server
 - AND anonymous (credential-less) submission is not used
 
-#### Scenario: Console stream requests carry credentials
-- GIVEN configured Jenkins credentials
+#### Scenario: Console stream requests carry the service identity
+- GIVEN a configured Jenkins service identity
 - WHEN the SSE console generator requests `/job/{job}/{build}/logText/progressiveText`
-- THEN each request includes an `Authorization: Basic` header built from `JENKINS_SERVER_USER` / `JENKINS_SERVER_PASS`
+- THEN each request asserts the service identity using `X-Forwarded-User`
+- AND does not send an `Authorization` header
+
+#### Scenario: All internal Jenkins paths assert identity
+- GIVEN Django communicates with Jenkins
+- WHEN it triggers actions or network management jobs, validates network types, polls build status, reads lifecycle history, relays Robot summaries or streams console text
+- THEN every request originates from the Django container and asserts the appropriate user or service identity
 
 #### Scenario: Console stream works without anonymous Job/Read
 - GIVEN Jenkins grants no permissions to the `anonymous` user

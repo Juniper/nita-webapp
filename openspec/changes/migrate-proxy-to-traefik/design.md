@@ -20,6 +20,12 @@ through the operator's existing setup.
   pass-through of Jenkins' prefix, redirects through forwarded ports, 20 MiB
   request limit, and unbuffered SSE with at least 1850 seconds idle time. Verify
   the chosen Traefik release rather than assuming equivalent timeout behavior.
+- Use a locally supplied request-only limiter plugin to enforce the 20 MiB
+  limit on every route, including chunked requests, without buffering responses.
+  Spool bounded request bodies to private temporary files and remove them after
+  use. A second local middleware rejects Jenkins requests if a successful
+  forward-auth response lacks either required identity header. Both plugins
+  are loaded from reviewed local files, not downloaded at runtime.
 - Transform `/api/v1/auth/forward/` into a single Traefik contract: valid
   sessions return the `X-Forwarded-User` and `X-Forwarded-Groups` headers;
   unauthenticated requests return a login redirect with a validated, safely
@@ -30,7 +36,9 @@ through the operator's existing setup.
   retain an Nginx-specific response mode.
 - Coordinate OpenSpec deltas and release sequencing with the in-progress
   `gate-jenkins-behind-webapp-session` change, which defines the authentication
-  contract, and with NITA's Kubernetes change. Retain the old Compose proxy
+  contract, and with NITA's Kubernetes change. After archiving the session-gate
+  change, replace its original forward-auth requirement in this change's auth
+  delta rather than retaining two conflicting requirements. Retain the old Compose proxy
   configuration, prior webapp image and certificate inputs until successful
   verification and document an explicit rollback. Because the auth contract
   changes, restoring Nginx also requires restoring the prior webapp image.
@@ -40,6 +48,9 @@ through the operator's existing setup.
 
 - Compose has no Ingress API; its file-provider config is independent of
   Kubernetes manifests and must be tested separately for behavioral parity.
+- Traefik local plugins are experimental and run on the request path; their
+  packaging, failure behavior, disk use, and compatibility with the pinned
+  Traefik release must be validated and coordinated with the NITA change.
 - The Compose file does not create Jenkins. Tests need a controlled Jenkins
   backend or an existing reachable service, and must not silently skip
   authentication and identity checks.

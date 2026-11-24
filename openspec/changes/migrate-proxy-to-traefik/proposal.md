@@ -10,6 +10,8 @@ need a coordinated migration so deployment methods continue to behave alike.
 - Replace the Compose Nginx proxy with pinned Traefik configuration, retaining
   HTTPS, certificates, webapp and Jenkins routing, session authentication,
   trusted identity propagation, request limits, and streams.
+- Enforce the request limit with a locally supplied request-only middleware and
+  fail closed if the authentication service does not provide Jenkins identity.
 - Transform the existing session forward-auth endpoint to return Jenkins
   identity headers and login redirects directly for Traefik; do not retain
   a separate Nginx compatibility mode.

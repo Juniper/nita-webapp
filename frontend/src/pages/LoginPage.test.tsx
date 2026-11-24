@@ -1,13 +1,16 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { apiFetch } from '../api/client'
+import { navigateToJenkins } from '../navigation'
 import { LoginPage } from './LoginPage'
 
 vi.mock('../api/client', () => ({
   apiFetch: vi.fn(),
   clearCsrfCache: () => {},
 }))
+
+vi.mock('../navigation', () => ({ navigateToJenkins: vi.fn() }))
 
 const mockedApiFetch = vi.mocked(apiFetch)
 
@@ -52,7 +55,10 @@ async function submitLogin() {
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 }
 
-beforeEach(() => mockedApiFetch.mockReset())
+beforeEach(() => {
+  mockedApiFetch.mockReset()
+  vi.mocked(navigateToJenkins).mockReset()
+})
 
 describe('LoginPage brand mark', () => {
   it('renders the brand mark', () => {
@@ -90,13 +96,25 @@ describe('LoginPage brand mark', () => {
 })
 
 describe('LoginPage next destination', () => {
-  it('returns to a safe relative path after login', async () => {
+  it('loads the proxied Jenkins path after login', async () => {
     mockSuccessfulLogin()
     renderLogin('/login?next=%2Fjenkins%2Fjob%2Ftest-robot-net1%2F')
 
     await submitLogin()
 
-    expect(await screen.findByText('Jenkins page')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(navigateToJenkins).toHaveBeenCalledWith('/jenkins/job/test-robot-net1/')
+    })
+  })
+
+  it('navigates to a safe SPA path after login', async () => {
+    mockSuccessfulLogin()
+    renderLogin('/login?next=%2F')
+
+    await submitLogin()
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(navigateToJenkins).not.toHaveBeenCalled()
   })
 
   it.each([
