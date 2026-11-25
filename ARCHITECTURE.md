@@ -136,19 +136,19 @@ moved to `openspec/changes/archive/<date>-<name>/` once its deltas have been
 merged back into the main specs. When changing behaviour, update the relevant
 capability spec in the same change.
 
-## How the SSO works
+## How the Traefik SSO works
 
-It's **header-based identity propagation**, not a shared login or OIDC. The webapp is the only identity provider; Jenkins has no user database and simply trusts two HTTP headers that only the proxy and the webapp pod can set. The trust boundary is the network, not a secret.
+The Compose proxy uses **header-based identity propagation**, not a shared login or OIDC. The webapp is the only identity provider; Jenkins trusts two HTTP headers set by the proxy and webapp. Restrict direct Jenkins network access to trusted services: any other client that can reach Jenkins can forge those headers. The companion Kubernetes migration must be deployed separately.
 
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant N as nginx proxy
+  participant N as Traefik proxy
   participant W as Webapp (Django)
   participant J as Jenkins
   B->>N: GET /jenkins/job/x/ (sessionid cookie)
-  N->>W: auth_request GET /api/v1/auth/forward/ (cookie only, no body)
-  W-->>N: 200 + X-Auth-User: alice, X-Auth-Groups: user|team-3
+  N->>W: forward-auth GET /api/v1/auth/forward/ (cookie only, no body)
+  W-->>N: 200 + X-Forwarded-User: alice, X-Forwarded-Groups: user|team-3
   N->>J: GET /jenkins/job/x/ + X-Forwarded-User: alice, X-Forwarded-Groups: user|team-3 (client's Authorization stripped)
   J-->>B: page, with alice's permissions
   Note over W,J: Webapp→Jenkins API calls set the same headers directly (user for action triggers, service identity for management jobs)
@@ -157,13 +157,14 @@ sequenceDiagram
 ### The three layers
 
 **1. Webapp — the identity source**
-- `views.py:235` `forward_auth_view`: session-only (`LabSessionAuthentication`, no tokens), returns `200` with `X-Auth-User`, `X-Auth-Role`, `X-Auth-Groups`; otherwise `401/403`. Never touches the DB.
+- `forward_auth_view`: session-only (`LabSessionAuthentication`, no tokens), returns `200` with Jenkins identity headers or a login redirect with a validated return path.
 - `jenkins_config.py:41-58`: `jenkins_groups_for(user)` = `[role, team-<id>, …]`; `jenkins_identity_headers()` builds `X-Forwarded-User/Groups`; `_make_jenkins_server()` is a python-jenkins client with those headers and **no password**. `JENKINS_PASS` is unused.
 - `jenkins_jobs.py:89` `invoke_job(..., initiated_by=user)`: action triggers act *as the user* (so Jenkins records `Started by user alice` and applies her job permissions); `initiated_by=None` runs as the `JENKINS_USER` service identity — used for `network_template_mgr` / `network_type_validator`, console/Robot relays, status polling, and the bootstrap scripts (`ping_jenkins.py`, `configure_jenkins.py`, `add_jenkins_job.py`).
 
-**2. nginx — the gate and the courier** (`nginx.conf:46-65`)
-- `auth_request /_auth/jenkins` (an `internal` location) on everything under `/jenkins/`; denial → `302 /login?next=<uri>`; `LoginPage` follows `next` only if it's a same-origin relative path.
-- `auth_request_set` copies `X-Auth-User/Groups` into `X-Forwarded-User/Groups`, which **overrides anything the client sent**, and `Authorization` is blanked — so header spoofing from the browser is impossible.
+**2. Traefik — the gate and the courier**
+- Forward-auth checks the webapp session for `/jenkins/`; denial redirects to login, whose return path is constrained to a same-origin Jenkins path.
+- Forward-auth replaces client-supplied identity headers and strips `Authorization`; an identity guard fails closed if the auth service omits either required header.
+- A local request-only limiter rejects bodies larger than 20 MiB without buffering streaming responses.
 
 **3. Jenkins — the consumer** (`basic-security.groovy:32-54`, seeded as `.override` so existing homes converge on every start)
 - `ReverseProxySecurityRealm` in header mode (`reverse-proxy-auth-plugin`): username from `X-Forwarded-User`, groups from `X-Forwarded-Groups` (`|`-delimited); no header → anonymous. Password Basic auth → 401 (only API tokens would work).

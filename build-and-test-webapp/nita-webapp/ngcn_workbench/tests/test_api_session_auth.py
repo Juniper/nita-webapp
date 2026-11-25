@@ -121,9 +121,8 @@ def test_forward_auth_session_returns_identity_headers(user):
 
     assert response.status_code == 200
     assert response.content == b""
-    assert response["X-Auth-User"] == "tester"
-    assert response["X-Auth-Role"] == "admin"
-    assert response["X-Auth-Groups"] == "admin"
+    assert response["X-Forwarded-User"] == "tester"
+    assert response["X-Forwarded-Groups"] == "admin"
 
 
 @pytest.mark.django_db
@@ -137,16 +136,32 @@ def test_forward_auth_groups_include_teams(user):
 
     response = client.get("/api/v1/auth/forward/")
 
-    assert response["X-Auth-Groups"] == f"admin|team-{team.id}"
+    assert response["X-Forwarded-Groups"] == f"admin|team-{team.id}"
 
 
 @pytest.mark.django_db
 def test_forward_auth_rejects_missing_session():
-    response = APIClient().get("/api/v1/auth/forward/")
+    response = APIClient().get(
+        "/api/v1/auth/forward/",
+        HTTP_X_FORWARDED_URI="/jenkins/job/example/?x=1&y=2",
+    )
 
-    assert response.status_code in (401, 403)
-    assert "X-Auth-User" not in response
-    assert "X-Auth-Role" not in response
+    assert response.status_code == 302
+    assert response["Location"] == "/login?next=%2Fjenkins%2Fjob%2Fexample%2F%3Fx%3D1%26y%3D2"
+    assert "X-Forwarded-User" not in response
+    assert "X-Forwarded-Groups" not in response
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "target",
+    ["//evil.example", "https://evil.example/jenkins/", "/other", "/jenkins/\\evil", "/jenkins/#fragment"],
+)
+def test_forward_auth_rejects_unsafe_return_target(target):
+    response = APIClient().get("/api/v1/auth/forward/", HTTP_X_FORWARDED_URI=target)
+
+    assert response.status_code == 302
+    assert response["Location"] == "/login?next=%2Fjenkins%2F"
 
 
 @pytest.mark.django_db
@@ -158,6 +173,6 @@ def test_forward_auth_rejects_valid_token_without_session(user):
         HTTP_AUTHORIZATION=f"Token {token.key}",
     )
 
-    assert response.status_code in (401, 403)
-    assert "X-Auth-User" not in response
-    assert "X-Auth-Role" not in response
+    assert response.status_code == 302
+    assert "X-Forwarded-User" not in response
+    assert "X-Forwarded-Groups" not in response

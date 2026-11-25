@@ -33,7 +33,8 @@ The simplest way to install the nita-webapp is by installing nita, which can be 
 
 # User Interface
 
-NITA exposes a single HTTPS endpoint on port 443 (terminated by NGINX):
+The Compose deployment exposes an HTTPS endpoint on port 443 (terminated by
+Traefik). The companion Kubernetes migration must be deployed separately:
 
 | Application | URL |
 |---|---|
@@ -42,6 +43,34 @@ NITA exposes a single HTTPS endpoint on port 443 (terminated by NGINX):
 
 Jenkins runs behind the same proxy under the `/jenkins` path prefix
 (`--prefix=/jenkins`); it is no longer published on port 8443.
+
+### Compose proxy migration
+
+The Compose proxy uses Traefik v3.7.19 and reuses the existing certificate and
+key in `nginx/certificates/`. Keep that directory and the previous Nginx
+configuration for rollback. The `nita-network` external Docker network and a
+reachable `jenkins:8080` remain prerequisites. The proxy uses reviewed local
+middleware for the 20 MiB request limit and Jenkins identity checks; it does not
+mount the Docker socket. Request bodies are temporarily stored in private files
+inside the proxy container, so its temporary storage needs sufficient space.
+Restrict direct network access to Jenkins to trusted services: clients that can
+reach it without the proxy can forge identity headers.
+
+Set `NITA_WEBAPP_IMAGE` to an image containing the Traefik forward-auth changes
+before starting Compose; its default is `ghcr.io/juniper/nita-webapp:latest`.
+The new auth contract is incompatible with the old Nginx proxy. Coordinate the
+webapp image and proxy deployment with the NITA Kubernetes migration before
+publishing or deploying a shared `latest` tag. The image workflow publishes
+`latest` automatically on pushes to `main`, so do not merge this change there
+until that migration is ready.
+
+To upgrade, preserve the current Compose configuration and exact webapp image
+reference, then deploy the compatible image and proxy together with
+`docker compose up -d`. Verify HTTPS certificate identity, webapp login,
+authenticated and unauthenticated Jenkins access, and console streaming. If
+verification fails, restore **both** the saved Compose configuration and the
+previous webapp image, then verify the Nginx routes and Jenkins login again.
+Restoring only Nginx while keeping the new webapp image breaks authentication.
 
 ## Default User Credentials
 
@@ -110,9 +139,9 @@ Creating a network preserves the template's `group_vars` and `host_vars` files.
 Network action scripts may subsequently replace files with workbook data; do not
 include credentials in template archives.
 
-Existing Jenkins installations must update the `network_template_mgr` job from
-the updated job definition: webapp startup creates missing jobs but does not
-replace existing ones.
+At startup, the webapp creates missing Jenkins jobs and attempts to update
+existing job definitions, including `network_template_mgr`. Check startup logs
+for an update failure before relying on the new definition.
 
 ## NITA Command Line Interface
 

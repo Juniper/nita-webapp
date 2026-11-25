@@ -28,12 +28,13 @@ import base64
 import json
 import logging
 import traceback
+from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.db.models import Q
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from drf_spectacular.utils import (
@@ -229,23 +230,37 @@ def me_view(request):
 
 
 @extend_schema(
-    responses={200: OpenApiResponse(description="Session authorized for proxy access")},
+    responses={
+        200: OpenApiResponse(description="Session authorized with Jenkins identity headers"),
+        302: OpenApiResponse(description="Redirect to login when the session is missing"),
+    },
     summary="Authorize a reverse-proxy request using the webapp session",
 )
 @api_view(["GET"])
 @authentication_classes([LabSessionAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def forward_auth_view(request):
     """Authorize the proxy using a webapp session and return caller headers."""
-    from ngcn.jenkins_config import JENKINS_GROUPS_DELIMITER, jenkins_groups_for
+    from ngcn.jenkins_config import jenkins_groups_for, jenkins_identity_headers
+
+    if not request.user.is_authenticated:
+        target = request.headers.get("X-Forwarded-Uri", "")
+        parts = urlsplit(target) if target.startswith("/jenkins") else None
+        if (
+            parts is None
+            or not (parts.path == "/jenkins" or parts.path.startswith("/jenkins/"))
+            or "\\" in target
+            or any(ord(char) < 32 or ord(char) == 127 for char in target)
+            or parts.fragment
+        ):
+            target = "/jenkins/"
+        return HttpResponseRedirect("/login?" + urlencode({"next": target}))
 
     response = Response(status=status.HTTP_200_OK)
-    response["X-Auth-User"] = request.user.get_username()
-    response["X-Auth-Role"] = getattr(request.user, "role", "") or ""
-    # Role plus team-<id> groups: Jenkins' per-job matrix is keyed on these.
-    response["X-Auth-Groups"] = JENKINS_GROUPS_DELIMITER.join(
-        jenkins_groups_for(request.user)
-    )
+    for name, value in jenkins_identity_headers(
+        request.user.get_username(), jenkins_groups_for(request.user)
+    ).items():
+        response[name] = value
     return response
 
 

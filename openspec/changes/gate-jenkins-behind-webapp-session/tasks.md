@@ -15,7 +15,7 @@
 - [x] 2.1 Add the `internal` auth location `/_auth/jenkins` proxying to `/api/v1/auth/forward/` with request body and `Content-Length` dropped and `X-Original-URI` set
 - [x] 2.2 Add `auth_request /_auth/jenkins;` and `error_page 401 403 = @jenkins_login;` to `location /jenkins/`
 - [x] 2.3 Add named location `@jenkins_login` returning `302 /login?next=$request_uri`
-- [ ] 2.4 Verify with the compose stack: anonymous `GET /jenkins/` → 302 to `/login?next=/jenkins/`; with a logged-in session cookie → Jenkins page loads with assets
+- [x] 2.4 Verify with the compose stack: anonymous `GET /jenkins/` → 302 to `/login?next=/jenkins/`; with a logged-in session cookie → Jenkins page loads with assets
 
 ## 3. Login page `next` handling
 
