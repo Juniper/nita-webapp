@@ -8,14 +8,13 @@ effects.
 ## Requirements
 
 ### Requirement: Shared Data-Fetching Hook
-The SPA SHALL provide a shared, typed data-fetching hook that returns a
-consistent shape `{ data, loading, error, reload }` for mount-time API reads,
-built on the existing CSRF-aware `apiFetch` client. Components performing
-mount-time data reads SHALL use this hook rather than hand-rolling
-`loading`/`error`/`data` state. The hook SHALL initialise its loading state at
-declaration and update state only after the asynchronous request resolves, so no
-component sets state synchronously within a `useEffect` body
-(`react-hooks/set-state-in-effect` reports zero errors).
+The SPA SHALL provide a shared, typed data-fetching hook returning
+`{ data, loading, error, reload }` for mount-time API reads,
+built on the CSRF-aware `apiFetch` client. Components performing mount-time
+data reads SHALL use this hook rather than hand-rolling `loading`/`error`/`data`
+state. The hook SHALL initialise its loading state at declaration and update
+state only after the request resolves, so no component sets state synchronously
+within a `useEffect` body.
 
 #### Scenario: Successful read exposes data and clears loading
 - GIVEN a component uses the hook to read a list endpoint
@@ -37,3 +36,8 @@ component sets state synchronously within a `useEffect` body
 - GIVEN a component that fetches only when a guard is true (e.g. `isAdmin`)
 - WHEN ESLint evaluates the component
 - THEN no `react-hooks/set-state-in-effect` error is reported
+
+#### Scenario: No synchronous set-state in effects
+- GIVEN components perform their mount-time reads through the hook
+- WHEN the frontend is linted
+- THEN `react-hooks/set-state-in-effect` reports zero errors

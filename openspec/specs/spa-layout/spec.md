@@ -3,6 +3,7 @@
 ## Purpose
 Persistent application chrome for authenticated pages: `AppLayout` header,
 sidebar navigation (including role-gated entries) and the SPA route allowlist.
+
 ## Requirements
 
 ### Requirement: AppLayout provides persistent application chrome
@@ -10,11 +11,8 @@ The SPA SHALL have an `AppLayout` component that renders a top header and left s
 
 The header SHALL display a brand mark immediately before the brand name. The mark
 SHALL be decorative: it SHALL be hidden from assistive technology
-(`aria-hidden`), SHALL NOT be focusable, and SHALL NOT be a link — the adjacent
-brand name provides the accessible name, and the sidebar already provides
-navigation to `/`. The mark SHALL be rendered inline so that it inherits the
-header's text colour, so that it remains legible against the header background
-and follows any future change of theme.
+(`aria-hidden`), SHALL NOT be focusable, and SHALL NOT be a link. The mark SHALL
+be rendered inline so that it inherits the header's text colour.
 
 #### Scenario: Header shows brand and user
 - **WHEN** an authenticated user views any protected page
@@ -55,6 +53,14 @@ and follows any future change of theme.
 - **WHEN** the user views the login page
 - **THEN** the header and sidebar SHALL NOT be rendered
 
+#### Scenario: Brand mark adds no accessible name or navigation
+- **WHEN** assistive technology or keyboard navigation reaches the header
+- **THEN** the adjacent brand name provides the accessible name and the sidebar provides navigation to `/`, so the decorative mark is neither announced, focusable, nor a link
+
+#### Scenario: Brand mark follows the header colour
+- **WHEN** the header's text colour changes, including through a future theme change
+- **THEN** the inline brand mark inherits the new colour and remains legible against the header background
+
 ### Requirement: Role-Gated Navigation Entries
 The SPA layout SHALL show navigation entries appropriate to the authenticated
 user's role: a **User Management** entry (linking to `/users`) SHALL be visible
@@ -91,3 +97,23 @@ in sync.
 - **GIVEN** a client route present in `App.tsx` but missing from the allowlist
 - **WHEN** the SPA routing tests run
 - **THEN** the parametrised route assertion fails
+
+### Requirement: Sidebar shortcut to the Jenkins home page
+The sidebar SHALL end with a `Jenkins ↗` entry, placed after the role-gated
+entries (Teams, User Management), linking to the proxied Jenkins home page
+`/jenkins/`. Because that route is served by the reverse proxy outside the SPA,
+the entry SHALL be a plain anchor (not a client-side route) that opens in a new
+tab with `rel="noopener noreferrer"`, styled like the other sidebar entries. It
+SHALL be shown to every authenticated role; Jenkins enforces per-role access
+through the forwarded identity.
+
+#### Scenario: Sidebar shows the Jenkins shortcut last
+- **WHEN** an authenticated user views any protected page
+- **THEN** the last sidebar entry is `Jenkins ↗` with `href="/jenkins/"`
+- **AND** it opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`)
+
+#### Scenario: Shortcut lands on Jenkins as the webapp user
+- **GIVEN** a user is signed in to the webapp
+- **WHEN** they follow the sidebar `Jenkins ↗` entry
+- **THEN** the Jenkins dashboard loads through the proxy without a further login
+- **AND** Jenkins identifies them by their webapp username and role

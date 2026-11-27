@@ -5,21 +5,14 @@ Networks (CampusNetwork) are instances of a network type, representing a
 specific deployment with its own host inventory and configuration data.
 ## Requirements
 ### Requirement: Create a Network
-The system SHALL create a new network via POST /api/v1/networks/ with name,
-status, description, host_file, and campus_type fields. The system SHALL
-automatically set `owner` to the authenticated requesting user.
+The system SHALL create a network via POST /api/v1/networks/ (name, status,
+description, host_file, campus_type) and SHALL set `owner` to the requesting
+user.
 
-Creation SHALL be non-blocking. The system SHALL persist the network row
-immediately with status `Initializing`, invoke the `network_template_mgr`
-Jenkins job with `operation=create` through the shared invocation library, and
-return without waiting for the build to complete. The response SHALL include the
-new network's data together with a streaming handle (`job_name` and `build_no`)
-so the SPA can watch the live console. If the Jenkins service is unreachable the
-system SHALL NOT persist the row and SHALL return `503 Service Unavailable` with
-a JSON body containing `status`, `name`, and a human-readable `reason`. The
-streamed console — not a blocking HTTP response — is the signal the user watches
-for success or failure; a network whose build fails remains in the list in an
-error state for the user to delete.
+Creation SHALL be non-blocking: it SHALL persist the row immediately with
+status `Initializing`, invoke `network_template_mgr` with `operation=create`
+via the shared invocation library, and return without awaiting the build. The response SHALL include the network's data and a
+streaming handle (`job_name`, `build_no`).
 
 #### Scenario: Successful creation starts the job and streams
 - GIVEN a valid campus_type id and an Ansible INI inventory string
@@ -40,6 +33,26 @@ error state for the user to delete.
 - WHEN POST /api/v1/networks/ is called
 - THEN a 503 response is returned with a failure reason
 - AND no network row is persisted
+
+### Requirement: Network Creation Failure Handling
+If the Jenkins service is unreachable when a network is created, the system
+SHALL NOT persist the row and SHALL return `503 Service Unavailable` with a JSON
+body containing `status`, `name`, and a human-readable `reason`. The streamed
+console — not a blocking HTTP response — is the signal the user watches for
+success or failure; a network whose build fails remains in the list in an error
+state for the user to delete.
+
+#### Scenario: Jenkins unreachable during creation
+- GIVEN the Jenkins service is unreachable
+- WHEN POST /api/v1/networks/ is called with valid fields
+- THEN no network row is persisted
+- AND a 503 response is returned with a JSON body containing `status`, `name`,
+  and a human-readable `reason`
+
+#### Scenario: Failed create build leaves the network for deletion
+- GIVEN a network whose `network_template_mgr` create build fails
+- WHEN the user lists networks
+- THEN the network is still listed, in an error state, and can be deleted
 
 ### Requirement: List Networks
 The system SHALL return a paginated list of networks via GET /api/v1/networks/.
@@ -84,11 +97,8 @@ Deletion SHALL be non-blocking. The system SHALL reserve the build number and
 invoke the `network_template_mgr` Jenkins job with `operation=delete` through
 the shared invocation library, remove the database row immediately
 (optimistically), and return without waiting for the build to complete. The
-response SHALL include a streaming handle (`job_name` and `build_no`) so the SPA
-can watch the live console of the delete job, which runs against the shared
-`network_template_mgr` job and therefore does not depend on the removed row. If
-the Jenkins service is unreachable the system SHALL NOT remove the row and SHALL
-return `503 Service Unavailable` with a failure reason.
+response SHALL include a streaming handle (`job_name` and `build_no`) for the
+delete job's live console.
 
 #### Scenario: Successful delete starts the job and streams
 - GIVEN an existing network id
@@ -103,6 +113,23 @@ return `503 Service Unavailable` with a failure reason.
 - WHEN DELETE /api/v1/networks/{id}/ is called
 - THEN a 503 response is returned with a failure reason
 - AND the network row is NOT removed
+
+#### Scenario: Delete console streams after the row is removed
+- GIVEN a network has just been deleted and its row removed
+- WHEN the SPA streams the console using the returned `job_name` and `build_no`
+- THEN the console is available, because the delete job runs against the shared
+  `network_template_mgr` job and does not depend on the removed row
+
+### Requirement: Network Deletion When Jenkins Is Unreachable
+If the Jenkins service is unreachable when a network is deleted, the system
+SHALL NOT remove the row and SHALL return `503 Service Unavailable` with a
+failure reason.
+
+#### Scenario: Jenkins unreachable during deletion
+- GIVEN an existing network and an unreachable Jenkins service
+- WHEN DELETE /api/v1/networks/{id}/ is called
+- THEN a 503 Service Unavailable response with a failure reason is returned
+- AND the network row is not removed
 
 ### Requirement: Dynamic Ansible Workspace
 The system SHALL always use a per-network build directory at runtime. The

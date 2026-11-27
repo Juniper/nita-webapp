@@ -38,7 +38,6 @@ FROM python:3.12-slim-trixie
 ENV WEBAPP_USER=vagrant
 ENV WEBAPP_PASS=vagrant123
 ENV JENKINS_USER=admin
-ENV JENKINS_PASS=admin
 ENV PATH="/opt/nita-venv/bin:$PATH"
 
 RUN apt-get update -y \
@@ -67,7 +66,7 @@ LABEL org.opencontainers.image.source="https://github.com/Juniper/nita-webapp"
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget -qO- http://localhost:8000/api/v1/auth/token/ || exit 1
+    CMD ["python", "/app/build-and-test-webapp/healthcheck.py"]
 
 # Default startup: wait for DB, migrate, bootstrap admin, configure Jenkins, serve.
 # docker-compose overrides this via its own `command:`; kept so the image runs standalone.

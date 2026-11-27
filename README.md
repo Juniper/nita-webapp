@@ -242,6 +242,11 @@ No containers tagged as "latest" are provided by the package.
   Added `GET /api/v1/teams/mine/` so any user can discover their own teams.
 * Frontend: introduced a shared `useApiResource` data-fetching hook and enabled
   ESLint enforcement in CI.
+* Fixed the container `HEALTHCHECK`, which always reported `unhealthy` because
+  the slim image has no `wget`; it now probes `/api/v1/auth/csrf/` with Python.
+* Live console streams no longer show Jenkins console-note payloads
+  (`ha:////…`), e.g. *Started by user ha:////…admin* now reads *Started by user
+  admin*.
 
 ## 26.5 New Features and Bug Fixes
 

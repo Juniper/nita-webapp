@@ -30,13 +30,6 @@ then
 else
       echo "Using custom username for Jenkins connection"
 fi
-if [ -z "$JENKINS_PASS" ]
-then
-      echo "Using default password for Jenkins connection"
-      export JENKINS_PASS=admin
-else
-      echo "Using custom password for Jenkins connection"
-fi
 
 echo ""
 echo "##############################################"

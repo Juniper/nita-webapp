@@ -16,11 +16,9 @@ being anonymous-readable.
 
 Two facts shape the design:
 
-- **The reverse proxy will change.** nginx is slated to be replaced by Traefik.
-  Both support the same pattern — ask an external endpoint "is this request
-  authenticated?" before forwarding (`auth_request` in nginx, `forwardAuth` in
-  Traefik) — so the authentication contract must live in Django, not in proxy
-  configuration.
+- **The reverse proxy uses Traefik.** Its `forwardAuth` middleware asks Django
+  whether the request has a valid webapp session, so the authentication
+  contract lives in Django rather than proxy-specific configuration.
 - **Not every Django→Jenkins call is authenticated yet.** `invoke_job`,
   `robot_summary`, the status updater and the lifecycle history all send
   credentials. The live console stream in `progressive_text_events` does not:
@@ -31,16 +29,15 @@ Two facts shape the design:
 ## What Changes
 
 - **Forward-auth endpoint.** A new `GET /api/v1/auth/forward/` using
-  `LabSessionAuthentication` only, answering `200` with an empty body for a
-  request carrying a valid webapp session and
-  `401`/`403` otherwise. On success it also sets `X-Auth-User` and
-  `X-Auth-Role` response headers describing the caller. This is the contract a
-  reverse proxy consults before forwarding a request to Jenkins; it is
-  proxy-agnostic by construction.
-- **nginx gates `/jenkins/` on that endpoint.** The `location /jenkins/` block
-  gains an `auth_request` sub-request to the forward-auth endpoint. A denial
-  redirects the browser to `/login?next=<original path>` instead of showing a
-  bare error. The webapp's own `/api/v1/` routes are unaffected.
+  `LabSessionAuthentication` only, answering `200` with
+  `X-Forwarded-User` / `X-Forwarded-Groups` for a valid session and redirecting
+  denied requests to login with a safe return path. It performs no database
+  writes and rejects API-token-only authentication.
+- **Traefik gates `/jenkins/` on that endpoint.** The companion
+  `migrate-proxy-to-traefik` change configures forward-auth, relays only the
+  authenticated identity headers, removes client-supplied identity and
+  Authorization headers, and fails closed. The webapp's own `/api/v1/` routes
+  are unaffected.
 - **Login page honours `?next=`.** After a successful login the SPA navigates
   to the `next` query parameter when it is a same-origin relative path, and to
   `/` otherwise. This completes the round-trip from a gated Jenkins deep link.
@@ -59,7 +56,7 @@ Two facts shape the design:
   so a webapp session *is* the Jenkins session.
 - **Jenkins access mirrors the webapp.** The groups header is the role plus one
   `team-<id>` per team. `network_template_mgr` writes a per-job matrix into
-  every generated job (owner read/build/cancel, team read) and re-applies it
+  every generated job (owner and team read/build/cancel) and re-applies it
   (`operation=acl`) when the webapp changes a network's team or transfers
   ownership; admins administer, power users see everything, regular users see
   only their own and team-shared networks' jobs — exactly as in the webapp.
@@ -93,11 +90,8 @@ Two facts shape the design:
   fails the build when a job cannot be created or deleted.
 - **Frontend:** `LoginPage` reads and validates `next`; `AppLayout` adds the
   sidebar `Jenkins ↗` anchor. No new dependencies.
-- **Proxy:** `nginx/nginx.conf` gains an internal auth location, an
-  `auth_request` directive in `location /jenkins/`, and a named location for
-  the login redirect. The same file is what `nita/install.sh` publishes as the
-  `proxy-config-cm` ConfigMap, so the k8s deployment picks it up on the next
-  install/upgrade.
+- **Proxy:** the companion Traefik change consumes the forward-auth endpoint
+  and preserves the authenticated user and groups on the Jenkins request.
 - **Operational:** every request under `/jenkins/` now costs one additional
   sub-request to Django (a session lookup). Jenkins pages load tens of assets,
   so this is noticeable but bounded; a short-lived cache keyed on the session
@@ -106,7 +100,7 @@ Two facts shape the design:
   `nita-jenkins/revoke-anonymous-build-and-enable-csrf` removes the anonymous
   grants and re-enables CSRF; `nita/close-jenkins-direct-exposure` removes the
   host-port 8443 bypass and fixes the NetworkPolicy so the proxy pod may reach
-  Jenkins. Deploy Jenkins hardening first, the NITA networking change second,
-  and this session gate last. Until the gate is deployed, anonymous reads
-  remain possible through the proxy, but anonymous build/cancel access has
-  already been removed and the direct host-port route is closed.
+  Jenkins. Deploy the NITA networking change first, then the Jenkins hardening
+  and this session gate together: Jenkins' header realm rejects the old
+  webapp's password credentials, and this change's identity headers are only
+  safe once the direct host-port route is closed.

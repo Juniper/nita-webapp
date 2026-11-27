@@ -1,4 +1,9 @@
-## ADDED Requirements
+# docker-node-build-stage Specification
+
+## Purpose
+The webapp Docker image builds the React SPA in a Node build stage and ships only the compiled assets, keeping `node_modules` and local builds out of the build context.
+
+## Requirements
 
 ### Requirement: Docker image includes compiled React SPA
 The Dockerfile SHALL use a multi-stage build with a `frontend-builder` stage based on `node:22-slim`. The builder stage SHALL install npm dependencies with `npm ci` and produce a production build with `npm run build`. The final Django image SHALL copy the compiled static files from the builder stage into `/app/frontend/dist/`.

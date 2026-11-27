@@ -120,10 +120,10 @@ network's team via `PATCH /api/v1/networks/{id}/`.
 - **THEN** `PATCH /api/v1/networks/{id}/` is sent with the team id and the network reflects the new team
 
 ### Requirement: Create User (Admin UI)
-The admin `Users` screen SHALL provide a **New user** action that opens a dialog
-collecting `username`, `email`, `role`, and an initial `password`, and submits it
-to `POST /api/v1/users/`. On success the new user SHALL appear in the list. The
-dialog SHALL offer a way to generate and copy the password client-side, and SHALL
+The admin `Users` screen SHALL provide a **New user** dialog collecting
+`username`, `email`, `role`, and an initial `password`, submitted to
+`POST /api/v1/users/`. On success the new user SHALL appear in the list. The
+dialog SHALL offer client-side password generation and copying, and SHALL
 surface `400` validation errors (duplicate username, weak password) inline. The
 password SHALL only exist client-side for copying; it SHALL never be displayed
 from a server response.

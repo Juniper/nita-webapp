@@ -34,20 +34,16 @@ name, the triggering user and the time of the run.
 - **THEN** no counts, totals or percentages of runs are shown
 
 ### Requirement: Recent activity is ordered by attention then recency
-The feed SHALL order entries by three groups, and newest-first within each group:
+The feed SHALL order entries in three groups, newest-first within each:
 
-1. **In progress** — `status` equal to `Running`
-2. **Needs attention** — `status` equal to `Failure`, `Failed`, `Aborted` or
-   `Unstable`
+1. **In progress** — `status` `Running`
+2. **Needs attention** — `status` `Failure`, `Failed`, `Aborted` or `Unstable`
 3. **All other entries**
 
-Status comparison SHALL be case-insensitive. An entry whose status matches none
-of the listed values SHALL fall into group 3 and SHALL still be displayed. In
-progress and needs-attention entries SHALL be visually distinguishable from the
-rest.
-
-Because in-progress entries sort first, an in-progress run SHALL NOT be displaced
-from the feed by more recent completed runs.
+Status comparison SHALL be case-insensitive. Unmatched statuses SHALL fall into
+group 3 and SHALL still be displayed. In-progress and needs-attention entries
+SHALL be visually distinguishable. An in-progress run SHALL NOT be displaced from the feed by
+newer completed runs.
 
 #### Scenario: In-progress runs sort first
 - **GIVEN** entries with statuses `Running`, `Failure` and `Success`

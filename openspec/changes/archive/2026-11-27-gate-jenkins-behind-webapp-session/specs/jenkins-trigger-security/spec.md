@@ -78,6 +78,11 @@ The webapp SHALL NOT send a password to Jenkins.
 - WHEN it calls Jenkins
 - THEN the request carries `X-Forwarded-User: <JENKINS_USER>` and no `Authorization` header
 
+#### Scenario: Webapp startup does not define a Jenkins password
+- GIVEN the webapp image, Compose configuration, and startup scripts are inspected
+- WHEN Jenkins connection settings are configured
+- THEN they do not define or synthesize `JENKINS_PASS`
+
 ### Requirement: Network job management runs without Jenkins passwords
 The `network_template_mgr` job definition shipped by the webapp SHALL create
 and delete per-network Jenkins jobs through the Jenkins REST API

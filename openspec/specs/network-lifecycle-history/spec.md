@@ -8,18 +8,10 @@ so operators can list past runs and review their historical console output.
 ### Requirement: Derive Lifecycle Job Runs from Jenkins
 The system SHALL derive the history of lifecycle Jenkins job runs — network
 create, network delete, and network-type load — directly from Jenkins build
-records rather than from a local table. For each run it SHALL report the Jenkins
-`job_name`, the `build_no`, the run `kind` (one of `network_create`,
-`network_delete`, `network_type_load`), a human-readable `subject` (the network
-or network-type name the run concerns, derived from the build parameters), a
-`timestamp`, and a `status` derived from the Jenkins build result. Deriving from
-Jenkins ensures every run is visible — including runs triggered outside the
-React UI — and that history survives a database reset.
-
-The run `kind` SHALL be resolved from the Jenkins job and the build's
-`operation` parameter: `network_template_mgr` with `operation=create` is a
-`network_create` run, `operation=delete` is a `network_delete` run, and
-`network_type_validator` with `operation=add` is a `network_type_load` run.
+records rather than from a local table. For each run it SHALL report `job_name`,
+`build_no`, `kind` (`network_create`, `network_delete`, or `network_type_load`),
+a human-readable `subject` (the network or network-type name, from the build
+parameters), a `timestamp`, and a `status` derived from the build result.
 
 #### Scenario: Create runs are derived from Jenkins
 - **WHEN** the `network_template_mgr` job has builds with `operation=create`
@@ -38,16 +30,38 @@ The run `kind` SHALL be resolved from the Jenkins job and the build's
   network-type name (from the build's `file_name` parameter, without the `.zip`
   suffix) as `subject`
 
+#### Scenario: Runs triggered outside the React UI are visible
+- **WHEN** a lifecycle job is run directly in Jenkins rather than from the React UI
+- **THEN** that run still appears in the derived lifecycle history
+
+#### Scenario: History survives a database reset
+- **WHEN** the application database is reset
+- **THEN** previously executed lifecycle runs are still reported, because they are
+  derived from Jenkins build records
+
+### Requirement: Resolve Lifecycle Run Kind from Job and Operation
+The run `kind` SHALL be resolved from the Jenkins job and the build's
+`operation` parameter: `network_template_mgr` with `operation=create` is a
+`network_create` run, `network_template_mgr` with `operation=delete` is a
+`network_delete` run, and `network_type_validator` with `operation=add` is a
+`network_type_load` run.
+
+#### Scenario: Delete builds resolve to network_delete
+- **WHEN** the `network_template_mgr` job has a build with `operation=delete`
+- **THEN** that build is reported with `kind` `network_delete`
+
+#### Scenario: Validator add builds resolve to network_type_load
+- **WHEN** the `network_type_validator` job has a build with `operation=add`
+- **THEN** that build is reported with `kind` `network_type_load`
+
 ### Requirement: List Lifecycle Job Runs
 The system SHALL expose a read-only, authenticated endpoint
-`GET /api/v1/lifecycle-runs/` that lists lifecycle job runs derived from Jenkins
-ordered newest-first. The endpoint SHALL support filtering by `kind` so the
-Networks table can show network create/delete runs and the Network Types table
-can show network-type load runs. Each item SHALL include the run `id` (the
-composite `"<job_name>#<build_no>"`), `kind`, `subject`, `job_name`, `build_no`,
-`timestamp`, and `status`. When Jenkins is unreachable the endpoint SHALL return
-an empty list rather than an error. Unauthenticated requests SHALL receive a
-`403`.
+`GET /api/v1/lifecycle-runs/` listing lifecycle job runs derived from Jenkins,
+newest-first. It SHALL support filtering by `kind`. Each item SHALL include the
+run `id` (composite `"<job_name>#<build_no>"`), `kind`, `subject`, `job_name`,
+`build_no`, `timestamp`, and `status`. When Jenkins is unreachable it SHALL
+return an empty list rather than an error. Unauthenticated requests SHALL
+receive a `403`.
 
 #### Scenario: List returns runs newest-first
 - **WHEN** an authenticated client calls `GET /api/v1/lifecycle-runs/`
@@ -67,14 +81,19 @@ an empty list rather than an error. Unauthenticated requests SHALL receive a
 - **WHEN** `GET /api/v1/lifecycle-runs/` is called without a valid session
 - **THEN** a 403 response is returned
 
+#### Scenario: Kind filter serves the Networks and Network Types tables
+- **WHEN** the Networks table requests runs filtered to `network_create` and
+  `network_delete`, and the Network Types table requests runs filtered to
+  `network_type_load`
+- **THEN** each table receives only the runs of the requested kinds
+
 ### Requirement: View Historical Lifecycle Console Output
 The system SHALL expose an authenticated endpoint
-`GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` that returns
-the historical Jenkins console output for a single build, resolved from the
-supplied `job_name` and `build_no`. ANSI escape codes SHALL be stripped. The
-`job_name` SHALL be constrained to `[A-Za-z0-9_.\-]+` and `build_no` to digits;
-an invalid value SHALL return `400`. When the build output is not yet available
-the endpoint SHALL return a placeholder message rather than an error.
+`GET /api/v1/lifecycle-runs/console/?job_name=<job>&build_no=<n>` returning
+that build's historical Jenkins console output with ANSI escape codes stripped.
+`job_name` SHALL be constrained to `[A-Za-z0-9_.\-]+` and `build_no` to
+digits; an invalid value SHALL return `400`. When the output is not yet
+available it SHALL return a placeholder message rather than an error.
 Unauthenticated requests SHALL receive a `403`.
 
 #### Scenario: Console output returned for a past run
@@ -95,4 +114,3 @@ Unauthenticated requests SHALL receive a `403`.
 - **WHEN** `GET /api/v1/lifecycle-runs/console/` is called without a valid
   session
 - **THEN** a 403 response is returned
-

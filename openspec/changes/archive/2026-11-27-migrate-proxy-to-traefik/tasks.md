@@ -7,9 +7,9 @@
 
 ## 2. Documentation and specifications
 
-- [ ] 2.1 Update Nginx-specific proxy requirements and documentation for both Compose and Kubernetes; coordinate release ordering with NITA and Jenkins.
+- [x] 2.1 Update Nginx-specific proxy requirements and documentation for both Compose and Kubernetes; coordinate release ordering with NITA and Jenkins. (Deltas rename/modify the Nginx requirements in `jenkins-reverse-proxy`, `console-streaming`, `network-lifecycle-streaming` and `api`; README, ARCHITECTURE, BUILD and build-templates docs describe Traefik; NITA's README covers Kubernetes; release order is recorded in the session-gate and Jenkins proposals.)
 - [x] 2.2 Document reuse of existing certificate files, coordinated proxy/webapp migration, validation and rollback to the compatible Nginx proxy and webapp image together.
-- [ ] 2.3 After the session-gate change is archived, replace its original forward-auth requirement with the Traefik contract in this change's auth delta before archiving this change.
+- [x] 2.3 Avoid two conflicting forward-auth requirements: the session-gate change's auth delta now states the Traefik contract directly, so this change carries no auth delta (archive the session-gate change first).
 
 ## 3. Verification
 

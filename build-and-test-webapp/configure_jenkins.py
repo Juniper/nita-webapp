@@ -5,8 +5,9 @@
 
 Usage: python configure_jenkins.py <host> <port>
 
-Sets the Jenkins URL so that jenkins-cli.jar can authenticate and create jobs.
-Without the Jenkins URL set, the CLI handshake returns 403 on fresh installs.
+Sets the Jenkins URL used by the REST API to configure the NITA Jenkins jobs.
+Without the Jenkins URL set, setup requests cannot reach Jenkins on fresh
+installs.
 """
 
 import http.cookiejar

@@ -36,9 +36,9 @@ through the operator's existing setup.
   retain an Nginx-specific response mode.
 - Coordinate OpenSpec deltas and release sequencing with the in-progress
   `gate-jenkins-behind-webapp-session` change, which defines the authentication
-  contract, and with NITA's Kubernetes change. After archiving the session-gate
-  change, replace its original forward-auth requirement in this change's auth
-  delta rather than retaining two conflicting requirements. Retain the old Compose proxy
+  contract, and with NITA's Kubernetes change. The session-gate change's auth
+  delta states the Traefik contract directly, so this change carries no auth
+  delta and the two never define conflicting requirements. Retain the old Compose proxy
   configuration, prior webapp image and certificate inputs until successful
   verification and document an explicit rollback. Because the auth contract
   changes, restoring Nginx also requires restoring the prior webapp image.

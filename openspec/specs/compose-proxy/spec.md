@@ -1,4 +1,11 @@
-## ADDED Requirements
+# compose-proxy Specification
+
+## Purpose
+
+Specify the Compose deployment's Traefik proxy, including safe migration,
+request limits, TLS identity, and rollback behavior.
+
+## Requirements
 
 ### Requirement: Traefik Compose proxy
 The webapp Compose deployment SHALL use a pinned Traefik proxy configured via

@@ -5,12 +5,12 @@ and usage see [README.md](README.md); for image builds see [BUILD.md](BUILD.md).
 
 ## Request flow
 
-Everything is served through a single NGINX endpoint on port 443.
+Everything is served through a single Traefik endpoint on port 443.
 
 ```
                     ┌────────────────────────────────────────┐
-   https://<host>/  │                NGINX                   │
-   ─────────────────▶  (nginx/nginx.conf, TLS termination)   │
+   https://<host>/  │               Traefik                  │
+   ─────────────────▶ (traefik/routes.yaml, TLS termination) │
                     └───┬───────────────┬────────────────┬───┘
                         │               │                │
               /jenkins/ │               │ /api/v1/...    │ /  (+ SPA routes)
@@ -34,7 +34,8 @@ other paths belong to the backend (`api/`, `admin/`, `assets/`, `jenkins/`,
 that allowlist in `ngcn_workbench/urls.py` as well as to the React router.
 
 Jenkins is **not** exposed on its own port. It runs with `--prefix=/jenkins` so
-it emits correctly-prefixed URLs, and NGINX proxies `/jenkins/` to it. Backend
+it emits correctly-prefixed URLs, and Traefik proxies `/jenkins/` to it after
+a forward-auth check against the webapp session (`/api/v1/auth/forward/`). Backend
 callers build Jenkins URLs from a single canonical prefixed base
 (`jenkins_config.JENKINS_SERVER_URL`) — duplicating that string is what
 previously caused action-history rows to stick at `Running`.

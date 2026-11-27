@@ -36,10 +36,7 @@ Loading a network type SHALL be non-blocking. The system SHALL invoke the
 `network_type_validator` Jenkins job through the shared invocation library and
 return without waiting for the validation/load build to complete. The response
 SHALL include a streaming handle (`job_name` and `build_no`) so the SPA can
-watch the live console of the load job. If no file is supplied the system SHALL
-return `400` with `result: failure` and a reason. If the Jenkins service is
-unreachable the system SHALL return `503 Service Unavailable` with a failure
-reason.
+watch the live console of the load job.
 
 #### Scenario: Successful upload starts the job and streams
 - GIVEN a valid project zip with project.yaml and ansible.cfg
@@ -58,16 +55,30 @@ reason.
 - WHEN POST /api/v1/network-types/upload/ is called with a valid zip
 - THEN a 503 response is returned with a failure reason
 
+### Requirement: Network Type Upload Error Responses
+For `POST /api/v1/network-types/upload/`, if no file is supplied the system
+SHALL return `400` with `result: failure` and a reason. If the Jenkins service
+is unreachable the system SHALL return `503 Service Unavailable` with a failure
+reason.
+
+#### Scenario: Upload without a file
+- GIVEN an authenticated user
+- WHEN POST /api/v1/network-types/upload/ is called without a file
+- THEN a 400 response with `result: failure` and a reason is returned
+
+#### Scenario: Upload while Jenkins is unreachable
+- GIVEN the Jenkins service is unreachable
+- WHEN POST /api/v1/network-types/upload/ is called with a zip archive
+- THEN a 503 Service Unavailable response with a failure reason is returned
+
 ### Requirement: Delete a Network Type
 The system SHALL remove a network type via `DELETE /api/v1/network-types/{id}/`,
-restricted to users with `role=power_user` or `role=admin` regardless of who
-created the type (including types whose `created_by` is `NULL`). A regular `user`
-SHALL receive `403`.
+restricted to `role=power_user` or `role=admin` regardless of who created the
+type (including `created_by` `NULL`). A regular `user` SHALL receive `403`.
 
-Deletion SHALL be refused with `409 Conflict` while any `CampusNetwork` still
-references the type; the response SHALL name the blocking networks. This applies
-to `admin` requesters as well as `power_user`. When deletion proceeds, the
-`Action` rows belonging to the type SHALL be removed with it.
+Deletion SHALL be refused with `409 Conflict`, naming the blocking networks,
+while any `CampusNetwork` references the type, for `admin` and `power_user`
+alike. When deletion proceeds, the type's `Action` rows SHALL be removed too.
 
 #### Scenario: Successful delete
 - GIVEN a network type that no network references

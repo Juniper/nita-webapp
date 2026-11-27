@@ -11,14 +11,9 @@ The system SHALL provide an unauthenticated endpoint `POST /api/v1/auth/register
 that creates a new user account with `role=user`. The endpoint SHALL require
 `username`, `password`, and optionally `email`.
 
-Self-service registration SHALL be controlled by a configuration flag
-`SELF_REGISTRATION_ENABLED`, sourced from the environment variable
-`NITA_SELF_REGISTRATION_ENABLED` and defaulting to **enabled** (`True`) so that
-both self-registration and admin-created onboarding are active out of the box.
-When the flag is disabled, the endpoint SHALL return `403` with a message
-directing the requester to contact an administrator, and no account SHALL be
-created. Accepted "disabled" values follow the existing boolean-env convention
-(anything other than `"True"` disables the flag).
+When self-service registration is disabled (see Self-Registration Configuration
+Flag), the endpoint SHALL return `403` with a message directing the requester to
+contact an administrator, and no account SHALL be created.
 
 #### Scenario: Successful registration
 - GIVEN no existing user with the chosen username
@@ -44,6 +39,25 @@ created. Accepted "disabled" values follow the existing boolean-env convention
 - GIVEN `NITA_SELF_REGISTRATION_ENABLED` is set to a disabling value
 - WHEN `POST /api/v1/auth/register/` is called with valid `username` and `password`
 - THEN a 403 response is returned and no account is created
+
+### Requirement: Self-Registration Configuration Flag
+Self-service registration SHALL be controlled by a configuration flag
+`SELF_REGISTRATION_ENABLED`, sourced from the environment variable
+`NITA_SELF_REGISTRATION_ENABLED` and defaulting to **enabled** (`True`) so that
+both self-registration and admin-created onboarding are active out of the box.
+Accepted "disabled" values follow the existing boolean-env convention (anything
+other than `"True"` disables the flag).
+
+#### Scenario: Flag defaults to enabled
+- GIVEN `NITA_SELF_REGISTRATION_ENABLED` is not set
+- WHEN the application starts
+- THEN `SELF_REGISTRATION_ENABLED` is `True`
+
+#### Scenario: Any value other than "True" disables the flag
+- GIVEN `NITA_SELF_REGISTRATION_ENABLED` is set to a value other than `"True"`
+  (for example `"false"`)
+- WHEN the application starts
+- THEN `SELF_REGISTRATION_ENABLED` is `False`
 
 ### Requirement: Bootstrap Admin on Fresh Deployment
 The system SHALL support creating an initial admin user on a fresh deployment

@@ -3,7 +3,9 @@
 ## Purpose
 General cross-cutting concerns for the NITA Webapp REST API — versioning,
 pagination, content types, and the Swagger/Redoc documentation endpoints.
+
 ## Requirements
+
 ### Requirement: API Versioning
 All REST endpoints SHALL be served under the `/api/v1/` prefix.
 
@@ -52,14 +54,14 @@ The system SHALL serve an interactive Swagger UI at GET /api/docs/.
 - THEN the Swagger UI is rendered with all API endpoints listed
 
 ### Requirement: HTTPS Enforcement
-The nginx proxy SHALL terminate TLS and forward all HTTP traffic to the webapp
-on port 8000. The proxy SHALL listen on port 443 for HTTPS and port 8000
-within the cluster.
+The Traefik proxy SHALL terminate TLS and route webapp HTTP traffic to the
+webapp on port 8000. It SHALL listen on port 443 for HTTPS and port 8000 for
+internal HTTP without exposing port 8000 on the host.
 
 #### Scenario: HTTPS access
-- GIVEN the proxy pod is running with a valid certificate
-- WHEN a client connects to the host on port 443
-- THEN the connection is served over TLS
+- **GIVEN** the proxy is running with a valid certificate
+- **WHEN** a client connects to the host on port 443
+- **THEN** the connection is served over TLS
 
 ### Requirement: OpenAPI Schema Accuracy
 The `openapi.yaml` file SHALL accurately reflect all implemented API endpoints,
@@ -100,4 +102,3 @@ schema generated live by `manage.py spectacular`, preventing silent drift.
 - **WHEN** `manage.py spectacular --file -` is executed in the test environment
 - **THEN** the output is identical to the committed file (excluding any generated
   timestamp or comment fields), and the pytest drift test exits 0
-

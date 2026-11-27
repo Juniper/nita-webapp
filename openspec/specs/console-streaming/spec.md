@@ -4,26 +4,25 @@ Define console streaming behavior for action-history entries and their proxy.
 
 ## Requirements
 
-### Requirement: Nginx Proxy Must Not Buffer SSE Stream
-The nginx location matching `/api/v1/action-history/` stream paths SHALL set
-`proxy_buffering off`, `proxy_cache off`, and `proxy_read_timeout` to at least
-1850 seconds so SSE events are delivered immediately and 30-minute streams
-are not closed prematurely.
+### Requirement: Proxy Must Not Buffer SSE Stream
+The Traefik proxy SHALL deliver action-history SSE events without response
+buffering or caching and SHALL allow at least 1850 seconds of idle stream time.
 
 #### Scenario: SSE events reach browser in real time
-- GIVEN a running Jenkins build producing console output
-- WHEN the browser opens the SSE stream endpoint
-- THEN console lines appear in the browser within 2 seconds of Jenkins producing
-  them
-- AND no buffering delay causes the console panel to remain blank while the
-  build runs
+- **GIVEN** a running Jenkins build producing console output
+- **WHEN** the browser opens the SSE stream endpoint
+- **THEN** console lines appear within 2 seconds under normal test conditions
+  without waiting for the stream to finish
 
 #### Scenario: Proxy does not close long-running stream prematurely
-- GIVEN a Jenkins build that runs for more than 5 minutes
-- WHEN the browser is connected to the SSE stream
-- THEN the nginx proxy does not close the connection before the build completes
-- AND the `event: done` signal is received by the browser when the build
-  finishes
+- **GIVEN** a Jenkins build that runs for more than 5 minutes
+- **WHEN** the browser is connected to the SSE stream
+- **THEN** the proxy does not close the connection before the build completes
+- **AND** the browser receives the `event: done` signal
+
+#### Scenario: Proxy does not close an idle stream prematurely
+- **WHEN** a healthy stream is idle for 1850 seconds and then emits an event
+- **THEN** the connection remains open and the browser receives the event
 
 ### Requirement: Stream console output via SSE
 The system SHALL expose `GET /api/v1/action-history/{id}/stream/` as a
@@ -64,13 +63,21 @@ continuous streaming (1800 one-second poll attempts), it SHALL emit
 
 ### Requirement: Stream access and output handling
 The endpoint SHALL require a session cookie and reject unauthenticated requests
-with 403 before streaming. It SHALL strip ANSI escape codes from emitted output
-and set `X-Accel-Buffering: no` on every streaming response.
+with 403 before streaming. It SHALL strip ANSI escape codes and serialized
+Jenkins ConsoleNote markers from emitted output and set
+`X-Accel-Buffering: no` on every streaming response.
 
 #### Scenario: ANSI escape codes are stripped
 - GIVEN a Jenkins build whose console output contains ANSI colour escape codes
 - WHEN the stream endpoint is called
 - THEN the emitted `data:` events contain no ANSI escape sequences
+
+#### Scenario: Serialized Jenkins ConsoleNotes are stripped
+- GIVEN a Jenkins build whose progressive text contains `ESC[8mha:…ESC[0m`
+  ConsoleNote markers
+- WHEN the stream endpoint is called
+- THEN the emitted `data:` events contain no ConsoleNote markers and preserve
+  the surrounding console text
 
 #### Scenario: Unauthenticated request rejected
 - GIVEN no valid session cookie is present

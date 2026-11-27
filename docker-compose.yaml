@@ -18,7 +18,6 @@ services:
       - WEBAPP_USER
       - WEBAPP_PASS
       - JENKINS_USER
-      - JENKINS_PASS
       - JENKINS_PORT
       - JENKINS_URL
 #

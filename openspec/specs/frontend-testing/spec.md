@@ -8,18 +8,14 @@ pytest suite and to the `frontend-lint` gate.
 ## Requirements
 
 ### Requirement: Frontend Test Runner Exists
-The SPA SHALL provide a test runner executable from `frontend/` as
-`npm test` (a single, non-watching run) and `npm run test:watch` (watch mode).
-The runner SHALL share the application's Vite configuration so that module
-resolution, plugins and TypeScript settings are defined in exactly one place.
+The SPA SHALL provide a test runner run from `frontend/` as `npm test` (single,
+non-watching run) and `npm run test:watch` (watch mode).
+The runner SHALL share the application's Vite configuration, so resolution,
+plugins and TypeScript settings are defined in one place.
 
 Test files SHALL be discovered at `frontend/src/**/*.{test,spec}.{ts,tsx}`,
-co-located with the modules they exercise, so that the existing
-`tsconfig.app.json` (`include: ["src"]`) type-checks them during
-`npm run build`.
-
-A shared setup file SHALL register DOM matchers and SHALL unmount rendered
-components between tests, so that no individual test has to perform cleanup.
+co-located with the modules they exercise, so `tsconfig.app.json`
+(`include: ["src"]`) type-checks them during `npm run build`.
 
 #### Scenario: Test suite runs to completion
 - WHEN `npm test` is run in `frontend/`
@@ -45,6 +41,21 @@ components between tests, so that no individual test has to perform cleanup.
 - GIVEN a test file containing a TypeScript type error
 - WHEN `npm run build` is run
 - THEN the build fails
+
+### Requirement: Shared Frontend Test Setup
+A shared setup file for the frontend test runner SHALL register DOM matchers and
+SHALL unmount rendered components between tests, so that no individual test has
+to perform cleanup.
+
+#### Scenario: DOM matchers available without per-test setup
+- GIVEN a test file that does not import or register DOM matchers itself
+- WHEN it asserts on a rendered element with a DOM matcher
+- THEN the matcher is available via the shared setup file
+
+#### Scenario: Rendered components are unmounted between tests
+- GIVEN a test renders a component and performs no cleanup
+- WHEN the next test runs
+- THEN the previously rendered component is no longer mounted
 
 ### Requirement: CI Enforces Frontend Tests on Pull Requests
 The pull-request CI workflow SHALL run the frontend test suite (`npm test` in

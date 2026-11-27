@@ -1,3 +1,10 @@
+# spa-session-auth Specification
+
+## Purpose
+The SPA authenticates users with Django session cookies through login, logout, current-user and CSRF-token endpoints under `/api/v1/auth/`.
+
+## Requirements
+
 ### Requirement: Session Login
 The system SHALL accept username and password credentials at `POST /api/v1/auth/login/` and, on success, create a Django session, set a `sessionid` cookie, and return the authenticated user's `id`, `username`, and `is_superuser` in a JSON response with status 200.
 
