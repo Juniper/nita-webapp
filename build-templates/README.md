@@ -16,18 +16,18 @@ The simplest way to install the nita-webapp is by installing nita, which can be 
 
 # User Interface
 
-NITA exposes two web applications, listening on two different ports for https:
-1. NITA webapp on port 443 (using NGINX)
-2. Jenkins on port 8443
+NITA exposes two web applications through a single HTTPS proxy (Traefik) on port 443:
+1. NITA webapp at `https://<host>/`
+2. Jenkins at `https://<host>/jenkins/`
 
 ## Default User Credentials
 
-The default user credentials for the NITA webapp and Jenkins are listed below:
+The default user credentials for the NITA webapp are listed below. Jenkins has no
+separate login: signing in to the webapp signs you in to Jenkins.
 
 | | Username | Password |
 |---|---|---|
 | Webapp| vagrant | vagrant123 |
-| Jenkins | admin | admin|
 
 ## NITA Command Line Interface
 

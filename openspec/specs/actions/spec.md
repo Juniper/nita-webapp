@@ -87,19 +87,12 @@ time.
 
 ### Requirement: Action History
 The system SHALL record every triggered action and make the history available
-via GET /api/v1/action-history/.
-The list endpoint SHALL accept both `?campus_network_id=<id>` and
-`?action_category_id=<id>` as independent, combinable query parameters.
+via GET /api/v1/action-history/, which SHALL accept `?campus_network_id=<id>`
+and `?action_category_id=<id>` as independent, combinable query parameters.
 
-The endpoint SHALL be scoped to the networks visible to the requesting user, as
-defined by the Action History Visibility Scoping requirement in the
-`network-ownership` capability. The query parameters SHALL narrow the scoped
-result set and SHALL NOT widen it: requesting `?campus_network_id=<id>` for a
-network the caller cannot see SHALL return an empty result set.
-
-Because the detail routes resolve through the same queryset,
-`GET /api/v1/action-history/{id}/` and its sub-routes (`/console/`, `/stream/`,
-`/robot-summary/`) SHALL return `404` for an entry outside the caller's scope.
+The endpoint SHALL be scoped to the networks visible to the requesting user (see
+Action History Visibility Scoping in `network-ownership`). The query parameters
+SHALL narrow the scoped result set and SHALL NOT widen it.
 
 #### Scenario: History entry created on trigger
 - GIVEN a successful trigger call
@@ -140,13 +133,28 @@ Because the detail routes resolve through the same queryset,
 - THEN a 404 response is returned
 - AND no Jenkins console output is disclosed
 
-### Requirement: Action History Records the Triggering User
-Each `ActionHistory` entry SHALL carry a `triggered_by_username` field holding
-the username of the user who triggered the run. The field SHALL be a durable
-string snapshot taken at trigger time, not a reference to a user record, so that
-the attribution survives renaming or deletion of that user.
+#### Scenario: Filtering by a network outside the caller's scope returns nothing
+- GIVEN a user who cannot see network N
+- WHEN GET /api/v1/action-history/?campus_network_id=N is called by that user
+- THEN an empty result set is returned
 
-The field SHALL be exposed as a read-only string on
+### Requirement: Action History Detail Routes Respect Visibility Scope
+`GET /api/v1/action-history/{id}/` and its sub-routes (`/console/`, `/stream/`,
+`/robot-summary/`) SHALL resolve through the same scoped queryset as the list
+endpoint and SHALL return `404` for an entry outside the caller's scope.
+
+#### Scenario: Detail routes resolve through the scoped queryset
+- GIVEN an action-history entry outside the caller's scope
+- WHEN the caller requests GET /api/v1/action-history/{id}/ or its `/console/`,
+  `/stream/` or `/robot-summary/` sub-route
+- THEN a `404` response is returned
+
+### Requirement: Action History Records the Triggering User
+Each `ActionHistory` entry SHALL carry a `triggered_by_username` field: a
+durable string snapshot of the triggering user's username taken at trigger
+time, not a reference to a user record.
+
+The field SHALL be exposed read-only on
 `GET /api/v1/action-history/` and `GET /api/v1/action-history/{id}/`. Entries
 created before this field existed SHALL carry the empty string, and the presence
 of action-history entries SHALL NOT prevent deletion of a user.
@@ -171,6 +179,12 @@ of action-history entries SHALL NOT prevent deletion of a user.
 - GIVEN an action-history entry created before this field was introduced
 - WHEN a client fetches that entry
 - THEN `triggered_by_username` is the empty string
+
+#### Scenario: Attribution survives renaming or deleting the user
+- GIVEN an action-history entry triggered by user `alice`
+- WHEN `alice` is later renamed or deleted
+- THEN the entry's `triggered_by_username` still reads `alice`, because it is a
+  string snapshot rather than a reference to the user record
 
 ### Requirement: Action History Reflects Terminal Jenkins State
 The system SHALL persist action-history status as a terminal value after the Jenkins build completes.

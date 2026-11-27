@@ -3,7 +3,9 @@
 ## Purpose
 The React SPA `/networks` page lists networks and lets the user add, modify,
 delete, and review the lifecycle history of networks.
+
 ## Requirements
+
 ### Requirement: Networks page lists all networks
 The `/networks` page SHALL fetch and display all networks from `GET /api/v1/networks/` in a table with columns: Name, Network Type, Description, Status, and Actions (Modify + Delete).
 
@@ -16,9 +18,9 @@ The `/networks` page SHALL fetch and display all networks from `GET /api/v1/netw
 - **THEN** the browser navigates to `/app/networks/:id`
 
 ### Requirement: User can add a new Network
-The page SHALL provide an inline form (toggled by "Add Network" button) with fields for name, description, network type (dropdown), and a required Host File upload. The Host File field SHALL be a file input; on submit the file contents SHALL be read and sent as the `host_file` value. The submit SHALL POST to `POST /api/v1/networks/` with an initial `status` of `Initialized`, and refresh the list on success.
+The page SHALL provide an inline form (toggled by "Add Network" button) with name, description, network type (dropdown), and a required Host File file input whose contents SHALL be read on submit and sent as `host_file`. The submit SHALL POST to `POST /api/v1/networks/` with an initial `status` of `Initialized`, and refresh the list on success.
 
-On a successful create, the page SHALL open the live console panel (the same panel used by the action trigger flow) using the streaming handle (`job_name`, `build_no`) returned by the create response, connecting to `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`, so the user can watch the create job run instead of waiting on a spinner.
+On a successful create, the page SHALL open the live console panel with the returned streaming handle (`job_name`, `build_no`).
 
 #### Scenario: Successful network creation opens the console
 - **WHEN** the user fills in the required fields, selects a host file, and submits the Add form
@@ -36,6 +38,11 @@ On a successful create, the page SHALL open the live console panel (the same pan
 - **WHEN** the POST request fails
 - **THEN** an error message is displayed inside the form
 
+#### Scenario: Create opens the live console instead of a spinner
+- **WHEN** the create request succeeds and returns a streaming handle
+- **THEN** the same live console panel used by the action trigger flow opens, connected to `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`
+- **AND** the user watches the create job run instead of waiting on a spinner
+
 ### Requirement: User can delete a Network
 The page SHALL allow deleting a network via `DELETE /api/v1/networks/{id}/` with inline confirmation. On a successful delete, the page SHALL open the live console panel using the streaming handle (`job_name`, `build_no`) returned by the delete response, connecting to `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`, so the user can watch the delete job run.
 
@@ -51,20 +58,9 @@ A stub `NetworkDetailPage` SHALL exist at `/networks/:id` showing the network na
 - **THEN** the page renders inside `AppLayout` without a 404 or blank screen
 
 ### Requirement: Action history console viewer
-The network detail page SHALL allow the user to view the Jenkins console output for any action-history entry. Each action-history row SHALL provide a View button that opens a modal streaming the Jenkins console output live via Server-Sent Events from `GET /api/v1/action-history/{id}/stream/`. Because the stream replays the full console of a finished build and then terminates, the same live console serves both in-progress and completed runs.
+The network detail page SHALL let the user view the Jenkins console output of any action-history entry. Each action-history row SHALL provide a View button opening a modal that streams the console live via Server-Sent Events from `GET /api/v1/action-history/{id}/stream/`.
 
-The History tab SHALL re-fetch the action-history list (via `GET /api/v1/action-history/?campus_network_id={id}`) each time the tab is opened, so the displayed runs and statuses are current. Already-displayed rows SHALL remain visible while refreshing; the loading indicator SHALL appear only on the first load when no data is present yet.
-
-While the History tab is open and at least one displayed entry has
-`status = "Running"`, the tab SHALL additionally re-fetch the action-history list
-every 15 seconds, so that a run reaching its terminal state becomes visible
-without user interaction. These refreshes SHALL follow the same rules as a tab
-re-entry refresh: rows stay visible and no loading indicator is shown. When no
-displayed entry is `Running`, no interval refresh SHALL be issued. The interval
-SHALL stop when the last in-progress entry reaches a terminal status, when the
-user leaves the History tab, and when the page unmounts.
-
-The modal SHALL indicate the streaming state while output is arriving, display an error message if the stream fails or times out, and show a placeholder when a finished stream produced no output. The modal SHALL be dismissable (close button or backdrop click), and dismissing it SHALL close the underlying stream.
+The modal SHALL indicate the streaming state while output is arriving, display an error message if the stream fails or times out, and show a placeholder when a finished stream produced no output.
 
 #### Scenario: Re-opening the History tab refreshes the list
 - **WHEN** the user switches away from the History tab and back to it
@@ -119,8 +115,41 @@ The modal SHALL indicate the streaming state while output is arriving, display a
 - **WHEN** the user clicks Close or the modal backdrop
 - **THEN** the modal closes and the underlying SSE connection is closed
 
+#### Scenario: Same live console serves in-progress and completed runs
+- **WHEN** the user opens the console of a finished run
+- **THEN** the stream replays the full console of the finished build and then terminates, so the same live console serves both in-progress and completed runs
+
+### Requirement: Action history console modal is dismissable
+The action-history console modal SHALL be dismissable (close button or backdrop click), and dismissing it SHALL close the underlying stream.
+
+#### Scenario: Closing the modal closes the stream
+- **WHEN** the user dismisses the console modal via the close button or a backdrop click
+- **THEN** the modal closes
+- **AND** the underlying Server-Sent Events stream is closed
+
+### Requirement: History tab refreshes when opened
+The History tab SHALL re-fetch the action-history list (via `GET /api/v1/action-history/?campus_network_id={id}`) each time the tab is opened, so the displayed runs and statuses are current. Already-displayed rows SHALL remain visible while refreshing; the loading indicator SHALL appear only on the first load when no data is present yet.
+
+#### Scenario: Re-entering the History tab refreshes in place
+- **GIVEN** the History tab has previously displayed action-history rows
+- **WHEN** the user opens the History tab again
+- **THEN** the action-history list is re-fetched
+- **AND** the existing rows stay visible with no loading indicator
+
+### Requirement: History tab polls while runs are in progress
+While the History tab is open and at least one displayed entry has `status = "Running"`, the tab SHALL re-fetch the action-history list every 15 seconds, under the same rules as a tab re-entry refresh: rows stay visible and no loading indicator is shown. When no displayed entry is `Running`, no interval refresh SHALL be issued. The interval SHALL stop when the last in-progress entry reaches a terminal status, when the user leaves the History tab, and when the page unmounts.
+
+#### Scenario: Running entry triggers periodic refresh
+- **GIVEN** the History tab is open and a displayed entry has `status = "Running"`
+- **WHEN** 15 seconds elapse
+- **THEN** the action-history list is re-fetched without hiding rows or showing a loading indicator
+
+#### Scenario: Polling stops
+- **WHEN** the last in-progress entry reaches a terminal status, the user leaves the History tab, or the page unmounts
+- **THEN** no further interval refreshes are issued
+
 ### Requirement: Networks table lifecycle history view
-The Networks page SHALL provide a History button on the top-level Networks table that opens a history view, similar to the per-network triggered actions history, listing the network create and delete lifecycle runs derived from Jenkins build history. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_create` and `?kind=network_delete` (or the equivalent combined query) and display each run's subject (network name), kind, timestamp, and status. Each row SHALL provide a View action that opens a console viewer streaming the Jenkins console output live via Server-Sent Events from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`. The console viewer SHALL indicate the streaming state while output is arriving, display an error message on stream failure or timeout, show a placeholder when a finished stream produced no output, and be dismissable; dismissing it SHALL close the underlying stream.
+The Networks page SHALL provide a History button on the top-level Networks table that opens a history view, similar to the per-network triggered actions history, listing the network create and delete lifecycle runs derived from Jenkins build history. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_create` and `?kind=network_delete` (or the equivalent combined query) and display each run's subject (network name), kind, timestamp, and status.
 
 #### Scenario: Open the Networks lifecycle history
 - **WHEN** the user clicks the History button on the Networks table
@@ -135,6 +164,22 @@ The Networks page SHALL provide a History button on the top-level Networks table
 #### Scenario: Console stream error
 - **WHEN** the stream emits an error or the connection fails before completion
 - **THEN** an error message is displayed in the viewer
+
+### Requirement: Networks lifecycle history console viewer
+Each Networks lifecycle history row SHALL provide a View action opening a console viewer that streams the Jenkins console live via Server-Sent Events from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`. The viewer SHALL indicate the streaming state while output arrives, display an error on stream failure or timeout, show a placeholder when a finished stream produced no output, and be dismissable; dismissing it SHALL close the underlying stream.
+
+#### Scenario: View streams a create or delete run's console
+- **WHEN** the user clicks View on a network create or delete run in the history view
+- **THEN** a console viewer opens streaming from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/` for that run
+- **AND** it indicates the streaming state while output is arriving
+
+#### Scenario: Stream failure, timeout or empty output
+- **WHEN** the stream fails or times out, or finishes without producing output
+- **THEN** the viewer shows an error message, or a placeholder for empty output, respectively
+
+#### Scenario: Dismissing the viewer closes the stream
+- **WHEN** the user dismisses the console viewer
+- **THEN** the underlying stream is closed
 
 ### Requirement: Action Jenkins job link
 The network detail Actions tab SHALL display, for each action, a link that opens the action's Jenkins job page in a new browser tab. The link target SHALL be the reverse-proxied Jenkins job path `/jenkins/job/{jenkins_url}-{network_name}/`, where `jenkins_url` is the action's job-name prefix and `network_name` is the current network's name. The link SHALL open in a new tab with `rel="noopener"` and SHALL not interfere with the existing Run action.
@@ -168,7 +213,7 @@ Each row of the network detail History tab SHALL show a link that opens the run'
 - **THEN** the request to `/jenkins/` is routed by the reverse proxy to the Jenkins service (not the SPA)
 
 ### Requirement: Action-history Robot Framework summary endpoint
-The system SHALL expose `GET /api/v1/action-history/{id}/robot-summary/`, an authenticated endpoint that returns the Robot Framework result totals for the run's Jenkins build. The response SHALL include `available` (boolean) and, when available, `total`, `passed`, `failed`, `skipped`, and `pass_percentage`. The totals SHALL be sourced from the Jenkins Robot Framework plugin's per-build summary (`overallTotal`/`overallPassed`/`overallFailed`/`overallSkipped`/`passPercentage`). When the build has no Robot results or Jenkins is unreachable, the endpoint SHALL return `{ "available": false }`.
+The system SHALL expose `GET /api/v1/action-history/{id}/robot-summary/`, an authenticated endpoint that returns the Robot Framework result totals for the run's Jenkins build. The response SHALL include `available` (boolean) and, when available, `total`, `passed`, `failed`, `skipped`, and `pass_percentage`. When the build has no Robot results or Jenkins is unreachable, the endpoint SHALL return `{ "available": false }`.
 
 #### Scenario: Summary available for a TEST build
 - **WHEN** an authenticated client requests `GET /api/v1/action-history/{id}/robot-summary/` for a run whose Jenkins build has Robot results
@@ -177,6 +222,11 @@ The system SHALL expose `GET /api/v1/action-history/{id}/robot-summary/`, an aut
 #### Scenario: Summary unavailable
 - **WHEN** the run's build has no Robot results or Jenkins is unreachable
 - **THEN** the response is `{ available: false }`
+
+#### Scenario: Totals come from the Robot Framework plugin summary
+- **GIVEN** the run's Jenkins build has Robot Framework results
+- **WHEN** `GET /api/v1/action-history/{id}/robot-summary/` is called
+- **THEN** `total`, `passed`, `failed`, `skipped`, and `pass_percentage` are taken from the plugin's per-build `overallTotal`, `overallPassed`, `overallFailed`, `overallSkipped`, and `passPercentage`
 
 ### Requirement: History tab shows inline TEST result summary
 For each History tab row in the **TEST** category, the network detail page SHALL fetch the run's Robot summary and, when available, display it inline as `Total N · Passed P · Failed F · Skipped S · Pass X%`. Rows in other categories SHALL NOT show a Robot summary.
@@ -205,3 +255,19 @@ the cell SHALL render an em dash (`—`) rather than an empty cell, so that
 - **GIVEN** an action-history entry whose `triggered_by_username` is empty
 - **WHEN** the user opens the History tab
 - **THEN** that row displays `—` in the Triggered by column
+
+### Requirement: Delete control is shown only to users who may delete
+The Networks page SHALL show a row's Delete control only when the signed-in user
+is the network's owner (`owner_username` equals their username) or has role
+`power_user` or `admin`. Team members who may modify and operate a shared
+network SHALL NOT see its Delete control.
+
+#### Scenario: Team member does not see Delete
+- **GIVEN** a `user`-role member of a team the network is shared with, who is not its owner
+- **WHEN** they view the networks list
+- **THEN** the row shows Modify/Actions/History but no Delete control
+
+#### Scenario: Owner and privileged roles see Delete
+- **GIVEN** the network's owner, or any `power_user` / `admin`
+- **WHEN** they view the networks list
+- **THEN** the row shows the Delete control

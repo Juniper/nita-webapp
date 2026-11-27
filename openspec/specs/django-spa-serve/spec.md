@@ -1,4 +1,9 @@
-## ADDED Requirements
+# django-spa-serve Specification
+
+## Purpose
+Django serves the compiled React SPA and its static assets alongside the existing backend routes, so deep links resolve to the SPA without affecting `/api/`, `/admin/` or `/jenkins/` paths.
+
+## Requirements
 
 ### Requirement: Django serves SPA static assets via WhiteNoise
 Django SHALL use `whitenoise.middleware.WhiteNoiseMiddleware` to serve files from the `WHITENOISE_ROOT` directory (pointing to `frontend/dist/`). Asset requests matching files on disk SHALL be served with appropriate caching headers without reaching URL routing.

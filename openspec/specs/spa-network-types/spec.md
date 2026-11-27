@@ -20,9 +20,9 @@ The `/network-types` page SHALL fetch and display all network types from `GET /a
 - **THEN** an error message SHALL be displayed
 
 ### Requirement: User can upload a new Network Type
-The page SHALL allow the user to select a zip file and upload it via `POST /api/v1/network-types/upload/`. The file SHALL be sent as multipart form data using the field name `app_zip_file` (the field name the backend expects). On success the list SHALL refresh.
+The page SHALL allow the user to select a zip file and upload it via `POST /api/v1/network-types/upload/` as multipart form data using the field name `app_zip_file` (the field name the backend expects). On success the list SHALL refresh.
 
-On a successful upload, the page SHALL open the live console panel (the same panel used by the action trigger flow) using the streaming handle (`job_name`, `build_no`) returned by the upload response, connecting to `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`, so the user can watch the network-type load job run.
+On a successful upload, the page SHALL open the live console panel (as used by the action trigger flow) with the returned streaming handle (`job_name`, `build_no`), connecting to `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`.
 
 #### Scenario: Successful upload opens the console
 - **WHEN** the user selects a zip file and confirms upload
@@ -71,7 +71,7 @@ The sidebar link for "Network Types" SHALL navigate to the `/network-types` rout
 - **THEN** the browser navigates to `/app/network-types` and the page is displayed
 
 ### Requirement: Network Types table lifecycle history view
-The Network Types page SHALL provide a History button on the top-level Network Types table that opens a history view, similar to the per-network triggered actions history, listing the network-type load lifecycle runs derived from Jenkins build history. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_type_load` and display each run's subject (network-type name), timestamp, and status. Each row SHALL provide a View action that opens a console viewer streaming the Jenkins console output live via Server-Sent Events from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`. The console viewer SHALL indicate the streaming state while output is arriving, display an error message on stream failure or timeout, show a placeholder when a finished stream produced no output, and be dismissable; dismissing it SHALL close the underlying stream.
+The Network Types page SHALL provide a History button on the top-level Network Types table that opens a history view, similar to the per-network triggered actions history, listing the network-type load lifecycle runs derived from Jenkins build history. The view SHALL fetch `GET /api/v1/lifecycle-runs/?kind=network_type_load` and display each run's subject (network-type name), timestamp, and status.
 
 #### Scenario: Open the Network Types lifecycle history
 - **WHEN** the user clicks the History button on the Network Types table
@@ -86,3 +86,19 @@ The Network Types page SHALL provide a History button on the top-level Network T
 #### Scenario: Console stream error
 - **WHEN** the stream emits an error or the connection fails before completion
 - **THEN** an error message is displayed in the viewer
+
+### Requirement: Network Types lifecycle history console viewer
+Each Network Types lifecycle history row SHALL provide a View action opening a console viewer that streams the Jenkins console live via Server-Sent Events from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/`. The viewer SHALL indicate the streaming state while output arrives, display an error on stream failure or timeout, show a placeholder when a finished stream produced no output, and be dismissable; dismissing it SHALL close the underlying stream.
+
+#### Scenario: View streams a load run's console
+- **WHEN** the user clicks View on a network-type load run in the history view
+- **THEN** a console viewer opens streaming from `GET /api/v1/jenkins/jobs/{job_name}/{build_no}/stream/` for that run
+- **AND** it indicates the streaming state while output is arriving
+
+#### Scenario: Stream failure, timeout or empty output
+- **WHEN** the stream fails or times out, or finishes without producing output
+- **THEN** the viewer shows an error message, or a placeholder for empty output, respectively
+
+#### Scenario: Dismissing the viewer closes the stream
+- **WHEN** the user dismisses the console viewer
+- **THEN** the underlying stream is closed

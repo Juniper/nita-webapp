@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 # Matches ANSI colour / control escape sequences emitted by Jenkins console.
 _ANSI_ESCAPE = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+# Matches a serialized Jenkins ConsoleNote (``ESC[8mha:<base64>ESC[0m``). The raw
+# ``progressiveText`` API keeps these hyperlink annotations, so they must be
+# removed whole before the ANSI strip, which would otherwise leave the payload.
+_CONSOLE_NOTE = re.compile(r"\x1B\[8mha:[^\x1B]*\x1B\[0m")
 
 
 def _identity_header():
@@ -163,7 +167,8 @@ def progressive_text_events(job_name, build_no):
     - ``event: error\\ndata: <msg>\\n\\n`` — Jenkins unreachable / exception
     - ``event: timeout\\ndata: \\n\\n``  — 30-minute cap reached
 
-    ANSI escape codes are stripped from emitted output. The initial window
+    Jenkins console notes and ANSI escape codes are stripped from emitted
+    output. The initial window
     during which the build is still queued (Jenkins returns ``404``) is
     tolerated for up to ``max_queued_polls`` attempts.
     """
@@ -202,7 +207,7 @@ def progressive_text_events(job_name, build_no):
             yield f"event: error\ndata: {exc}\n\n"
             return
 
-        cleaned = _ANSI_ESCAPE.sub("", chunk)
+        cleaned = _ANSI_ESCAPE.sub("", _CONSOLE_NOTE.sub("", chunk))
         for line in cleaned.splitlines():
             if line:
                 yield f"data: {line}\n\n"
@@ -219,8 +224,8 @@ def progressive_text_events(job_name, build_no):
 def stream_response(job_name, build_no):
     """Return a ``StreamingHttpResponse`` of a job's console as SSE.
 
-    Sets the headers required for real-time SSE delivery through the nginx
-    reverse proxy (``X-Accel-Buffering: no``) and to prevent caching.
+    Sets the headers required for real-time SSE delivery through the reverse
+    proxy (``X-Accel-Buffering: no``) and to prevent caching.
     """
     response = StreamingHttpResponse(
         progressive_text_events(job_name, build_no),

@@ -1,36 +1,34 @@
-### Requirement: Stream Console Log via SSE
-The system SHALL expose a Server-Sent Events endpoint at
-`GET /api/v1/action-history/{id}/stream/` that streams the Jenkins build console
-output incrementally for the given action history entry.
+## Purpose
 
-The endpoint SHALL:
-- Respond with `Content-Type: text/event-stream`.
-- Emit one or more `data: <text>` SSE events containing console output as the
-  build runs.
-- Emit `event: done\ndata: \n\n` when the build log is complete, then close the
-  connection.
-- Emit `event: error\ndata: <message>\n\n` and close if Jenkins is unreachable
-  or an internal error occurs.
-- Emit `event: timeout\ndata: \n\n` and close after 30 minutes of continuous
-  streaming (1800 poll attempts at 1-second intervals) to prevent zombie
-  connections.
-- Strip ANSI escape codes from all emitted output.
-- Require the request to be authenticated (session cookie). Unauthenticated
-  requests SHALL receive a 403 response before any streaming begins.
-- Set the `X-Accel-Buffering: no` response header on every streaming response.
+Define console streaming behavior for action-history entries and their proxy.
 
-The SPA client consuming this endpoint SHALL use named event listeners for
-`done`, `error`, and `timeout` events rather than relying solely on the
-EventSource `onerror` callback, so that stream termination is detected
-correctly when the proxy connection remains open after the final event.
+## Requirements
 
-The SPA `'error'` named event listener SHALL only process server-sent SSE error
-events — those that carry a `data` payload from the server. Network-level
-EventSource errors (connection refused, unexpected HTTP status, etc.) produce a
-plain DOM `Event` with no `data` property; the listener SHALL return early when
-`data` is absent and leave network-level error handling exclusively to
-`es.onerror`. This prevents the misleading `[error] stream error` console line
-that appears when an EventSource opens to an unreachable or non-existent URL.
+### Requirement: Proxy Must Not Buffer SSE Stream
+The Traefik proxy SHALL deliver action-history SSE events without response
+buffering or caching and SHALL allow at least 1850 seconds of idle stream time.
+
+#### Scenario: SSE events reach browser in real time
+- **GIVEN** a running Jenkins build producing console output
+- **WHEN** the browser opens the SSE stream endpoint
+- **THEN** console lines appear within 2 seconds under normal test conditions
+  without waiting for the stream to finish
+
+#### Scenario: Proxy does not close long-running stream prematurely
+- **GIVEN** a Jenkins build that runs for more than 5 minutes
+- **WHEN** the browser is connected to the SSE stream
+- **THEN** the proxy does not close the connection before the build completes
+- **AND** the browser receives the `event: done` signal
+
+#### Scenario: Proxy does not close an idle stream prematurely
+- **WHEN** a healthy stream is idle for 1850 seconds and then emits an event
+- **THEN** the connection remains open and the browser receives the event
+
+### Requirement: Stream console output via SSE
+The system SHALL expose `GET /api/v1/action-history/{id}/stream/` as a
+`text/event-stream` endpoint that incrementally emits console output as
+`data: <text>` events. Once the build log is complete, it SHALL emit
+`event: done\ndata: \n\n` and close.
 
 #### Scenario: Live output streams while build runs
 - GIVEN a running Jenkins build for the given action history entry
@@ -46,15 +44,11 @@ that appears when an EventSource opens to an unreachable or non-existent URL.
 - THEN the full console log is emitted as `data:` events
 - AND an `event: done` event is emitted and the connection closes
 
-#### Scenario: ANSI escape codes are stripped
-- GIVEN a Jenkins build whose console output contains ANSI colour escape codes
-- WHEN the stream endpoint is called
-- THEN the emitted `data:` events contain no ANSI escape sequences
-
-#### Scenario: Unauthenticated request rejected
-- GIVEN no valid session cookie is present
-- WHEN GET /api/v1/action-history/{id}/stream/ is called
-- THEN a 403 response is returned before any streaming begins
+### Requirement: Stream errors and timeout
+The endpoint SHALL emit `event: error\ndata: <message>\n\n` and close when
+Jenkins is unreachable or an internal error occurs. After 30 minutes of
+continuous streaming (1800 one-second poll attempts), it SHALL emit
+`event: timeout\ndata: \n\n` and close.
 
 #### Scenario: Jenkins unreachable emits error event
 - GIVEN the Jenkins server is unreachable during streaming
@@ -66,6 +60,35 @@ that appears when an EventSource opens to an unreachable or non-existent URL.
 - GIVEN a build that has been streaming for 30 minutes without completing
 - WHEN the 1800th poll attempt is reached
 - THEN an `event: timeout` SSE event is emitted and the connection closes
+
+### Requirement: Stream access and output handling
+The endpoint SHALL require a session cookie and reject unauthenticated requests
+with 403 before streaming. It SHALL strip ANSI escape codes and serialized
+Jenkins ConsoleNote markers from emitted output and set
+`X-Accel-Buffering: no` on every streaming response.
+
+#### Scenario: ANSI escape codes are stripped
+- GIVEN a Jenkins build whose console output contains ANSI colour escape codes
+- WHEN the stream endpoint is called
+- THEN the emitted `data:` events contain no ANSI escape sequences
+
+#### Scenario: Serialized Jenkins ConsoleNotes are stripped
+- GIVEN a Jenkins build whose progressive text contains `ESC[8mha:…ESC[0m`
+  ConsoleNote markers
+- WHEN the stream endpoint is called
+- THEN the emitted `data:` events contain no ConsoleNote markers and preserve
+  the surrounding console text
+
+#### Scenario: Unauthenticated request rejected
+- GIVEN no valid session cookie is present
+- WHEN GET /api/v1/action-history/{id}/stream/ is called
+- THEN a 403 response is returned before any streaming begins
+
+### Requirement: Console stream client event handling
+The SPA SHALL use named listeners for `done`, `error` and `timeout` events.
+Its named `error` listener SHALL process only server-sent events with a `data`
+payload; network-level EventSource errors without `data` SHALL be handled by
+`es.onerror` instead.
 
 #### Scenario: Browser receives done event before closing EventSource
 - GIVEN a Jenkins build that completes normally
@@ -88,30 +111,3 @@ that appears when an EventSource opens to an unreachable or non-existent URL.
 - THEN the named `'error'` listener appends `[error] Build failed` to the
   console panel
 - AND the EventSource is closed
-
-### Requirement: Nginx Proxy Must Not Buffer SSE Stream
-The nginx reverse proxy SHALL disable response buffering for the action-history
-stream endpoint so that SSE events are forwarded to the client immediately as
-they are produced by Django, without accumulation in the proxy buffer.
-
-The nginx location block matching `/api/v1/action-history/` stream paths SHALL
-set `proxy_buffering off` and `proxy_cache off`.
-
-The nginx `proxy_read_timeout` for this location SHALL be set to at least 1850
-seconds to accommodate the maximum 30-minute (1800-second) stream duration
-without the proxy closing the connection prematurely.
-
-#### Scenario: SSE events reach browser in real time
-- GIVEN a running Jenkins build producing console output
-- WHEN the browser opens the SSE stream endpoint
-- THEN console lines appear in the browser within 2 seconds of Jenkins producing
-  them
-- AND no buffering delay causes the console panel to remain blank while the
-  build runs
-
-#### Scenario: Proxy does not close long-running stream prematurely
-- GIVEN a Jenkins build that runs for more than 5 minutes
-- WHEN the browser is connected to the SSE stream
-- THEN the nginx proxy does not close the connection before the build completes
-- AND the `event: done` signal is received by the browser when the build
-  finishes

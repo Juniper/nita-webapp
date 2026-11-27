@@ -323,9 +323,12 @@ paths:
       - v1
       security:
       - sessionAuth: []
+      - {}
       responses:
         '200':
-          description: Session authorized for proxy access
+          description: Session authorized with Jenkins identity headers
+        '302':
+          description: Redirect to login when the session is missing
   /api/v1/auth/login/:
     post:
       operationId: v1_auth_login_create

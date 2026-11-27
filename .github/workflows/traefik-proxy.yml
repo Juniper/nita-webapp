@@ -1,0 +1,62 @@
+name: Traefik proxy
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "15 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      long_stream:
+        description: Run the 1850-second idle stream check
+        type: boolean
+        default: false
+
+permissions: read-all
+
+jobs:
+  proxy-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install pytest PyYAML
+      - name: Download pinned Traefik
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLO https://github.com/traefik/traefik/releases/download/v3.7.19/traefik_v3.7.19_linux_amd64.tar.gz
+          curl -fsSLO https://github.com/traefik/traefik/releases/download/v3.7.19/traefik_v3.7.19_checksums.txt
+          grep ' traefik_v3.7.19_linux_amd64.tar.gz$' traefik_v3.7.19_checksums.txt | sha256sum --check
+          tar -xzf traefik_v3.7.19_linux_amd64.tar.gz traefik
+      - name: Test proxy routes, identity, limits and streaming
+        env:
+          TRAEFIK_BINARY: ${{ runner.temp }}/traefik
+        run: python -m pytest -c /dev/null tests/test_traefik_proxy.py -q -k 'not survives_1850'
+
+  long-stream:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.long_stream)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install pytest PyYAML
+      - name: Download pinned Traefik
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLO https://github.com/traefik/traefik/releases/download/v3.7.19/traefik_v3.7.19_linux_amd64.tar.gz
+          curl -fsSLO https://github.com/traefik/traefik/releases/download/v3.7.19/traefik_v3.7.19_checksums.txt
+          grep ' traefik_v3.7.19_linux_amd64.tar.gz$' traefik_v3.7.19_checksums.txt | sha256sum --check
+          tar -xzf traefik_v3.7.19_linux_amd64.tar.gz traefik
+      - name: Test 1850-second idle stream
+        env:
+          TRAEFIK_BINARY: ${{ runner.temp }}/traefik
+          TRAEFIK_LONG_STREAM_TEST: "1"
+        run: python -m pytest -c /dev/null tests/test_traefik_proxy.py -q -k survives_1850

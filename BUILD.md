@@ -15,7 +15,7 @@ To build the webapp docker image you can simply run the *build_container.sh* als
 ## Installation requirements
 If you're not using this aplication from a .deb/.rpm package installation please follow the next steps to ensure that you have a porper environment set up
 
-### Generate selfsigned certificate for Nginx (https proxy)
+### Generate selfsigned certificate for the Traefik HTTPS proxy
 ```bash
 mkdir -p nginx/certificates
 openssl req -batch -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/certificates/nginx-certificate-key.key -out nginx/certificates/nginx-certificate.crt

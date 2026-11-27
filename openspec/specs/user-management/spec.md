@@ -110,13 +110,13 @@ user's `id`, `username`, `email`, `role`, and `is_active`.
 - THEN a 403 response is returned
 
 ### Requirement: Set User Password (Admin any user; Power User any non-admin)
-The system SHALL provide `POST /api/v1/users/{id}/set_password/` accessible to
-`role=admin` for any user, and to `role=power_user` for any target whose `role`
-is **not** `admin`. The request body SHALL accept a write-only `password`
-validated with the configured Django password validators. The endpoint SHALL set
-the target user's password and MAY target the caller's own account (admin). The
-password SHALL NOT appear in any response body or log output. A power user
-targeting an `admin`, and any requester with `role=user`, SHALL receive `403`.
+The system SHALL provide `POST /api/v1/users/{id}/set_password/` to `role=admin`
+for any user, and to `role=power_user` for any **non-admin** target. The body
+SHALL accept a write-only `password` validated by the configured Django
+password validators. The endpoint SHALL set the target's password and MAY
+target the caller's own account (admin). The password SHALL NOT appear in any
+response or log. A power user targeting an `admin`, and any `role=user`
+requester, SHALL receive `403`.
 
 #### Scenario: Admin resets another user's password
 - GIVEN a user with `role=admin` and a target user
@@ -179,18 +179,11 @@ reason.
 ### Requirement: Power User Manages Non-Admin Users
 A `power_user` acts as a junior administrator over **non-admin** accounts. The
 system SHALL allow a `power_user` to:
-- `GET /api/v1/users/` — list users, with `role=admin` accounts **excluded** from
-  the results;
+- `GET /api/v1/users/` — list users, with `role=admin` accounts **excluded**;
 - `GET /api/v1/users/{id}/` — view any non-admin user (`id`, `username`, `email`,
   `role`, `is_active`);
 - `PATCH /api/v1/users/{id}/` — change the `is_active` status and/or the `role` of
-  any non-admin user, where a role change SHALL be capped at `power_user` (setting
-  `role=admin` is rejected).
-
-The system SHALL reject with `403` any attempt by a `power_user` to view or modify
-an `admin` account, or to set a user's `role` to `admin`. Creating and deleting
-user accounts SHALL remain restricted to `role=admin`, and the last-active-admin
-protection SHALL remain in force.
+  any non-admin user, where a role change SHALL be capped at `power_user`.
 
 #### Scenario: Power user lists non-admin users
 - GIVEN a `power_user` and a mix of `user`, `power_user`, and `admin` accounts
@@ -215,6 +208,27 @@ protection SHALL remain in force.
 
 #### Scenario: Power user cannot create or delete accounts
 - GIVEN a `power_user`
+- WHEN `POST /api/v1/users/` or `DELETE /api/v1/users/{id}/` is called
+- THEN a 403 response is returned
+
+### Requirement: Power User Cannot Manage Admin Accounts or Create and Delete Users
+The system SHALL reject with `403` any attempt by a `power_user` to view or modify
+an `admin` account, or to set a user's `role` to `admin`. Creating and deleting
+user accounts SHALL remain restricted to `role=admin`, and the last-active-admin
+protection SHALL remain in force.
+
+#### Scenario: Power user cannot promote to admin
+- GIVEN a user with `role=power_user`
+- WHEN `PATCH /api/v1/users/{id}/` is called on a non-admin user with `role=admin`
+- THEN a 403 response is returned and the target's role is unchanged
+
+#### Scenario: Power user cannot view or modify an admin
+- GIVEN a user with `role=power_user`
+- WHEN `GET` or `PATCH /api/v1/users/{id}/` targets a user with `role=admin`
+- THEN a 403 response is returned
+
+#### Scenario: Power user cannot create or delete users
+- GIVEN a user with `role=power_user`
 - WHEN `POST /api/v1/users/` or `DELETE /api/v1/users/{id}/` is called
 - THEN a 403 response is returned
 

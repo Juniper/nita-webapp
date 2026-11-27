@@ -113,6 +113,35 @@ def test_generator_emits_done_when_no_more_data():
     assert len(done_events) == 1
 
 
+def test_generator_strips_jenkins_console_notes():
+    """Serialized ConsoleNotes from progressiveText are removed whole."""
+    from unittest.mock import MagicMock
+
+    from ngcn.jenkins_jobs import progressive_text_events
+
+    note = "\x1b[8mha:////4AGk2shlODDEwANmZP7oEiOvuU2QAeVRsGYAn8EoXy+AAAA=\x1b[0m"
+    fake_response = MagicMock()
+    fake_response.read.return_value = (
+        f"Started by user {note}e2e-owner\n"
+        f"Building in workspace /project\n{note}\x1b[32mok\x1b[0m\n"
+    ).encode()
+    fake_response.headers.get.side_effect = lambda key, default=None: {
+        "X-More-Data": "false",
+    }.get(key, default)
+    fake_response.__enter__ = lambda s: s
+    fake_response.__exit__ = MagicMock(return_value=False)
+
+    with patch("urllib.request.urlopen", return_value=fake_response):
+        events = list(progressive_text_events("job-test", 1))
+
+    assert events == [
+        "data: Started by user e2e-owner\n\n",
+        "data: Building in workspace /project\n\n",
+        "data: ok\n\n",
+        "event: done\ndata: \n\n",
+    ]
+
+
 def test_progressive_text_request_asserts_service_identity(monkeypatch):
     from unittest.mock import MagicMock
 

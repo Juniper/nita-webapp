@@ -4,7 +4,9 @@
 Initial React SPA scaffold: Vite/TypeScript build tooling, client-side
 routing, auth context, CSRF-aware API client, login page, dashboard shell, and
 document identity.
+
 ## Requirements
+
 ### Requirement: SPA Build Tooling
 The system SHALL provide a `frontend/` directory at the repo root containing a Vite + React 18 + TypeScript project buildable with `npm run build`. The project SHALL use `@vitejs/plugin-react` and emit static assets to `frontend/dist/`.
 
@@ -71,7 +73,6 @@ The system SHALL provide an `AuthContext` React context that:
 The system SHALL provide `src/api/client.ts` that wraps the browser `fetch` API:
 - For GET requests: forwards the request with `credentials: 'include'`.
 - For POST/PUT/PATCH/DELETE requests: first calls `GET /api/v1/auth/csrf/` (cached after first call) to obtain the CSRF token, then attaches it as the `X-CSRFToken` request header alongside `credentials: 'include'`.
-- The client SHALL default the `Content-Type` to `application/json` only when the request body is NOT a `FormData` instance and no `Content-Type` header has been supplied. For `FormData` bodies the client SHALL NOT set `Content-Type`, so the browser can supply the correct `multipart/form-data` boundary (forcing `application/json` causes the server to reject uploads with HTTP 415).
 
 #### Scenario: GET request is sent without CSRF header
 - GIVEN the API client is used to call a GET endpoint
@@ -94,14 +95,30 @@ The system SHALL provide `src/api/client.ts` that wraps the browser `fetch` API:
 - THEN the client does NOT set a `Content-Type` header
 - AND the browser sets `Content-Type: multipart/form-data` with a boundary
 
-### Requirement: Login Page
-The system SHALL provide a `LoginPage` component that renders a username/password form. On submission it calls `POST /api/v1/auth/login/` via the API client. On success it updates `AuthContext` and redirects to `/`. On failure it displays an error message.
+### Requirement: API Client Content-Type Defaulting
+The API client (`src/api/client.ts`) SHALL default the `Content-Type` to
+`application/json` only when the request body is NOT a `FormData` instance and
+no `Content-Type` header has been supplied. For `FormData` bodies the client
+SHALL NOT set `Content-Type`, so the browser can supply the correct
+`multipart/form-data` boundary (forcing `application/json` causes the server to
+reject uploads with HTTP 415).
 
-The login page SHALL display the brand mark above its heading. Because the login
-page renders without the application header, this is the only place the mark
-appears before authentication, and it is the first screen every user sees. The
-mark SHALL be decorative, as in the header: the heading beneath it provides the
-accessible name.
+#### Scenario: JSON body defaults to application/json
+- GIVEN a request with a non-`FormData` body and no `Content-Type` header
+- WHEN the API client sends it
+- THEN the request carries `Content-Type: application/json`
+
+#### Scenario: Caller-supplied Content-Type is preserved
+- GIVEN a request with a non-`FormData` body and an explicit `Content-Type` header
+- WHEN the API client sends it
+- THEN the caller's `Content-Type` is sent unchanged
+
+### Requirement: Login Page
+The `LoginPage` SHALL submit its username/password form to
+`POST /api/v1/auth/login/` via the API client and update `AuthContext` on
+success. It SHALL follow a safe same-origin `next` path or fall back to `/`;
+on failure it SHALL display an error and remain on the login page. It SHALL
+show a decorative brand mark above its heading.
 
 #### Scenario: Login page shows the brand mark
 - WHEN an unauthenticated user opens `/login`
@@ -114,7 +131,7 @@ accessible name.
 - AND the heading is announced exactly once
 
 #### Scenario: Successful login redirects to dashboard
-- GIVEN valid credentials are entered
+- GIVEN valid credentials are entered and no `next` parameter is present
 - WHEN the login form is submitted
 - THEN the user is redirected to `/`
 - AND the username is visible in the authenticated shell
@@ -123,7 +140,17 @@ accessible name.
 - GIVEN invalid credentials are entered
 - WHEN the login form is submitted
 - THEN an error message is displayed on the page
-- AND the user remains on `/login`
+
+#### Scenario: Successful login follows a safe next target
+- GIVEN the user opened `/login?next=/jenkins/job/test-robot-net1/`
+- WHEN valid credentials are submitted
+- THEN the browser navigates to `/jenkins/job/test-robot-net1/`
+
+#### Scenario: Unsafe next targets are ignored
+- GIVEN the user opened `/login?next=//evil.example/` or `/login?next=https://evil.example/`
+- WHEN valid credentials are submitted
+- THEN the browser navigates to `/`
+- AND only paths beginning with a single `/`, without a URL scheme, are accepted
 
 ### Requirement: Dashboard Renders for Authenticated Users
 The system SHALL provide a `DashboardPage` component that renders at `/` when the
@@ -153,9 +180,8 @@ The SPA's HTML document SHALL identify the application rather than the project
 template it was scaffolded from. The document title SHALL be `NITA Webapp`, and
 the favicon SHALL be the NITA brand mark served from `/favicon.svg`.
 
-Because a favicon is rendered without a surrounding colour context, it SHALL
-carry explicit colour values rather than relying on inheritance, and SHALL remain
-legible on both light and dark browser tab strips.
+The favicon SHALL carry explicit colour values rather than relying on
+inheritance, and SHALL remain legible on both light and dark browser tab strips.
 
 The `frontend/` tree SHALL NOT contain unreferenced scaffold assets from the
 project template.
@@ -176,3 +202,9 @@ project template.
 #### Scenario: No template scaffold assets remain
 - WHEN the `frontend/` tree is inspected
 - THEN it contains no unreferenced images carried over from the project template
+
+#### Scenario: Favicon does not depend on inherited colour
+- GIVEN the favicon is rendered in a browser tab, without a surrounding colour
+  context
+- WHEN the tab strip uses a light or a dark theme
+- THEN the mark is drawn with its own explicit colour values and remains legible
